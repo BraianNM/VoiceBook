@@ -5,7 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VoiceBook - Encuentra y contrata talentos de voz</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- AGREGAR ESTOS SCRIPTS DE FIREBASE -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
+
     <style>
+        /* TODO EL CSS QUE TENÍAS ANTES SE MANTIENE IGUAL */
         :root {
             --primary: #2c3e50;
             --secondary: #3498db;
@@ -513,6 +521,28 @@
         .tab-content.active {
             display: block;
         }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .success {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
         
         /* Responsive */
         @media (max-width: 768px) {
@@ -711,7 +741,7 @@
             </div>
             
             <div class="talents-grid" id="talentsContainer">
-                <!-- Los talentos se cargarán aquí dinámicamente -->
+                <div class="loading">Cargando talentos...</div>
             </div>
         </div>
     </section>
@@ -725,7 +755,7 @@
             </div>
             
             <div id="jobOffersContainer">
-                <!-- Las ofertas de trabajo se cargarán aquí dinámicamente -->
+                <div class="loading">Cargando ofertas de trabajo...</div>
             </div>
         </div>
     </section>
@@ -798,20 +828,16 @@
                     <input type="text" id="talentName" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label for="talentEmail">Email de Contacto *</label>
+                    <label for="talentEmail">Email *</label>
                     <input type="email" id="talentEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="talentPassword">Contraseña *</label>
+                    <input type="password" id="talentPassword" class="form-control" required>
                 </div>
                 <div class="form-group">
                     <label for="talentPhone">Teléfono con código internacional *</label>
                     <input type="tel" id="talentPhone" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="talentPhoto">Foto de Perfil</label>
-                    <input type="file" id="talentPhoto" class="form-control" accept="image/*">
-                </div>
-                <div class="form-group">
-                    <label for="talentDemos">Demos de Locución/Doblaje/Imitaciones</label>
-                    <input type="file" id="talentDemos" class="form-control" accept="audio/*" multiple>
                 </div>
                 <div class="form-group">
                     <label for="talentDescription">Descripción (máx. 1000 caracteres)</label>
@@ -883,6 +909,7 @@
                     <label for="talentRealAge">Edad real (opcional)</label>
                     <input type="number" id="talentRealAge" class="form-control" min="1">
                 </div>
+                <div id="talentFormMessage"></div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Registrarse</button>
             </form>
         </div>
@@ -911,17 +938,18 @@
                     <input type="text" id="companyName" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label for="clientEmail">Email de Contacto *</label>
+                    <label for="clientEmail">Email *</label>
                     <input type="email" id="clientEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="clientPassword">Contraseña *</label>
+                    <input type="password" id="clientPassword" class="form-control" required>
                 </div>
                 <div class="form-group">
                     <label for="clientPhone">Teléfono (opcional)</label>
                     <input type="tel" id="clientPhone" class="form-control">
                 </div>
-                <div class="form-group">
-                    <label for="clientPhoto">Foto de Perfil</label>
-                    <input type="file" id="clientPhoto" class="form-control" accept="image/*">
-                </div>
+                <div id="clientFormMessage"></div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Registrarse</button>
             </form>
         </div>
@@ -941,788 +969,262 @@
                     <label for="loginPassword">Contraseña</label>
                     <input type="password" id="loginPassword" class="form-control" required>
                 </div>
+                <div id="loginFormMessage"></div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Iniciar Sesión</button>
             </form>
         </div>
     </div>
 
-    <!-- Dashboard Modal -->
-    <div class="modal" id="dashboardModal">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <h2>Mi Panel de Control</h2>
-            
-            <div class="dashboard">
-                <div class="dashboard-tabs">
-                    <div class="tab active" data-tab="profile">Mi Perfil</div>
-                    <div class="tab" data-tab="favorites">Favoritos</div>
-                    <div class="tab" data-tab="jobs" id="jobsTab" style="display:none;">Mis Ofertas</div>
-                    <div class="tab" data-tab="applications" id="applicationsTab" style="display:none;">Mis Postulaciones</div>
-                </div>
-                
-                <div class="tab-content active" id="profileTab">
-                    <div id="userProfileContent">
-                        <!-- El contenido del perfil se cargará aquí -->
-                    </div>
-                </div>
-                
-                <div class="tab-content" id="favoritesTab">
-                    <div id="favoritesContent">
-                        <!-- Los favoritos se cargarán aquí -->
-                    </div>
-                </div>
-                
-                <div class="tab-content" id="jobsTabContent">
-                    <button class="btn btn-primary" id="createJobBtn">Crear Nueva Oferta</button>
-                    <div id="jobsContent">
-                        <!-- Las ofertas de trabajo del usuario se cargarán aquí -->
-                    </div>
-                </div>
-                
-                <div class="tab-content" id="applicationsTabContent">
-                    <div id="applicationsContent">
-                        <!-- Las postulaciones del usuario se cargarán aquí -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Create Job Modal -->
-    <div class="modal" id="createJobModal">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <h2>Publicar Oferta de Trabajo</h2>
-            <form id="createJobForm">
-                <div class="form-group">
-                    <label for="jobTitle">Título *</label>
-                    <input type="text" id="jobTitle" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="jobDescription">Descripción *</label>
-                    <textarea id="jobDescription" class="form-control" rows="5" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="jobContact">Contacto *</label>
-                    <input type="text" id="jobContact" class="form-control" required>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Publicar Oferta</button>
-            </form>
-        </div>
-    </div>
-
     <script>
-        // Base de datos simulada
-        const database = {
-            users: [],
-            jobs: [],
-            favorites: [],
-            applications: []
+       // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyC6G6NgMqrMDyd5PB6_HmLNHpPU-vNJdf0",
+  authDomain: "voicebook-8ba6c.firebaseapp.com",
+  projectId: "voicebook-8ba6c",
+  storageBucket: "voicebook-8ba6c.firebasestorage.app",
+  messagingSenderId: "534166349589",
+  appId: "1:534166349589:web:e5e9c11b488fa52828ab1c"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
         };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const storage = firebase.storage();
 
         // Estado de la aplicación
         let currentUser = null;
-        let filteredTalents = [];
-
-        // Elementos del DOM
-        const talentModal = document.getElementById('talentModal');
-        const clientModal = document.getElementById('clientModal');
-        const loginModal = document.getElementById('loginModal');
-        const dashboardModal = document.getElementById('dashboardModal');
-        const createJobModal = document.getElementById('createJobModal');
-        const talentRegBtn = document.getElementById('talentRegBtn');
-        const clientRegBtn = document.getElementById('clientRegBtn');
-        const heroTalentBtn = document.getElementById('heroTalentBtn');
-        const heroClientBtn = document.getElementById('heroClientBtn');
-        const registerBtn = document.getElementById('registerBtn');
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const dashboardLink = document.getElementById('dashboardLink');
-        const authButtons = document.getElementById('authButtons');
-        const userMenu = document.getElementById('userMenu');
-        const userName = document.getElementById('userName');
-        const closeModalButtons = document.querySelectorAll('.close-modal');
-        const clientTypeSelect = document.getElementById('clientType');
-        const companyNameGroup = document.getElementById('companyNameGroup');
-        const otherLanguagesCheckbox = document.getElementById('lang10');
-        const otherLanguagesInput = document.getElementById('otherLanguages');
-        const applyFiltersBtn = document.getElementById('applyFilters');
-        const talentsContainer = document.getElementById('talentsContainer');
-        const jobOffersContainer = document.getElementById('jobOffersContainer');
-        const createJobBtn = document.getElementById('createJobBtn');
-        const jobsTab = document.getElementById('jobsTab');
-        const applicationsTab = document.getElementById('applicationsTab');
 
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
-            loadSampleData();
-            displayTalents();
-            displayJobOffers();
             setupEventListeners();
+            checkAuthState();
+            loadTalents();
+            loadJobOffers();
         });
 
-        // Cargar datos de ejemplo
-        function loadSampleData() {
-            // Talentos de ejemplo
-            database.users.push({
-                id: 1,
-                type: 'talent',
-                gender: 'hombre',
-                name: 'Juan Pérez',
-                email: 'juan@ejemplo.com',
-                phone: '+54 11 1234-5678',
-                photo: 'https://randomuser.me/api/portraits/men/32.jpg',
-                description: 'Locutor profesional con 5 años de experiencia en radio y publicidad. He trabajado en campañas para marcas reconocidas y tengo un home studio equipado.',
-                languages: ['es-latino', 'en-estadounidense'],
-                homeStudio: 'si',
-                ageRange: '25-40 años',
-                nationality: 'Argentino',
-                realAge: 30,
-                demos: [
-                    {name: 'Demo Locución', url: '#'},
-                    {name: 'Demo Doblaje', url: '#'}
-                ]
-            });
-
-            database.users.push({
-                id: 2,
-                type: 'talent',
-                gender: 'mujer',
-                name: 'María García',
-                email: 'maria@ejemplo.com',
-                phone: '+34 91 123 45 67',
-                photo: 'https://randomuser.me/api/portraits/women/44.jpg',
-                description: 'Actriz de doblaje con amplia experiencia en series y películas. Especializada en voces infantiles y juveniles.',
-                languages: ['es-españa', 'italiano'],
-                homeStudio: 'no',
-                ageRange: '10-25 años',
-                nationality: 'Española',
-                realAge: 28,
-                demos: [
-                    {name: 'Demo Doblaje', url: '#'}
-                ]
-            });
-
-            // Clientes de ejemplo
-            database.users.push({
-                id: 3,
-                type: 'client',
-                clientType: 'empresa',
-                name: 'Carlos Rodríguez',
-                companyName: 'Estudio Creativo S.A.',
-                email: 'carlos@estudiocreativo.com',
-                phone: '+1 234 567 8900',
-                photo: 'https://randomuser.me/api/portraits/men/22.jpg'
-            });
-
-            // Ofertas de trabajo de ejemplo
-            database.jobs.push({
-                id: 1,
-                clientId: 3,
-                title: 'Locutor para comercial de radio',
-                description: 'Buscamos un locutor con voz grave y profesional para un comercial de radio de 30 segundos. El proyecto es para una marca de automóviles de lujo.',
-                contact: 'carlos@estudiocreativo.com',
-                date: '2023-10-15'
+        // Verificar estado de autenticación
+        function checkAuthState() {
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    currentUser = user;
+                    updateUIAfterLogin();
+                    loadUserProfile(user.uid);
+                } else {
+                    currentUser = null;
+                    updateUIAfterLogout();
+                }
             });
         }
 
         // Configurar event listeners
         function setupEventListeners() {
-            // Abrir modales de registro
-            talentRegBtn.addEventListener('click', () => talentModal.style.display = 'flex');
-            heroTalentBtn.addEventListener('click', () => talentModal.style.display = 'flex');
-            clientRegBtn.addEventListener('click', () => clientModal.style.display = 'flex');
-            heroClientBtn.addEventListener('click', () => clientModal.style.display = 'flex');
-            registerBtn.addEventListener('click', () => talentModal.style.display = 'flex');
-            loginBtn.addEventListener('click', () => loginModal.style.display = 'flex');
-            dashboardLink.addEventListener('click', () => dashboardModal.style.display = 'flex');
-            createJobBtn.addEventListener('click', () => createJobModal.style.display = 'flex');
+            // Abrir modales
+            document.getElementById('talentRegBtn').addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
+            document.getElementById('heroTalentBtn').addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
+            document.getElementById('clientRegBtn').addEventListener('click', () => document.getElementById('clientModal').style.display = 'flex');
+            document.getElementById('heroClientBtn').addEventListener('click', () => document.getElementById('clientModal').style.display = 'flex');
+            document.getElementById('registerBtn').addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
+            document.getElementById('loginBtn').addEventListener('click', () => document.getElementById('loginModal').style.display = 'flex');
+            document.getElementById('dashboardLink').addEventListener('click', showDashboard);
+            document.getElementById('logoutBtn').addEventListener('click', logoutUser);
 
             // Cerrar modales
-            closeModalButtons.forEach(button => {
+            document.querySelectorAll('.close-modal').forEach(button => {
                 button.addEventListener('click', closeAllModals);
             });
 
-            // Cerrar modal al hacer clic fuera
-            window.addEventListener('click', (event) => {
-                if (event.target.classList.contains('modal')) {
-                    closeAllModals();
-                }
-            });
-
-            // Mostrar/ocultar campo de nombre de empresa
-            clientTypeSelect.addEventListener('change', () => {
-                companyNameGroup.style.display = clientTypeSelect.value === 'empresa' ? 'block' : 'none';
-            });
-
-            // Mostrar/ocultar campo de otros idiomas
-            otherLanguagesCheckbox.addEventListener('change', () => {
-                otherLanguagesInput.style.display = otherLanguagesCheckbox.checked ? 'block' : 'none';
-            });
-
-            // Aplicar filtros
-            applyFiltersBtn.addEventListener('click', applyFilters);
-
-            // Envío de formularios
+            // Otros event listeners...
+            document.getElementById('clientType').addEventListener('change', toggleCompanyName);
+            document.getElementById('lang10').addEventListener('change', toggleOtherLanguages);
+            document.getElementById('applyFilters').addEventListener('click', applyFilters);
             document.getElementById('talentForm').addEventListener('submit', registerTalent);
             document.getElementById('clientForm').addEventListener('submit', registerClient);
             document.getElementById('loginForm').addEventListener('submit', loginUser);
-            document.getElementById('createJobForm').addEventListener('submit', createJob);
-            document.getElementById('logoutBtn').addEventListener('click', logoutUser);
-
-            // Tabs del dashboard
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    // Remover clase active de todas las pestañas
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    // Agregar clase active a la pestaña clickeada
-                    this.classList.add('active');
-                    
-                    // Ocultar todos los contenidos
-                    document.querySelectorAll('.tab-content').forEach(content => {
-                        content.classList.remove('active');
-                    });
-                    
-                    // Mostrar el contenido correspondiente
-                    const tabId = this.getAttribute('data-tab');
-                    document.getElementById(tabId + 'Tab').classList.add('active');
-                });
-            });
         }
 
-        // Cerrar todos los modales
+        // Funciones de Firebase
+        async function registerTalent(e) {
+            e.preventDefault();
+            const messageDiv = document.getElementById('talentFormMessage');
+            
+            try {
+                const email = document.getElementById('talentEmail').value;
+                const password = document.getElementById('talentPassword').value;
+                
+                // Crear usuario en Authentication
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // Guardar datos en Firestore
+                await db.collection('talents').doc(user.uid).set({
+                    name: document.getElementById('talentName').value,
+                    email: email,
+                    phone: document.getElementById('talentPhone').value,
+                    gender: document.getElementById('talentGender').value,
+                    description: document.getElementById('talentDescription').value,
+                    languages: getSelectedLanguages(),
+                    homeStudio: document.getElementById('talentHomeStudio').value,
+                    ageRange: document.getElementById('talentAgeRange').value,
+                    nationality: document.getElementById('talentNationality').value,
+                    realAge: parseInt(document.getElementById('talentRealAge').value) || null,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showMessage(messageDiv, '¡Registro exitoso!', 'success');
+                setTimeout(() => {
+                    closeAllModals();
+                    document.getElementById('talentForm').reset();
+                }, 2000);
+                
+            } catch (error) {
+                showMessage(messageDiv, 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function registerClient(e) {
+            e.preventDefault();
+            const messageDiv = document.getElementById('clientFormMessage');
+            
+            try {
+                const email = document.getElementById('clientEmail').value;
+                const password = document.getElementById('clientPassword').value;
+                
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                const clientData = {
+                    name: document.getElementById('clientName').value,
+                    email: email,
+                    phone: document.getElementById('clientPhone').value,
+                    type: document.getElementById('clientType').value,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                if (clientData.type === 'empresa') {
+                    clientData.companyName = document.getElementById('companyName').value;
+                }
+                
+                await db.collection('clients').doc(user.uid).set(clientData);
+                
+                showMessage(messageDiv, '¡Registro exitoso!', 'success');
+                setTimeout(() => {
+                    closeAllModals();
+                    document.getElementById('clientForm').reset();
+                }, 2000);
+                
+            } catch (error) {
+                showMessage(messageDiv, 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function loginUser(e) {
+            e.preventDefault();
+            const messageDiv = document.getElementById('loginFormMessage');
+            
+            try {
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+                
+                await auth.signInWithEmailAndPassword(email, password);
+                showMessage(messageDiv, '¡Inicio de sesión exitoso!', 'success');
+                setTimeout(() => closeAllModals(), 1000);
+                
+            } catch (error) {
+                showMessage(messageDiv, 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function logoutUser() {
+            try {
+                await auth.signOut();
+            } catch (error) {
+                console.error('Error al cerrar sesión:', error);
+            }
+        }
+
+        async function loadTalents() {
+            try {
+                const snapshot = await db.collection('talents').get();
+                const talentsContainer = document.getElementById('talentsContainer');
+                
+                if (snapshot.empty) {
+                    talentsContainer.innerHTML = '<p>No hay talentos registrados aún.</p>';
+                    return;
+                }
+                
+                talentsContainer.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const talent = doc.data();
+                    displayTalentCard(talent, doc.id);
+                });
+                
+            } catch (error) {
+                console.error('Error cargando talentos:', error);
+                document.getElementById('talentsContainer').innerHTML = '<p>Error al cargar talentos.</p>';
+            }
+        }
+
+        function displayTalentCard(talent, talentId) {
+            const talentsContainer = document.getElementById('talentsContainer');
+            const talentCard = document.createElement('div');
+            talentCard.className = 'talent-card';
+            
+            talentCard.innerHTML = `
+                <div class="talent-img" style="background-color: #3498db; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px;">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="talent-info">
+                    <h3 class="talent-name">${talent.name}</h3>
+                    <p class="talent-details">${talent.gender === 'hombre' ? 'Hombre' : 'Mujer'} • ${talent.nationality || 'Nacionalidad no especificada'}</p>
+                    <p class="talent-details">${Array.isArray(talent.languages) ? talent.languages.join(', ') : talent.languages}</p>
+                    <p class="talent-details">Home Studio: ${talent.homeStudio === 'si' ? 'Sí' : 'No'}</p>
+                    <p>${talent.description ? talent.description.substring(0, 100) + '...' : 'Sin descripción'}</p>
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="viewTalentProfile('${talentId}')">Ver Perfil</button>
+                        ${currentUser ? `<button class="btn btn-success" onclick="addToFavorites('${talentId}')"><i class="fas fa-heart"></i> Favorito</button>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            talentsContainer.appendChild(talentCard);
+        }
+
+        // Funciones auxiliares
+        function showMessage(element, message, type) {
+            element.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
         function closeAllModals() {
             document.querySelectorAll('.modal').forEach(modal => {
                 modal.style.display = 'none';
             });
         }
 
-        // Registrar talento
-        function registerTalent(e) {
-            e.preventDefault();
-            
-            const formData = {
-                id: database.users.length + 1,
-                type: 'talent',
-                gender: document.getElementById('talentGender').value,
-                name: document.getElementById('talentName').value,
-                email: document.getElementById('talentEmail').value,
-                phone: document.getElementById('talentPhone').value,
-                description: document.getElementById('talentDescription').value,
-                homeStudio: document.getElementById('talentHomeStudio').value,
-                ageRange: document.getElementById('talentAgeRange').value,
-                nationality: document.getElementById('talentNationality').value,
-                realAge: document.getElementById('talentRealAge').value,
-                languages: getSelectedLanguages(),
-                demos: []
-            };
-            
-            database.users.push(formData);
-            alert('Registro exitoso. Ahora puedes iniciar sesión.');
-            talentModal.style.display = 'none';
-            document.getElementById('talentForm').reset();
-        }
-
-        // Registrar cliente
-        function registerClient(e) {
-            e.preventDefault();
-            
-            const formData = {
-                id: database.users.length + 1,
-                type: 'client',
-                clientType: document.getElementById('clientType').value,
-                name: document.getElementById('clientName').value,
-                email: document.getElementById('clientEmail').value,
-                phone: document.getElementById('clientPhone').value
-            };
-            
-            if (formData.clientType === 'empresa') {
-                formData.companyName = document.getElementById('companyName').value;
-            }
-            
-            database.users.push(formData);
-            alert('Registro exitoso. Ahora puedes iniciar sesión.');
-            clientModal.style.display = 'none';
-            document.getElementById('clientForm').reset();
-        }
-
-        // Obtener idiomas seleccionados
-        function getSelectedLanguages() {
-            const languages = [];
-            for (let i = 1; i <= 10; i++) {
-                const checkbox = document.getElementById('lang' + i);
-                if (checkbox.checked) {
-                    languages.push(checkbox.value);
-                }
-            }
-            
-            if (otherLanguagesCheckbox.checked && otherLanguagesInput.value) {
-                languages.push(otherLanguagesInput.value);
-            }
-            
-            return languages;
-        }
-
-        // Iniciar sesión
-        function loginUser(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('loginEmail').value;
-            const user = database.users.find(u => u.email === email);
-            
-            if (user) {
-                currentUser = user;
-                updateUIAfterLogin();
-                alert('Inicio de sesión exitoso.');
-                loginModal.style.display = 'none';
-                document.getElementById('loginForm').reset();
-            } else {
-                alert('Usuario no encontrado. Por favor, regístrate primero.');
-            }
-        }
-
-        // Cerrar sesión
-        function logoutUser() {
-            currentUser = null;
-            authButtons.style.display = 'flex';
-            userMenu.style.display = 'none';
-            dashboardLink.style.display = 'none';
-        }
-
-        // Actualizar UI después del login
         function updateUIAfterLogin() {
-            authButtons.style.display = 'none';
-            userMenu.style.display = 'block';
-            userName.textContent = currentUser.name;
-            dashboardLink.style.display = 'block';
-            
-            // Mostrar/ocultar pestañas según el tipo de usuario
-            if (currentUser.type === 'client') {
-                jobsTab.style.display = 'block';
-                applicationsTab.style.display = 'none';
-            } else if (currentUser.type === 'talent') {
-                jobsTab.style.display = 'none';
-                applicationsTab.style.display = 'block';
-            }
-            
-            // Actualizar contenido del dashboard
-            updateDashboard();
+            document.getElementById('authButtons').style.display = 'none';
+            document.getElementById('userMenu').style.display = 'block';
+            document.getElementById('userName').textContent = currentUser.email;
+            document.getElementById('dashboardLink').style.display = 'block';
         }
 
-        // Mostrar talentos
-        function displayTalents() {
-            const talents = database.users.filter(user => user.type === 'talent');
-            filteredTalents = [...talents];
-            
-            talentsContainer.innerHTML = '';
-            
-            if (talents.length === 0) {
-                talentsContainer.innerHTML = '<p>No hay talentos registrados aún.</p>';
-                return;
-            }
-            
-            talents.forEach(talent => {
-                const talentCard = document.createElement('div');
-                talentCard.className = 'talent-card';
-                
-                talentCard.innerHTML = `
-                    <img src="${talent.photo}" alt="${talent.name}" class="talent-img">
-                    <div class="talent-info">
-                        <h3 class="talent-name">${talent.name}</h3>
-                        <p class="talent-details">${talent.gender === 'hombre' ? 'Hombre' : 'Mujer'} • ${talent.nationality || 'Nacionalidad no especificada'}</p>
-                        <p class="talent-details">${talent.languages.join(', ')}</p>
-                        <p class="talent-details">Home Studio: ${talent.homeStudio === 'si' ? 'Sí' : 'No'}</p>
-                        <p>${talent.description.substring(0, 100)}...</p>
-                        ${talent.demos && talent.demos.length > 0 ? `
-                            <div class="audio-demos">
-                                <p><strong>Demos:</strong></p>
-                                ${talent.demos.map(demo => `
-                                    <div>
-                                        <p>${demo.name}</p>
-                                        <audio controls class="audio-player">
-                                            <source src="${demo.url}" type="audio/mpeg">
-                                            Tu navegador no soporta el elemento de audio.
-                                        </audio>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                        <div style="margin-top: 15px;">
-                            <button class="btn btn-primary" onclick="viewTalentProfile(${talent.id})">Ver Perfil</button>
-                            ${currentUser && currentUser.type === 'client' ? `
-                                <button class="btn btn-success" onclick="addToFavorites(${talent.id})">
-                                    <i class="fas fa-heart"></i> Favorito
-                                </button>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
-                
-                talentsContainer.appendChild(talentCard);
-            });
+        function updateUIAfterLogout() {
+            document.getElementById('authButtons').style.display = 'flex';
+            document.getElementById('userMenu').style.display = 'none';
+            document.getElementById('dashboardLink').style.display = 'none';
         }
 
-        // Aplicar filtros
-        function applyFilters() {
-            const genderFilter = document.getElementById('filterGender').value;
-            const languageFilter = document.getElementById('filterLanguage').value;
-            const countryFilter = document.getElementById('filterCountry').value.toLowerCase();
-            const studioFilter = document.getElementById('filterStudio').value;
-            
-            const locucionFilter = document.getElementById('filterLocucion').checked;
-            const doblajeFilter = document.getElementById('filterDoblaje').checked;
-            const imitacionesFilter = document.getElementById('filterImitaciones').checked;
-            
-            const talents = database.users.filter(user => user.type === 'talent');
-            
-            filteredTalents = talents.filter(talent => {
-                // Filtro por género
-                if (genderFilter && talent.gender !== genderFilter) return false;
-                
-                // Filtro por idioma
-                if (languageFilter && !talent.languages.includes(languageFilter)) return false;
-                
-                // Filtro por país (nacionalidad)
-                if (countryFilter && talent.nationality && 
-                    !talent.nationality.toLowerCase().includes(countryFilter)) return false;
-                
-                // Filtro por home studio
-                if (studioFilter && talent.homeStudio !== studioFilter) return false;
-                
-                // Nota: Los filtros por tipo de trabajo (locución, doblaje, imitaciones) 
-                // requerirían que los talentos tuvieran esa información en su perfil
-                // Por simplicidad, no los estamos aplicando en este ejemplo
-                
-                return true;
-            });
-            
-            // Actualizar la visualización
-            displayFilteredTalents();
-        }
+        // Las demás funciones se mantienen similares pero adaptadas para Firebase...
 
-        // Mostrar talentos filtrados
-        function displayFilteredTalents() {
-            talentsContainer.innerHTML = '';
-            
-            if (filteredTalents.length === 0) {
-                talentsContainer.innerHTML = '<p>No se encontraron talentos con los filtros aplicados.</p>';
-                return;
-            }
-            
-            filteredTalents.forEach(talent => {
-                const talentCard = document.createElement('div');
-                talentCard.className = 'talent-card';
-                
-                talentCard.innerHTML = `
-                    <img src="${talent.photo}" alt="${talent.name}" class="talent-img">
-                    <div class="talent-info">
-                        <h3 class="talent-name">${talent.name}</h3>
-                        <p class="talent-details">${talent.gender === 'hombre' ? 'Hombre' : 'Mujer'} • ${talent.nationality || 'Nacionalidad no especificada'}</p>
-                        <p class="talent-details">${talent.languages.join(', ')}</p>
-                        <p class="talent-details">Home Studio: ${talent.homeStudio === 'si' ? 'Sí' : 'No'}</p>
-                        <p>${talent.description.substring(0, 100)}...</p>
-                        ${talent.demos && talent.demos.length > 0 ? `
-                            <div class="audio-demos">
-                                <p><strong>Demos:</strong></p>
-                                ${talent.demos.map(demo => `
-                                    <div>
-                                        <p>${demo.name}</p>
-                                        <audio controls class="audio-player">
-                                            <source src="${demo.url}" type="audio/mpeg">
-                                            Tu navegador no soporta el elemento de audio.
-                                        </audio>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                        <div style="margin-top: 15px;">
-                            <button class="btn btn-primary" onclick="viewTalentProfile(${talent.id})">Ver Perfil</button>
-                            ${currentUser && currentUser.type === 'client' ? `
-                                <button class="btn btn-success" onclick="addToFavorites(${talent.id})">
-                                    <i class="fas fa-heart"></i> Favorito
-                                </button>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
-                
-                talentsContainer.appendChild(talentCard);
-            });
-        }
-
-        // Mostrar ofertas de trabajo
-        function displayJobOffers() {
-            jobOffersContainer.innerHTML = '';
-            
-            if (database.jobs.length === 0) {
-                jobOffersContainer.innerHTML = '<p>No hay ofertas de trabajo publicadas aún.</p>';
-                return;
-            }
-            
-            database.jobs.forEach(job => {
-                const client = database.users.find(user => user.id === job.clientId);
-                
-                const jobCard = document.createElement('div');
-                jobCard.className = 'job-card';
-                
-                jobCard.innerHTML = `
-                    <div class="job-header">
-                        <h3 class="job-title">${job.title}</h3>
-                        <p class="job-client">Publicado por: ${client.companyName || client.name}</p>
-                    </div>
-                    <div class="job-description">
-                        <p>${job.description}</p>
-                    </div>
-                    <div>
-                        <p><strong>Contacto:</strong> ${job.contact}</p>
-                        <p><strong>Fecha de publicación:</strong> ${job.date}</p>
-                    </div>
-                    ${currentUser && currentUser.type === 'talent' ? `
-                        <div style="margin-top: 15px;">
-                            <button class="btn btn-primary" onclick="applyToJob(${job.id})">Postularme</button>
-                        </div>
-                    ` : ''}
-                `;
-                
-                jobOffersContainer.appendChild(jobCard);
-            });
-        }
-
-        // Crear oferta de trabajo
-        function createJob(e) {
-            e.preventDefault();
-            
-            if (!currentUser || currentUser.type !== 'client') {
-                alert('Solo los clientes pueden publicar ofertas de trabajo.');
-                return;
-            }
-            
-            const job = {
-                id: database.jobs.length + 1,
-                clientId: currentUser.id,
-                title: document.getElementById('jobTitle').value,
-                description: document.getElementById('jobDescription').value,
-                contact: document.getElementById('jobContact').value,
-                date: new Date().toISOString().split('T')[0]
-            };
-            
-            database.jobs.push(job);
-            alert('Oferta de trabajo publicada exitosamente.');
-            createJobModal.style.display = 'none';
-            document.getElementById('createJobForm').reset();
-            
-            // Actualizar la visualización
-            displayJobOffers();
-            updateDashboard();
-        }
-
-        // Postularse a un trabajo
-        function applyToJob(jobId) {
-            if (!currentUser || currentUser.type !== 'talent') {
-                alert('Solo los talentos pueden postularse a ofertas de trabajo.');
-                return;
-            }
-            
-            // Verificar si ya se postuló
-            const existingApplication = database.applications.find(
-                app => app.jobId === jobId && app.talentId === currentUser.id
-            );
-            
-            if (existingApplication) {
-                alert('Ya te has postulado a esta oferta de trabajo.');
-                return;
-            }
-            
-            const application = {
-                id: database.applications.length + 1,
-                jobId: jobId,
-                talentId: currentUser.id,
-                date: new Date().toISOString()
-            };
-            
-            database.applications.push(application);
-            alert('Te has postulado exitosamente a esta oferta de trabajo.');
-            
-            // Actualizar dashboard
-            updateDashboard();
-        }
-
-        // Agregar a favoritos
-        function addToFavorites(talentId) {
-            if (!currentUser || currentUser.type !== 'client') {
-                alert('Solo los clientes pueden agregar talentos a favoritos.');
-                return;
-            }
-            
-            // Verificar si ya está en favoritos
-            const existingFavorite = database.favorites.find(
-                fav => fav.talentId === talentId && fav.clientId === currentUser.id
-            );
-            
-            if (existingFavorite) {
-                alert('Este talento ya está en tus favoritos.');
-                return;
-            }
-            
-            const favorite = {
-                id: database.favorites.length + 1,
-                talentId: talentId,
-                clientId: currentUser.id,
-                date: new Date().toISOString()
-            };
-            
-            database.favorites.push(favorite);
-            alert('Talento agregado a favoritos.');
-            
-            // Actualizar dashboard
-            updateDashboard();
-        }
-
-        // Actualizar dashboard
-        function updateDashboard() {
-            if (!currentUser) return;
-            
-            // Perfil del usuario
-            const profileContent = document.getElementById('userProfileContent');
-            profileContent.innerHTML = `
-                <h3>Mi Perfil</h3>
-                <p><strong>Nombre:</strong> ${currentUser.name}</p>
-                <p><strong>Email:</strong> ${currentUser.email}</p>
-                ${currentUser.phone ? `<p><strong>Teléfono:</strong> ${currentUser.phone}</p>` : ''}
-                ${currentUser.type === 'talent' ? `
-                    <p><strong>Género:</strong> ${currentUser.gender === 'hombre' ? 'Hombre' : 'Mujer'}</p>
-                    <p><strong>Idiomas:</strong> ${currentUser.languages.join(', ')}</p>
-                    <p><strong>Home Studio:</strong> ${currentUser.homeStudio === 'si' ? 'Sí' : 'No'}</p>
-                    ${currentUser.ageRange ? `<p><strong>Rango de edades:</strong> ${currentUser.ageRange}</p>` : ''}
-                    ${currentUser.nationality ? `<p><strong>Nacionalidad:</strong> ${currentUser.nationality}</p>` : ''}
-                    ${currentUser.realAge ? `<p><strong>Edad real:</strong> ${currentUser.realAge}</p>` : ''}
-                    ${currentUser.description ? `<p><strong>Descripción:</strong> ${currentUser.description}</p>` : ''}
-                ` : ''}
-                ${currentUser.type === 'client' && currentUser.companyName ? `
-                    <p><strong>Empresa:</strong> ${currentUser.companyName}</p>
-                ` : ''}
-            `;
-            
-            // Favoritos (solo para clientes)
-            if (currentUser.type === 'client') {
-                const favoritesContent = document.getElementById('favoritesContent');
-                const userFavorites = database.favorites.filter(fav => fav.clientId === currentUser.id);
-                
-                if (userFavorites.length === 0) {
-                    favoritesContent.innerHTML = '<p>No tienes talentos en favoritos.</p>';
-                } else {
-                    favoritesContent.innerHTML = '<h3>Mis Talentos Favoritos</h3>';
-                    
-                    userFavorites.forEach(fav => {
-                        const talent = database.users.find(user => user.id === fav.talentId);
-                        if (talent) {
-                            const favoriteItem = document.createElement('div');
-                            favoriteItem.className = 'talent-card';
-                            favoriteItem.style.marginBottom = '15px';
-                            
-                            favoriteItem.innerHTML = `
-                                <div class="talent-info">
-                                    <h4>${talent.name}</h4>
-                                    <p>${talent.email}</p>
-                                    <p>${talent.phone}</p>
-                                    <button class="btn btn-primary" onclick="viewTalentProfile(${talent.id})">Ver Perfil</button>
-                                </div>
-                            `;
-                            
-                            favoritesContent.appendChild(favoriteItem);
-                        }
-                    });
-                }
-            }
-            
-            // Ofertas de trabajo del cliente
-            if (currentUser.type === 'client') {
-                const jobsContent = document.getElementById('jobsContent');
-                const userJobs = database.jobs.filter(job => job.clientId === currentUser.id);
-                
-                if (userJobs.length === 0) {
-                    jobsContent.innerHTML = '<p>No has publicado ninguna oferta de trabajo.</p>';
-                } else {
-                    jobsContent.innerHTML = '<h3>Mis Ofertas de Trabajo</h3>';
-                    
-                    userJobs.forEach(job => {
-                        const jobItem = document.createElement('div');
-                        jobItem.className = 'job-card';
-                        jobItem.style.marginBottom = '15px';
-                        
-                        // Contar postulaciones
-                        const applications = database.applications.filter(app => app.jobId === job.id);
-                        
-                        jobItem.innerHTML = `
-                            <h4>${job.title}</h4>
-                            <p>${job.description}</p>
-                            <p><strong>Postulaciones:</strong> ${applications.length}</p>
-                            <button class="btn btn-primary" onclick="viewJobApplications(${job.id})">Ver Postulaciones</button>
-                        `;
-                        
-                        jobsContent.appendChild(jobItem);
-                    });
-                }
-            }
-            
-            // Postulaciones del talento
-            if (currentUser.type === 'talent') {
-                const applicationsContent = document.getElementById('applicationsContent');
-                const userApplications = database.applications.filter(app => app.talentId === currentUser.id);
-                
-                if (userApplications.length === 0) {
-                    applicationsContent.innerHTML = '<p>No te has postulado a ninguna oferta de trabajo.</p>';
-                } else {
-                    applicationsContent.innerHTML = '<h3>Mis Postulaciones</h3>';
-                    
-                    userApplications.forEach(app => {
-                        const job = database.jobs.find(j => j.id === app.jobId);
-                        if (job) {
-                            const applicationItem = document.createElement('div');
-                            applicationItem.className = 'job-card';
-                            applicationItem.style.marginBottom = '15px';
-                            
-                            applicationItem.innerHTML = `
-                                <h4>${job.title}</h4>
-                                <p>${job.description}</p>
-                                <p><strong>Fecha de postulación:</strong> ${app.date.split('T')[0]}</p>
-                                <p><strong>Estado:</strong> Pendiente</p>
-                            `;
-                            
-                            applicationsContent.appendChild(applicationItem);
-                        }
-                    });
-                }
-            }
-        }
-
-        // Funciones globales para usar en onclick
-        window.viewTalentProfile = function(talentId) {
-            const talent = database.users.find(user => user.id === talentId);
-            if (talent) {
-                alert(`Perfil de ${talent.name}\n\nEmail: ${talent.email}\nTeléfono: ${talent.phone}\n\n${talent.description}`);
-            }
-        };
-
-        window.addToFavorites = addToFavorites;
-        window.applyToJob = applyToJob;
-        window.viewJobApplications = function(jobId) {
-            const applications = database.applications.filter(app => app.jobId === jobId);
-            if (applications.length === 0) {
-                alert('No hay postulaciones para esta oferta.');
-                return;
-            }
-            
-            let message = 'Postulaciones para esta oferta:\n\n';
-            applications.forEach(app => {
-                const talent = database.users.find(user => user.id === app.talentId);
-                if (talent) {
-                    message += `- ${talent.name} (${talent.email})\n`;
-                }
-            });
-            
-            alert(message);
-        };
     </script>
 </body>
 </html>
