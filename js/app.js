@@ -31,6 +31,20 @@ function setupEventListeners() {
     // Otros controles
     document.getElementById('clientType').addEventListener('change', toggleCompanyName);
     document.getElementById('lang10').addEventListener('change', toggleOtherLanguages);
+
+    // Tabs del dashboard
+    document.querySelectorAll('.dashboard-tabs .tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Remover active de todas las tabs
+            document.querySelectorAll('.dashboard-tabs .tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Agregar active a la tab clickeada
+            this.classList.add('active');
+            const tabId = this.getAttribute('data-tab');
+            document.getElementById(tabId + 'Tab').classList.add('active');
+        });
+    });
 }
 
 // Cargar talentos
@@ -205,11 +219,26 @@ window.applyToJob = function(jobId) {
     alert('Función de postulación - Próximamente');
 };
 
-// Reemplaza esta función en app.js:
+// DASHBOARD FUNCIONAL
 window.showDashboard = function() {
     document.getElementById('dashboardModal').style.display = 'flex';
-    loadUserProfile(currentUser.uid);
+    
+    // Asegurarse de que el tab de perfil esté activo
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    document.querySelector('[data-tab="profile"]').classList.add('active');
+    document.getElementById('profileTab').classList.add('active');
+    
+    // Cargar el perfil
+    if (currentUser) {
+        loadUserProfile(currentUser.uid);
+    } else {
+        document.getElementById('userProfileContent').innerHTML = 
+            '<div class="error">Error: Usuario no autenticado</div>';
+    }
 };
+
 window.loadUserProfile = function(userId) {
     // Cargar perfil del usuario - Próximamente
 };
