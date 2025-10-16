@@ -63,7 +63,7 @@ async function loadTalents() {
     }
 }
 
-// Mostrar tarjeta de talento - FUNCIÓN MEJORADA
+// Mostrar tarjeta de talento - FUNCIÓN MEJORADA (INFO PRIVADA OCULTA)
 function displayTalentCard(talent, talentId) {
     const talentsContainer = document.getElementById('talentsContainer');
     const talentCard = document.createElement('div');
@@ -95,6 +95,18 @@ function displayTalentCard(talent, talentId) {
         audioPlayers = '<p style="color: #666; font-size: 14px; margin-top: 10px;">No hay demos de audio disponibles</p>';
     }
     
+    // Información de contacto solo para usuarios logueados
+    const contactInfo = currentUser ? `
+        <p class="talent-details"><strong>Email:</strong> ${talent.email || 'No disponible'}</p>
+        <p class="talent-details"><strong>Teléfono:</strong> ${talent.phone || 'No disponible'}</p>
+    ` : `
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; margin: 10px 0;">
+            <p style="margin: 0; color: #856404; font-size: 14px;">
+                <i class="fas fa-lock"></i> Inicia sesión para ver información de contacto
+            </p>
+        </div>
+    `;
+    
     talentCard.innerHTML = `
         <div class="talent-img" style="background-color: #3498db; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px;">
             <i class="fas fa-user"></i>
@@ -105,6 +117,7 @@ function displayTalentCard(talent, talentId) {
             <p class="talent-details">${Array.isArray(talent.languages) ? talent.languages.join(', ') : talent.languages || 'Idiomas no especificados'}</p>
             <p class="talent-details">Home Studio: ${talent.homeStudio === 'si' ? 'Sí' : 'No'}</p>
             <p>${talent.description ? talent.description.substring(0, 100) + '...' : 'Sin descripción'}</p>
+            ${contactInfo}
             ${audioPlayers}
             <div style="margin-top: 15px;">
                 <button class="btn btn-primary" onclick="viewTalentProfile('${talentId}')">Ver Perfil Completo</button>
@@ -246,6 +259,93 @@ async function showTalentDetails(talentId) {
                 demosHTML = '<p style="color: #666; text-align: center; padding: 20px;">No hay demos de audio disponibles</p>';
             }
             
+            // Información de contacto protegida - solo para usuarios logueados
+            const contactInfo = currentUser ? `
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Nombre:</label>
+                        <span>${talent.name || 'No especificado'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Email:</label>
+                        <span>${talent.email || 'No especificado'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Teléfono:</label>
+                        <span>${talent.phone || 'No especificado'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Género:</label>
+                        <span>${talent.gender === 'hombre' ? 'Hombre' : 'Mujer'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Idiomas:</label>
+                        <span>${Array.isArray(talent.languages) ? talent.languages.join(', ') : talent.languages || 'No especificado'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Home Studio:</label>
+                        <span>${talent.homeStudio === 'si' ? 'Sí' : 'No'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Nacionalidad:</label>
+                        <span>${talent.nationality || 'No especificado'}</span>
+                    </div>
+                    ${talent.realAge ? `
+                    <div class="info-item">
+                        <label>Edad real:</label>
+                        <span>${talent.realAge} años</span>
+                    </div>
+                    ` : ''}
+                    ${talent.ageRange ? `
+                    <div class="info-item">
+                        <label>Rango de edades:</label>
+                        <span>${talent.ageRange}</span>
+                    </div>
+                    ` : ''}
+                </div>
+            ` : `
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Nombre:</label>
+                        <span>${talent.name || 'No especificado'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Género:</label>
+                        <span>${talent.gender === 'hombre' ? 'Hombre' : 'Mujer'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Idiomas:</label>
+                        <span>${Array.isArray(talent.languages) ? talent.languages.join(', ') : talent.languages || 'No especificado'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Home Studio:</label>
+                        <span>${talent.homeStudio === 'si' ? 'Sí' : 'No'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Nacionalidad:</label>
+                        <span>${talent.nationality || 'No especificado'}</span>
+                    </div>
+                    ${talent.realAge ? `
+                    <div class="info-item">
+                        <label>Edad real:</label>
+                        <span>${talent.realAge} años</span>
+                    </div>
+                    ` : ''}
+                    ${talent.ageRange ? `
+                    <div class="info-item">
+                        <label>Rango de edades:</label>
+                        <span>${talent.ageRange}</span>
+                    </div>
+                    ` : ''}
+                </div>
+                <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; margin: 15px 0;">
+                    <p style="margin: 0; color: #856404; text-align: center;">
+                        <i class="fas fa-lock" style="margin-right: 8px;"></i>
+                        Inicia sesión para ver la información de contacto (email y teléfono)
+                    </p>
+                </div>
+            `;
+            
             const modalHTML = `
                 <div class="modal" id="talentDetailsModal" style="display: flex;">
                     <div class="modal-content">
@@ -253,48 +353,7 @@ async function showTalentDetails(talentId) {
                         <h2>Perfil de ${talent.name}</h2>
                         
                         <div class="profile-details">
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <label>Nombre:</label>
-                                    <span>${talent.name || 'No especificado'}</span>
-                                </div>
-                                <div class="info-item">
-                                    <label>Email:</label>
-                                    <span>${talent.email || 'No especificado'}</span>
-                                </div>
-                                <div class="info-item">
-                                    <label>Teléfono:</label>
-                                    <span>${talent.phone || 'No especificado'}</span>
-                                </div>
-                                <div class="info-item">
-                                    <label>Género:</label>
-                                    <span>${talent.gender === 'hombre' ? 'Hombre' : 'Mujer'}</span>
-                                </div>
-                                <div class="info-item">
-                                    <label>Idiomas:</label>
-                                    <span>${Array.isArray(talent.languages) ? talent.languages.join(', ') : talent.languages || 'No especificado'}</span>
-                                </div>
-                                <div class="info-item">
-                                    <label>Home Studio:</label>
-                                    <span>${talent.homeStudio === 'si' ? 'Sí' : 'No'}</span>
-                                </div>
-                                <div class="info-item">
-                                    <label>Nacionalidad:</label>
-                                    <span>${talent.nationality || 'No especificado'}</span>
-                                </div>
-                                ${talent.realAge ? `
-                                <div class="info-item">
-                                    <label>Edad real:</label>
-                                    <span>${talent.realAge} años</span>
-                                </div>
-                                ` : ''}
-                                ${talent.ageRange ? `
-                                <div class="info-item">
-                                    <label>Rango de edades:</label>
-                                    <span>${talent.ageRange}</span>
-                                </div>
-                                ` : ''}
-                            </div>
+                            ${contactInfo}
                             
                             ${talent.description ? `
                                 <div class="description-section">
@@ -313,7 +372,14 @@ async function showTalentDetails(talentId) {
                                     <i class="fas fa-heart"></i> Agregar a Favoritos
                                 </button>
                             </div>
-                        ` : '<p style="color: #666; margin-top: 20px; text-align: center;">Inicia sesión para contactar a este talento</p>'}
+                        ` : `
+                            <div style="margin-top: 20px; text-align: center;">
+                                <p style="color: #666; margin-bottom: 15px;">Inicia sesión para contactar a este talento</p>
+                                <button class="btn btn-primary" onclick="document.getElementById('loginModal').style.display = 'flex'; closeTalentDetails();">
+                                    Iniciar Sesión
+                                </button>
+                            </div>
+                        `}
                     </div>
                 </div>
             `;
@@ -336,6 +402,11 @@ window.closeTalentDetails = function() {
 };
 
 window.contactTalent = function(talentId) {
+    if (!currentUser) {
+        alert('Debes iniciar sesión para contactar talentos');
+        return;
+    }
+    
     console.log('Contactando talento:', talentId);
     
     const talentDoc = db.collection('talents').doc(talentId).get()
