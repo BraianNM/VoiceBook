@@ -25,11 +25,7 @@ async function uploadToCloudinary(file) {
 
     try {
         console.log('📤 Iniciando subida a Cloudinary:', file.name);
-        console.log('🔧 Configuración:', {
-            cloudName: cloudinaryConfig.cloudName,
-            uploadPreset: cloudinaryConfig.uploadPreset
-        });
-
+        
         const response = await fetch(
             `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/upload`,
             {
@@ -65,13 +61,11 @@ async function uploadAudioFiles(files) {
     const uploadedFiles = [];
     
     for (const file of files) {
-        // Validar que sea archivo de audio
         if (!file.type.startsWith('audio/')) {
             console.warn(`❌ ${file.name} no es un archivo de audio válido`);
             continue;
         }
         
-        // Validar tamaño (10MB máximo)
         if (file.size > 10 * 1024 * 1024) {
             console.warn(`❌ ${file.name} es muy grande (máximo 10MB)`);
             continue;
@@ -90,7 +84,7 @@ async function uploadAudioFiles(files) {
                 publicId: result.publicId
             });
             
-            console.log(`✅ Demo subido: ${file.name}`, result);
+            console.log(`✅ Demo subido: ${file.name}`);
             
         } catch (error) {
             console.error(`❌ Error subiendo ${file.name}:`, error);
@@ -109,14 +103,11 @@ async function registerTalent(e) {
         const email = document.getElementById('talentEmail').value;
         const password = document.getElementById('talentPassword').value;
         
-        // Mostrar mensaje de carga
         showMessage(messageDiv, 'Creando cuenta...', 'success');
         
-        // Crear usuario en Authentication
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
         
-        // Subir archivos de audio si existen
         const audioFiles = document.getElementById('talentDemos').files;
         let demos = [];
         
@@ -125,7 +116,6 @@ async function registerTalent(e) {
             demos = await uploadAudioFiles(audioFiles);
         }
         
-        // Guardar datos en Firestore
         await db.collection('talents').doc(user.uid).set({
             name: document.getElementById('talentName').value,
             email: email,
@@ -141,14 +131,12 @@ async function registerTalent(e) {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        // Mensaje de éxito
         const successMsg = demos.length > 0 
             ? `🎉 ¡Registro exitoso! Se subieron ${demos.length} demo(s) de audio.`
             : '🎉 ¡Registro exitoso!';
             
         showMessage(messageDiv, successMsg, 'success');
         
-        // Cerrar modal después de 3 segundos
         setTimeout(() => {
             closeAllModals();
             document.getElementById('talentForm').reset();
@@ -239,12 +227,28 @@ function updateUIAfterLogout() {
     document.getElementById('dashboardLink').style.display = 'none';
 }
 
-// Actualizar perfil de talento - FUNCIÓN CORREGIDA
+// ========== FUNCIÓN ACTUALIZAR PERFIL CORREGIDA ==========
+
+// Actualizar perfil de talento - FUNCIÓN COMPLETAMENTE CORREGIDA
 window.updateTalentProfile = async function() {
     const messageDiv = document.getElementById('editProfileMessage');
     
     try {
         const userId = currentUser.uid;
+        
+        console.log('🔄 Iniciando actualización de perfil...');
+        
+        // 1. OBTENER PRIMERO LOS DATOS ACTUALES
+        const currentDoc = await db.collection('talents').doc(userId).get();
+        if (!currentDoc.exists) {
+            throw new Error('No se encontró el perfil del talento');
+        }
+        
+        const currentData = currentDoc.data();
+        const currentDemos = currentData.demos || [];
+        console.log('🎵 Demos existentes:', currentDemos);
+        
+        // 2. Preparar datos de actualización
         const updateData = {
             name: document.getElementById('editName').value,
             phone: document.getElementById('editPhone').value,
@@ -264,40 +268,104 @@ window.updateTalentProfile = async function() {
         
         showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
         
-        // Subir nuevos archivos de audio si existen
+        // 3. SUBIR NUEVOS ARCHIVOS A CLOUDINARY
         const newAudioFiles = document.getElementById('newDemos').files;
         let newDemos = [];
         
         if (newAudioFiles.length > 0) {
-            showMessage(messageDiv, `🎵 Subiendo ${newAudioFiles.length} demo(s) de audio...`, 'success');
+            showMessage(messageDiv, `🎵 Subiendo ${newAudioFiles.length} demo(s) a Cloudinary...`, 'success');
+            console.log('📤 Subiendo archivos a Cloudinary:', newAudioFiles);
+            
             newDemos = await uploadAudioFiles(newAudioFiles);
-            console.log('📁 Nuevos demos subidos:', newDemos);
+            console.log('✅ Nuevos demos subidos a Cloudinary:', newDemos);
         }
         
-        // Obtener demos existentes
-        const currentDoc = await db.collection('talents').doc(userId).get();
-        const currentDemos = currentDoc.data().demos || [];
-        
-        // Combinar demos existentes con nuevos
+        // 4. COMBINAR DEMOS EXISTENTES CON NUEVOS
         if (newDemos.length > 0) {
             updateData.demos = [...currentDemos, ...newDemos];
+            console.log('🔄 Combinados. Total de demos:', updateData.demos.length);
         } else {
             updateData.demos = currentDemos;
+            console.log('📝 Manteniendo demos existentes');
         }
         
-        console.log('💾 Actualizando perfil con datos:', updateData);
+        console.log('💾 Datos finales para Firestore:', updateData);
         
-        // Actualizar en Firestore
+        // 5. GUARDAR TODO EN FIRESTORE
         await db.collection('talents').doc(userId).update(updateData);
+        console.log('✅ Datos guardados en Firestore correctamente');
         
-        showMessage(messageDiv, `✅ Perfil actualizado correctamente. ${newDemos.length} nuevo(s) demo(s) agregado(s).`, 'success');
+        // 6. VERIFICAR QUE SE GUARDÓ CORRECTAMENTE
+        const verificationDoc = await db.collection('talents').doc(userId).get();
+        const savedData = verificationDoc.data();
+        console.log('🔍 Verificación - Demos guardados en Firestore:', savedData.demos);
         
-        // Recargar TODO después de 2 segundos
+        showMessage(messageDiv, `✅ Perfil actualizado correctamente. ${newDemos.length} nuevo(s) demo(s) agregado(s). Total: ${updateData.demos.length} demos.`, 'success');
+        
+        // 7. RECARGAR TODO
         setTimeout(() => {
             closeEditProfileModal();
             loadUserProfile(userId);
             loadTalents();
             showDashboard();
+        }, 2000);
+        
+    } catch (error) {
+        console.error('❌ Error actualizando perfil:', error);
+        showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
+    }
+};
+
+// Función auxiliar para obtener idiomas seleccionados en edición
+function getEditSelectedLanguages() {
+    const languages = [];
+    for (let i = 1; i <= 10; i++) {
+        const checkbox = document.getElementById('editLang' + i);
+        if (checkbox && checkbox.checked) {
+            if (checkbox.value === 'otros') {
+                const otherInput = document.getElementById('editOtherLanguages');
+                if (otherInput && otherInput.value) {
+                    languages.push(otherInput.value);
+                }
+            } else {
+                languages.push(checkbox.value);
+            }
+        }
+    }
+    return languages;
+}
+
+// Actualizar perfil de cliente
+window.updateClientProfile = async function() {
+    const messageDiv = document.getElementById('editProfileMessage');
+    
+    try {
+        const userId = currentUser.uid;
+        const updateData = {
+            name: document.getElementById('editName').value,
+            phone: document.getElementById('editPhone').value,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        const companyNameInput = document.getElementById('editCompanyName');
+        if (companyNameInput) {
+            updateData.companyName = companyNameInput.value;
+        }
+        
+        if (!updateData.name) {
+            showMessage(messageDiv, '❌ Nombre es obligatorio', 'error');
+            return;
+        }
+        
+        showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
+        
+        await db.collection('clients').doc(userId).update(updateData);
+        
+        showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
+        
+        setTimeout(() => {
+            closeEditProfileModal();
+            loadUserProfile(userId);
         }, 2000);
         
     } catch (error) {
