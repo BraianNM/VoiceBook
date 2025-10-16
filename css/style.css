@@ -412,11 +412,43 @@ footer {
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 16px;
+    background-color: white;
 }
 
 .form-control:focus {
     border-color: var(--secondary);
     outline: none;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Estilos específicos para campos de archivo */
+input[type="file"].form-control {
+    padding: 8px;
+    border: 2px dashed #3498db;
+    background-color: #f8f9fa;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+input[type="file"].form-control:hover {
+    border-color: #2980b9;
+    background-color: #e8f4fd;
+}
+
+input[type="file"].form-control::file-selector-button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+input[type="file"].form-control::file-selector-button:hover {
+    background-color: #2980b9;
 }
 
 .checkbox-group {
@@ -487,6 +519,7 @@ footer {
     padding: 10px;
     border-radius: 4px;
     margin: 10px 0;
+    border-left: 4px solid #c62828;
 }
 
 .success {
@@ -495,6 +528,42 @@ footer {
     padding: 10px;
     border-radius: 4px;
     margin: 10px 0;
+    border-left: 4px solid #2e7d32;
+}
+
+/* Audio Demos Styles */
+.audio-demos {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid var(--secondary);
+}
+
+.audio-demos p {
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--primary);
+}
+
+.audio-demos audio {
+    width: 100%;
+    height: 40px;
+    border-radius: 20px;
+    margin-bottom: 5px;
+}
+
+.audio-demos div {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: white;
+    border-radius: 5px;
+    border: 1px solid #e9ecef;
+}
+
+.text-muted {
+    color: #6c757d !important;
+    font-size: 0.875em;
 }
 
 /* Responsive */
@@ -524,5 +593,15 @@ footer {
     
     .filter-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .modal-content {
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    .checkbox-group {
+        flex-direction: column;
+        gap: 8px;
     }
 }
