@@ -62,6 +62,25 @@ function displayTalentCard(talent, talentId) {
     const talentCard = document.createElement('div');
     talentCard.className = 'talent-card';
     
+    // Crear reproductores de audio si hay demos
+    let audioPlayers = '';
+    if (talent.demos && talent.demos.length > 0) {
+        audioPlayers = `
+            <div class="audio-demos" style="margin-top: 15px;">
+                <p><strong>Demos:</strong></p>
+                ${talent.demos.map(demo => `
+                    <div style="margin-bottom: 10px;">
+                        <p style="font-size: 14px; margin-bottom: 5px;">${demo.name}</p>
+                        <audio controls style="width: 100%; height: 40px;">
+                            <source src="${demo.url}" type="audio/mpeg">
+                            Tu navegador no soporta audio.
+                        </audio>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
     talentCard.innerHTML = `
         <div class="talent-img" style="background-color: #3498db; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px;">
             <i class="fas fa-user"></i>
@@ -72,6 +91,7 @@ function displayTalentCard(talent, talentId) {
             <p class="talent-details">${Array.isArray(talent.languages) ? talent.languages.join(', ') : talent.languages}</p>
             <p class="talent-details">Home Studio: ${talent.homeStudio === 'si' ? 'Sí' : 'No'}</p>
             <p>${talent.description ? talent.description.substring(0, 100) + '...' : 'Sin descripción'}</p>
+            ${audioPlayers}
             <div style="margin-top: 15px;">
                 <button class="btn btn-primary" onclick="viewTalentProfile('${talentId}')">Ver Perfil</button>
                 ${currentUser ? `<button class="btn btn-success" onclick="addToFavorites('${talentId}')"><i class="fas fa-heart"></i> Favorito</button>` : ''}
@@ -81,6 +101,7 @@ function displayTalentCard(talent, talentId) {
     
     talentsContainer.appendChild(talentCard);
 }
+
 
 // Cargar ofertas de trabajo
 async function loadJobOffers() {
