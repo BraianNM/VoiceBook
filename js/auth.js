@@ -14,6 +14,78 @@ function checkAuthState() {
     });
 }
 
+// ========== CLOUDINARY PARA VOICEBOOK ==========
+
+// Subir archivo de audio a Cloudinary
+async function uploadToCloudinary(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+    formData.append('cloud_name', cloudinaryConfig.cloudName);
+
+    try {
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/auto/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.secure_url) {
+            return {
+                url: data.secure_url,
+                publicId: data.public_id,
+                duration: data.duration || 0,
+                format: data.format
+            };
+        } else {
+            throw new Error(data.error?.message || 'Error subiendo archivo');
+        }
+    } catch (error) {
+        throw new Error('Error de conexión: ' + error.message);
+    }
+}
+
+// Subir múltiples archivos de audio
+async function uploadAudioFiles(files) {
+    const uploadedFiles = [];
+    
+    for (const file of files) {
+        // Validar que sea archivo de audio
+        if (!file.type.startsWith('audio/')) {
+            alert(`❌ ${file.name} no es un archivo de audio válido`);
+            continue;
+        }
+        
+        // Validar tamaño (10MB máximo)
+        if (file.size > 10 * 1024 * 1024) {
+            alert(`❌ ${file.name} es muy grande (máximo 10MB)`);
+            continue;
+        }
+        
+        try {
+            console.log(`🎵 Subiendo demo: ${file.name}...`);
+            const result = await uploadToCloudinary(file);
+            
+            uploadedFiles.push({
+                name: file.name,
+                url: result.url,
+                duration: result.duration,
+                format: result.format,
+                size: file.size
+            });
+            
+            console.log(`✅ Demo subido: ${file.name}`);
+            
+        } catch (error) {
+            console.error(`❌ Error subiendo ${file.name}:`, error);
+            alert(`Error subiendo ${file.name}: ${error.message}`);
+        }
+    }
+    
+    return uploadedFiles;
+}
+
 // Registrar talento
 async function registerTalent(e) {
     e.preventDefault();
@@ -23,9 +95,21 @@ async function registerTalent(e) {
         const email = document.getElementById('talentEmail').value;
         const password = document.getElementById('talentPassword').value;
         
+        // Mostrar mensaje de carga
+        showMessage(messageDiv, 'Creando cuenta...', 'success');
+        
         // Crear usuario en Authentication
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
+        
+        // Subir archivos de audio si existen
+        const audioFiles = document.getElementById('talentDemos').files;
+        let demos = [];
+        
+        if (audioFiles.length > 0) {
+            showMessage(messageDiv, `Subiendo ${audioFiles.length} demo(s) de audio...`, 'success');
+            demos = await uploadAudioFiles(audioFiles);
+        }
         
         // Guardar datos en Firestore
         await db.collection('talents').doc(user.uid).set({
@@ -39,17 +123,26 @@ async function registerTalent(e) {
             ageRange: document.getElementById('talentAgeRange').value,
             nationality: document.getElementById('talentNationality').value,
             realAge: parseInt(document.getElementById('talentRealAge').value) || null,
+            demos: demos, // ← AQUÍ SE GUARDAN LOS AUDIOS
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        showMessage(messageDiv, '¡Registro exitoso!', 'success');
+        // Mensaje de éxito
+        const successMsg = demos.length > 0 
+            ? `🎉 ¡Registro exitoso! Se subieron ${demos.length} demo(s) de audio.`
+            : '🎉 ¡Registro exitoso!';
+            
+        showMessage(messageDiv, successMsg, 'success');
+        
+        // Cerrar modal después de 3 segundos
         setTimeout(() => {
             closeAllModals();
             document.getElementById('talentForm').reset();
-        }, 2000);
+            loadTalents(); // Recargar la lista de talentos
+        }, 3000);
         
     } catch (error) {
-        showMessage(messageDiv, 'Error: ' + error.message, 'error');
+        showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
 }
 
