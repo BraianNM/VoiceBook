@@ -32,11 +32,45 @@ async function loadUserProfile(userId) {
     }
 }
 
-// Mostrar perfil en el dashboard
+// Mostrar perfil en el dashboard - FUNCIÓN MEJORADA
 function displayUserProfile(profile) {
     const profileContent = document.getElementById('userProfileContent');
+    console.log('📊 Mostrando perfil:', profile.type);
+    console.log('🎵 Demos en el perfil:', profile.demos);
     
     if (profile.type === 'talent') {
+        // Crear HTML para demos
+        let demosHTML = '';
+        if (profile.demos && profile.demos.length > 0) {
+            console.log(`🎵 Mostrando ${profile.demos.length} demos en el dashboard`);
+            demosHTML = `
+                <div class="demos-section">
+                    <h4>Mis Demos de Audio</h4>
+                    ${profile.demos.map((demo, index) => `
+                        <div class="demo-item" style="margin-bottom: 15px; padding: 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px;">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <audio controls style="flex: 1;">
+                                    <source src="${demo.url}" type="audio/mpeg">
+                                </audio>
+                                <span class="demo-name" style="min-width: 150px; font-size: 14px;">
+                                    ${demo.name || `Demo ${index + 1}`}
+                                </span>
+                                <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId}', '${currentUser.uid}')">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </div>
+                            <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                                ${Math.round(demo.duration || 0)} segundos • 
+                                ${demo.size ? (demo.size / 1024 / 1024).toFixed(1) + ' MB' : 'Tamaño no disponible'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            demosHTML = '<p style="color: #666; text-align: center; padding: 20px;">No hay demos de audio subidos.</p>';
+        }
+        
         profileContent.innerHTML = `
             <div class="profile-header">
                 <h3>Mi Perfil - Talento</h3>
@@ -75,14 +109,18 @@ function displayUserProfile(profile) {
                         <label>Nacionalidad:</label>
                         <span>${profile.nationality || 'No especificado'}</span>
                     </div>
+                    ${profile.realAge ? `
                     <div class="info-item">
                         <label>Edad real:</label>
-                        <span>${profile.realAge || 'No especificado'}</span>
+                        <span>${profile.realAge} años</span>
                     </div>
+                    ` : ''}
+                    ${profile.ageRange ? `
                     <div class="info-item">
                         <label>Rango de edades:</label>
-                        <span>${profile.ageRange || 'No especificado'}</span>
+                        <span>${profile.ageRange}</span>
                     </div>
+                    ` : ''}
                 </div>
                 
                 <div class="description-section">
@@ -90,22 +128,7 @@ function displayUserProfile(profile) {
                     <p>${profile.description || 'Sin descripción'}</p>
                 </div>
                 
-                ${profile.demos && profile.demos.length > 0 ? `
-                    <div class="demos-section">
-                        <h4>Mis Demos de Audio</h4>
-                        ${profile.demos.map(demo => `
-                            <div class="demo-item">
-                                <audio controls>
-                                    <source src="${demo.url}" type="audio/mpeg">
-                                </audio>
-                                <span class="demo-name">${demo.name}</span>
-                                <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId}', '${userId}')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : '<p>No hay demos de audio subidos.</p>'}
+                ${demosHTML}
             </div>
         `;
     } else {
