@@ -224,3 +224,5 @@ function updateUIAfterLogout() {
     document.getElementById('userMenu').style.display = 'none';
     document.getElementById('dashboardLink').style.display = 'none';
 }
+
+window.loadUserProfile = loadUserProfile;
