@@ -1,11 +1,11 @@
 // 🔥 CONFIGURACIÓN DE FIREBASE - REEMPLAZA CON TUS DATOS REALES
 const firebaseConfig = {
-    apiKey: "TU_API_KEY",
-    authDomain: "TU_PROYECTO.firebaseapp.com",
-    projectId: "TU_PROYECTO",
-    storageBucket: "TU_PROYECTO.appspot.com",
-    messagingSenderId: "TU_SENDER_ID",
-    appId: "TU_APP_ID"
+    apiKey: "AIzaSyC6G6NgMqrMDyd5PB6_HmLNHpPU-vNJdf0",
+    authDomain: "voicebook-8ba6c.firebaseapp.com",
+    projectId: "voicebook-8ba6c",
+    storageBucket: "voicebook-8ba6c.firebasestorage.app",
+    messagingSenderId: "534166349589",
+    appId: "1:534166349589:web:e5e9c11b488fa52828ab1c"
 };
 
 // Inicializar Firebase
@@ -17,7 +17,7 @@ const auth = firebase.auth();
 
 // Configuración de Cloudinary para VoiceBook
 const cloudinaryConfig = {
-    cloudName: 'TU_CLOUD_NAME', // REEMPLAZA con tu Cloud Name real de Cloudinary
+    cloudName: 'dkujz9gj8', // REEMPLAZA con tu Cloud Name real de Cloudinary
     uploadPreset: 'voicebook_demos'
 };
 
