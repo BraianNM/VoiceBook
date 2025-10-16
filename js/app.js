@@ -569,12 +569,16 @@ function displayUserProfile(profile) {
     }
 }
 
-// Funciones de edición de perfil
+// ========== SISTEMA DE EDICIÓN DE PERFIL COMPLETO ==========
+
+// Abrir modal de edición de perfil
 window.openEditProfileModal = function() {
+    console.log('🔄 Abriendo editor de perfil...');
     loadEditProfileForm();
     document.getElementById('editProfileModal').style.display = 'flex';
 };
 
+// Cerrar modal de edición
 window.closeEditProfileModal = function() {
     document.getElementById('editProfileModal').style.display = 'none';
 };
@@ -585,23 +589,30 @@ async function loadEditProfileForm() {
         const userId = currentUser.uid;
         let userProfile = null;
         
+        console.log('📥 Cargando datos para edición...');
+        
         // Cargar datos actuales
         const talentDoc = await db.collection('talents').doc(userId).get();
         if (talentDoc.exists) {
             userProfile = talentDoc.data();
+            console.log('🎭 Perfil de talento cargado:', userProfile);
             displayTalentEditForm(userProfile);
         } else {
             const clientDoc = await db.collection('clients').doc(userId).get();
             if (clientDoc.exists) {
                 userProfile = clientDoc.data();
+                console.log('👔 Perfil de cliente cargado:', userProfile);
                 displayClientEditForm(userProfile);
+            } else {
+                document.getElementById('editProfileForm').innerHTML = 
+                    '<div class="error">No se encontró perfil para editar</div>';
             }
         }
         
     } catch (error) {
-        console.error('Error cargando formulario de edición:', error);
+        console.error('❌ Error cargando formulario de edición:', error);
         document.getElementById('editProfileForm').innerHTML = 
-            '<div class="error">Error al cargar formulario de edición</div>';
+            '<div class="error">Error al cargar formulario de edición: ' + error.message + '</div>';
     }
 }
 
@@ -624,29 +635,73 @@ function displayTalentEditForm(profile) {
         
         <div class="form-group">
             <label for="editDescription">Descripción</label>
-            <textarea id="editDescription" class="form-control" rows="4">${profile.description || ''}</textarea>
+            <textarea id="editDescription" class="form-control" rows="4" placeholder="Describe tu experiencia, estilo vocal, etc.">${profile.description || ''}</textarea>
         </div>
         
         <div class="form-group">
             <label for="editNationality">Nacionalidad</label>
-            <input type="text" id="editNationality" class="form-control" value="${profile.nationality || ''}">
+            <input type="text" id="editNationality" class="form-control" value="${profile.nationality || ''}" placeholder="Ej: Argentino, Mexicano, etc.">
         </div>
         
         <div class="form-group">
             <label for="editRealAge">Edad real</label>
-            <input type="number" id="editRealAge" class="form-control" value="${profile.realAge || ''}">
+            <input type="number" id="editRealAge" class="form-control" value="${profile.realAge || ''}" min="1" max="100" placeholder="Tu edad actual">
         </div>
         
         <div class="form-group">
             <label for="editAgeRange">Rango de edades que puede interpretar</label>
-            <input type="text" id="editAgeRange" class="form-control" value="${profile.ageRange || ''}">
+            <input type="text" id="editAgeRange" class="form-control" value="${profile.ageRange || ''}" placeholder="Ej: 20-40 años">
+        </div>
+        
+        <div class="form-group">
+            <label>Idiomas que manejas</label>
+            <div class="checkbox-group" id="editLanguagesContainer">
+                ${generateLanguageCheckboxes(profile.languages)}
+            </div>
+            <input type="text" id="editOtherLanguages" class="form-control" placeholder="Especifica otros idiomas" style="margin-top: 10px; display: none;">
+        </div>
+        
+        <div class="form-group">
+            <label for="editHomeStudio">Home Studio</label>
+            <select id="editHomeStudio" class="form-control">
+                <option value="">Selecciona una opción</option>
+                <option value="si" ${profile.homeStudio === 'si' ? 'selected' : ''}>Sí</option>
+                <option value="no" ${profile.homeStudio === 'no' ? 'selected' : ''}>No</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Foto de Perfil</label>
+            <input type="file" id="editProfilePhoto" class="form-control" accept="image/*">
+            <small class="text-muted">Formatos: JPG, PNG, GIF. Máximo 5MB</small>
         </div>
         
         <div class="form-group">
             <label>Agregar nuevos demos de audio</label>
             <input type="file" id="newDemos" class="form-control" accept="audio/*" multiple>
-            <small class="text-muted">Puedes agregar nuevos archivos de audio</small>
+            <small class="text-muted">Puedes seleccionar múltiples archivos. Formatos: MP3, WAV, OGG. Máximo 10MB por archivo.</small>
         </div>
+        
+        ${profile.demos && profile.demos.length > 0 ? `
+            <div class="form-group">
+                <label>Demos existentes</label>
+                <div class="existing-demos">
+                    ${profile.demos.map(demo => `
+                        <div class="demo-item-existing">
+                            <audio controls style="width: 100%; margin-bottom: 5px;">
+                                <source src="${demo.url}" type="audio/mpeg">
+                            </audio>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 12px;">${demo.name}</span>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId}', '${currentUser.uid}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
         
         <div id="editProfileMessage"></div>
         
@@ -655,6 +710,54 @@ function displayTalentEditForm(profile) {
             <button type="button" class="btn btn-primary" onclick="updateTalentProfile()">Guardar Cambios</button>
         </div>
     `;
+    
+    // Configurar event listeners para los checkboxes de idiomas
+    document.getElementById('editLanguagesContainer').addEventListener('change', function(e) {
+        if (e.target.id === 'editLang10') {
+            document.getElementById('editOtherLanguages').style.display = e.target.checked ? 'block' : 'none';
+        }
+    });
+}
+
+// Generar checkboxes de idiomas para edición
+function generateLanguageCheckboxes(selectedLanguages) {
+    const languages = [
+        { id: 'editLang1', value: 'es-latino', label: 'Español Latino' },
+        { id: 'editLang2', value: 'es-rioplatense', label: 'Español Rioplatense' },
+        { id: 'editLang3', value: 'es-españa', label: 'Español de España' },
+        { id: 'editLang4', value: 'italiano', label: 'Italiano' },
+        { id: 'editLang5', value: 'en-britanico', label: 'Inglés Británico' },
+        { id: 'editLang6', value: 'en-estadounidense', label: 'Inglés Estadounidense' },
+        { id: 'editLang7', value: 'portugues', label: 'Portugués' },
+        { id: 'editLang8', value: 'aleman', label: 'Alemán' },
+        { id: 'editLang9', value: 'arabe', label: 'Árabe' },
+        { id: 'editLang10', value: 'otros', label: 'Otros' }
+    ];
+    
+    return languages.map(lang => `
+        <div class="checkbox-item">
+            <input type="checkbox" id="${lang.id}" value="${lang.value}" 
+                ${Array.isArray(selectedLanguages) && selectedLanguages.includes(lang.value) ? 'checked' : ''}>
+            <label for="${lang.id}">${lang.label}</label>
+        </div>
+    `).join('');
+}
+
+// Obtener idiomas seleccionados en edición
+function getEditSelectedLanguages() {
+    const languages = [];
+    for (let i = 1; i <= 10; i++) {
+        const checkbox = document.getElementById('editLang' + i);
+        if (checkbox && checkbox.checked) {
+            languages.push(checkbox.value);
+        }
+    }
+    
+    if (document.getElementById('editLang10') && document.getElementById('editLang10').checked && document.getElementById('editOtherLanguages').value) {
+        languages.push(document.getElementById('editOtherLanguages').value);
+    }
+    
+    return languages;
 }
 
 // Mostrar formulario de edición para clientes
@@ -681,6 +784,12 @@ function displayClientEditForm(profile) {
             </div>
         ` : ''}
         
+        <div class="form-group">
+            <label>Foto de Perfil</label>
+            <input type="file" id="editProfilePhoto" class="form-control" accept="image/*">
+            <small class="text-muted">Formatos: JPG, PNG, GIF. Máximo 5MB</small>
+        </div>
+        
         <div id="editProfileMessage"></div>
         
         <div class="form-actions">
@@ -700,16 +809,26 @@ window.updateTalentProfile = async function() {
             name: document.getElementById('editName').value,
             phone: document.getElementById('editPhone').value,
             description: document.getElementById('editDescription').value,
+            languages: getEditSelectedLanguages(),
+            homeStudio: document.getElementById('editHomeStudio').value,
             nationality: document.getElementById('editNationality').value,
             realAge: parseInt(document.getElementById('editRealAge').value) || null,
             ageRange: document.getElementById('editAgeRange').value,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
+        // Validaciones básicas
+        if (!updateData.name || !updateData.phone) {
+            showMessage(messageDiv, '❌ Nombre y teléfono son obligatorios', 'error');
+            return;
+        }
+        
+        showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
+        
         // Subir nuevos archivos de audio si existen
         const newAudioFiles = document.getElementById('newDemos').files;
         if (newAudioFiles.length > 0) {
-            showMessage(messageDiv, 'Subiendo nuevos demos...', 'success');
+            showMessage(messageDiv, '🎵 Subiendo nuevos demos de audio...', 'success');
             const newDemos = await uploadAudioFiles(newAudioFiles);
             
             // Obtener demos existentes y agregar los nuevos
@@ -727,9 +846,54 @@ window.updateTalentProfile = async function() {
         setTimeout(() => {
             closeEditProfileModal();
             loadUserProfile(userId);
+            loadTalents(); // Recargar talentos para que se vean los cambios
         }, 2000);
         
     } catch (error) {
+        console.error('❌ Error actualizando perfil:', error);
+        showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
+    }
+};
+
+// Actualizar perfil de cliente
+window.updateClientProfile = async function() {
+    const messageDiv = document.getElementById('editProfileMessage');
+    
+    try {
+        const userId = currentUser.uid;
+        const updateData = {
+            name: document.getElementById('editName').value,
+            phone: document.getElementById('editPhone').value,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // Agregar empresa si existe
+        const companyNameInput = document.getElementById('editCompanyName');
+        if (companyNameInput) {
+            updateData.companyName = companyNameInput.value;
+        }
+        
+        // Validaciones básicas
+        if (!updateData.name) {
+            showMessage(messageDiv, '❌ Nombre es obligatorio', 'error');
+            return;
+        }
+        
+        showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
+        
+        // Actualizar en Firestore
+        await db.collection('clients').doc(userId).update(updateData);
+        
+        showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
+        
+        // Recargar perfil y cerrar modal después de 2 segundos
+        setTimeout(() => {
+            closeEditProfileModal();
+            loadUserProfile(userId);
+        }, 2000);
+        
+    } catch (error) {
+        console.error('❌ Error actualizando perfil:', error);
         showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
 };
