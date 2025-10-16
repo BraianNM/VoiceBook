@@ -70,32 +70,38 @@ async function loadTalents() {
     }
 }
 
-// Mostrar tarjeta de talento
+// Mostrar tarjeta de talento - FUNCIÓN MEJORADA
 function displayTalentCard(talent, talentId) {
     const talentsContainer = document.getElementById('talentsContainer');
     const talentCard = document.createElement('div');
     talentCard.className = 'talent-card';
     
-    // Crear reproductores de audio si hay demos
+    // Verificar y mostrar demos de audio
     let audioPlayers = '';
     if (talent.demos && talent.demos.length > 0) {
+        console.log(`🎵 Mostrando ${talent.demos.length} demos para ${talent.name}`);
         audioPlayers = `
             <div class="audio-demos" style="margin-top: 15px;">
                 <p><strong>Demos de Audio:</strong></p>
-                ${talent.demos.map(demo => `
+                ${talent.demos.map((demo, index) => `
                     <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-                        <p style="font-size: 14px; margin-bottom: 8px; font-weight: 500;">${demo.name}</p>
+                        <p style="font-size: 14px; margin-bottom: 8px; font-weight: 500;">
+                            ${demo.name || `Demo ${index + 1}`}
+                        </p>
                         <audio controls style="width: 100%; height: 40px; border-radius: 20px;">
                             <source src="${demo.url}" type="audio/mpeg">
                             Tu navegador no soporta audio.
                         </audio>
                         <div style="font-size: 12px; color: #666; margin-top: 5px;">
-                            ${Math.round(demo.duration)} segundos • ${(demo.size / 1024 / 1024).toFixed(1)} MB
+                            ${Math.round(demo.duration || 0)} segundos • ${demo.size ? (demo.size / 1024 / 1024).toFixed(1) + ' MB' : 'Tamaño no disponible'}
                         </div>
                     </div>
                 `).join('')}
             </div>
         `;
+    } else {
+        console.log(`❌ No hay demos para ${talent.name}`);
+        audioPlayers = '<p style="color: #666; font-size: 14px; margin-top: 10px;">No hay demos de audio disponibles</p>';
     }
     
     talentCard.innerHTML = `
@@ -105,7 +111,7 @@ function displayTalentCard(talent, talentId) {
         <div class="talent-info">
             <h3 class="talent-name">${talent.name}</h3>
             <p class="talent-details">${talent.gender === 'hombre' ? 'Hombre' : 'Mujer'} • ${talent.nationality || 'Nacionalidad no especificada'}</p>
-            <p class="talent-details">${Array.isArray(talent.languages) ? talent.languages.join(', ') : talent.languages}</p>
+            <p class="talent-details">${Array.isArray(talent.languages) ? talent.languages.join(', ') : talent.languages || 'Idiomas no especificados'}</p>
             <p class="talent-details">Home Studio: ${talent.homeStudio === 'si' ? 'Sí' : 'No'}</p>
             <p>${talent.description ? talent.description.substring(0, 100) + '...' : 'Sin descripción'}</p>
             ${audioPlayers}
@@ -213,7 +219,7 @@ window.viewTalentProfile = function(talentId) {
     showTalentDetails(talentId);
 };
 
-// Nueva función para mostrar detalles del talento
+// Nueva función para mostrar detalles del talento - MEJORADA
 async function showTalentDetails(talentId) {
     try {
         const talentDoc = await db.collection('talents').doc(talentId).get();
@@ -225,6 +231,33 @@ async function showTalentDetails(talentId) {
             const existingModal = document.getElementById('talentDetailsModal');
             if (existingModal) {
                 existingModal.remove();
+            }
+            
+            // Crear demos HTML
+            let demosHTML = '';
+            if (talent.demos && talent.demos.length > 0) {
+                console.log(`🎵 Mostrando ${talent.demos.length} demos en detalles`);
+                demosHTML = `
+                    <div class="demos-section">
+                        <h3>Demos de Audio</h3>
+                        ${talent.demos.map((demo, index) => `
+                            <div class="demo-item" style="margin-bottom: 20px; padding: 15px; background: white; border: 1px solid #e9ecef; border-radius: 8px;">
+                                <p style="font-weight: 600; margin-bottom: 10px; color: #333;">
+                                    ${demo.name || `Demo ${index + 1}`}
+                                </p>
+                                <audio controls style="width: 100%; height: 45px; border-radius: 22px;">
+                                    <source src="${demo.url}" type="audio/mpeg">
+                                </audio>
+                                <div style="font-size: 12px; color: #666; margin-top: 8px; display: flex; justify-content: space-between;">
+                                    <span>${Math.round(demo.duration || 0)} segundos</span>
+                                    <span>${demo.size ? (demo.size / 1024 / 1024).toFixed(1) + ' MB' : ''}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                demosHTML = '<p style="color: #666; text-align: center; padding: 20px;">No hay demos de audio disponibles</p>';
             }
             
             // Crear modal con información detallada
@@ -285,22 +318,7 @@ async function showTalentDetails(talentId) {
                                 </div>
                             ` : ''}
                             
-                            ${talent.demos && talent.demos.length > 0 ? `
-                                <div class="demos-section">
-                                    <h3>Demos de Audio</h3>
-                                    ${talent.demos.map(demo => `
-                                        <div class="demo-item">
-                                            <p><strong>${demo.name}</strong></p>
-                                            <audio controls style="width: 100%;">
-                                                <source src="${demo.url}" type="audio/mpeg">
-                                            </audio>
-                                            <div style="font-size: 12px; color: #666; margin-top: 5px;">
-                                                ${Math.round(demo.duration)} segundos • ${(demo.size / 1024 / 1024).toFixed(1)} MB
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : '<p>No hay demos de audio disponibles.</p>'}
+                            ${demosHTML}
                         </div>
                         
                         ${currentUser ? `
@@ -452,8 +470,41 @@ window.loadUserProfile = async function(userId) {
 function displayUserProfile(profile) {
     const profileContent = document.getElementById('userProfileContent');
     console.log('📊 Mostrando perfil:', profile.type);
+    console.log('🎵 Demos en el perfil:', profile.demos);
     
     if (profile.type === 'talent') {
+        // Crear HTML para demos
+        let demosHTML = '';
+        if (profile.demos && profile.demos.length > 0) {
+            console.log(`🎵 Mostrando ${profile.demos.length} demos en el dashboard`);
+            demosHTML = `
+                <div class="demos-section">
+                    <h4>Mis Demos de Audio</h4>
+                    ${profile.demos.map((demo, index) => `
+                        <div class="demo-item" style="margin-bottom: 15px; padding: 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px;">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <audio controls style="flex: 1;">
+                                    <source src="${demo.url}" type="audio/mpeg">
+                                </audio>
+                                <span class="demo-name" style="min-width: 150px; font-size: 14px;">
+                                    ${demo.name || `Demo ${index + 1}`}
+                                </span>
+                                <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId}', '${currentUser.uid}')">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </div>
+                            <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                                ${Math.round(demo.duration || 0)} segundos • 
+                                ${demo.size ? (demo.size / 1024 / 1024).toFixed(1) + ' MB' : 'Tamaño no disponible'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            demosHTML = '<p style="color: #666; text-align: center; padding: 20px;">No hay demos de audio subidos.</p>';
+        }
+        
         profileContent.innerHTML = `
             <div class="profile-header">
                 <h3>Mi Perfil - Talento</h3>
@@ -511,22 +562,7 @@ function displayUserProfile(profile) {
                     <p>${profile.description || 'Sin descripción'}</p>
                 </div>
                 
-                ${profile.demos && profile.demos.length > 0 ? `
-                    <div class="demos-section">
-                        <h4>Mis Demos de Audio</h4>
-                        ${profile.demos.map(demo => `
-                            <div class="demo-item">
-                                <audio controls>
-                                    <source src="${demo.url}" type="audio/mpeg">
-                                </audio>
-                                <span class="demo-name">${demo.name}</span>
-                                <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId}', '${currentUser.uid}')">
-                                    <i class="fas fa-trash"></i> Eliminar
-                                </button>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : '<p>No hay demos de audio subidos.</p>'}
+                ${demosHTML}
             </div>
         `;
     } else {
@@ -838,26 +874,38 @@ window.updateTalentProfile = async function() {
         
         // Subir nuevos archivos de audio si existen
         const newAudioFiles = document.getElementById('newDemos').files;
+        let newDemos = [];
+        
         if (newAudioFiles.length > 0) {
-            showMessage(messageDiv, '🎵 Subiendo nuevos demos de audio...', 'success');
-            const newDemos = await uploadAudioFiles(newAudioFiles);
-            
-            // Obtener demos existentes y agregar los nuevos
-            const currentDoc = await db.collection('talents').doc(userId).get();
-            const currentDemos = currentDoc.data().demos || [];
-            updateData.demos = [...currentDemos, ...newDemos];
+            showMessage(messageDiv, `🎵 Subiendo ${newAudioFiles.length} demo(s) de audio...`, 'success');
+            newDemos = await uploadAudioFiles(newAudioFiles);
+            console.log('📁 Nuevos demos subidos:', newDemos);
         }
+        
+        // Obtener demos existentes
+        const currentDoc = await db.collection('talents').doc(userId).get();
+        const currentDemos = currentDoc.data().demos || [];
+        
+        // Combinar demos existentes con nuevos
+        if (newDemos.length > 0) {
+            updateData.demos = [...currentDemos, ...newDemos];
+        } else {
+            updateData.demos = currentDemos;
+        }
+        
+        console.log('💾 Actualizando perfil con datos:', updateData);
         
         // Actualizar en Firestore
         await db.collection('talents').doc(userId).update(updateData);
         
-        showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
+        showMessage(messageDiv, `✅ Perfil actualizado correctamente. ${newDemos.length} nuevo(s) demo(s) agregado(s).`, 'success');
         
-        // Recargar perfil y cerrar modal después de 2 segundos
+        // Recargar TODO después de 2 segundos
         setTimeout(() => {
             closeEditProfileModal();
             loadUserProfile(userId);
-            loadTalents(); // Recargar talentos para que se vean los cambios
+            loadTalents();
+            showDashboard();
         }, 2000);
         
     } catch (error) {
@@ -931,7 +979,9 @@ window.deleteDemo = async function(publicId, userId) {
         console.error('Error eliminando demo:', error);
         alert('Error eliminando el demo');
     }
-    // ========== FUNCIÓN PARA VERIFICAR CONFIGURACIÓN ==========
+};
+
+// ========== FUNCIÓN PARA VERIFICAR CONFIGURACIÓN ==========
 
 function checkCloudinaryConfig() {
     console.log('🔍 Verificando configuración de Cloudinary:');
@@ -958,4 +1008,3 @@ document.addEventListener('DOMContentLoaded', function() {
         checkCloudinaryConfig();
     }, 1000);
 });
-};
