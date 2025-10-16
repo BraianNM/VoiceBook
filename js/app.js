@@ -931,4 +931,31 @@ window.deleteDemo = async function(publicId, userId) {
         console.error('Error eliminando demo:', error);
         alert('Error eliminando el demo');
     }
+    // ========== FUNCIÓN PARA VERIFICAR CONFIGURACIÓN ==========
+
+function checkCloudinaryConfig() {
+    console.log('🔍 Verificando configuración de Cloudinary:');
+    console.log('☁️  Cloud Name:', cloudinaryConfig.cloudName);
+    console.log('📝 Upload Preset:', cloudinaryConfig.uploadPreset);
+    
+    if (!cloudinaryConfig.cloudName || cloudinaryConfig.cloudName === 'TU_CLOUD_NAME') {
+        console.error('❌ Cloud Name no configurado');
+        return false;
+    }
+    
+    if (!cloudinaryConfig.uploadPreset || cloudinaryConfig.uploadPreset === 'TU_UPLOAD_PRESET') {
+        console.error('❌ Upload Preset no configurado');
+        return false;
+    }
+    
+    console.log('✅ Configuración de Cloudinary OK');
+    return true;
+}
+
+// Verificar configuración al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        checkCloudinaryConfig();
+    }, 1000);
+});
 };
