@@ -205,10 +205,11 @@ window.applyToJob = function(jobId) {
     alert('Función de postulación - Próximamente');
 };
 
+// Reemplaza esta función en app.js:
 window.showDashboard = function() {
-    alert('Panel de control - Próximamente');
+    document.getElementById('dashboardModal').style.display = 'flex';
+    loadUserProfile(currentUser.uid);
 };
-
 window.loadUserProfile = function(userId) {
     // Cargar perfil del usuario - Próximamente
 };
