@@ -32,10 +32,9 @@ async function loadUserProfile(userId) {
     }
 }
 
-// Mostrar perfil en el dashboard - FUNCIÓN MEJORADA CON UBICACIÓN
+// Mostrar perfil en el dashboard
 function displayUserProfile(profile) {
     const profileContent = document.getElementById('userProfileContent');
-    console.log('📊 Mostrando perfil:', profile.type);
     
     // Información de ubicación (si está disponible)
     const locationInfo = profile.country && profile.state && profile.city ? 
@@ -48,7 +47,6 @@ function displayUserProfile(profile) {
         // Crear HTML para demos
         let demosHTML = '';
         if (profile.demos && profile.demos.length > 0) {
-            console.log(`🎵 Mostrando ${profile.demos.length} demos en el dashboard`);
             demosHTML = `
                 <div class="demos-section">
                     <h4>Mis Demos de Audio</h4>
@@ -80,7 +78,7 @@ function displayUserProfile(profile) {
         profileContent.innerHTML = `
             <div class="profile-header">
                 <h3>Mi Perfil - Talento</h3>
-                <button class="btn btn-primary" onclick="openEditProfileModal()">
+                <button class="btn btn-primary" id="editProfileBtn">
                     <i class="fas fa-edit"></i> Editar Perfil
                 </button>
             </div>
@@ -143,7 +141,7 @@ function displayUserProfile(profile) {
         profileContent.innerHTML = `
             <div class="profile-header">
                 <h3>Mi Perfil - Cliente</h3>
-                <button class="btn btn-primary" onclick="openEditProfileModal()">
+                <button class="btn btn-primary" id="editProfileBtn">
                     <i class="fas fa-edit"></i> Editar Perfil
                 </button>
             </div>
@@ -176,52 +174,66 @@ function displayUserProfile(profile) {
             </div>
         `;
     }
+    
+    // Agregar event listener al botón después de crear el HTML
+    setTimeout(() => {
+        const editBtn = document.getElementById('editProfileBtn');
+        if (editBtn) {
+            editBtn.addEventListener('click', openEditProfileModal);
+        }
+    }, 100);
 }
 
-// Abrir modal de edición de perfil - FUNCIÓN CORREGIDA
-window.openEditProfileModal = async function() {
-    console.log('🔄 Abriendo editor de perfil...');
+// FUNCIÓN PRINCIPAL CORREGIDA - Abrir modal de edición de perfil
+async function openEditProfileModal() {
+    console.log('🔓 Botón Editar Perfil - CLICKEADO');
     
-    // Ocultar dashboard y mostrar editor
-    document.getElementById('dashboardModal').style.display = 'none';
+    if (!currentUser) {
+        alert('Debes iniciar sesión para editar tu perfil');
+        return;
+    }
     
     try {
+        // Ocultar dashboard primero
+        document.getElementById('dashboardModal').style.display = 'none';
+        
+        console.log('🔄 Cargando datos del perfil para edición...');
+        
         const userId = currentUser.uid;
         let userProfile = null;
-        
-        console.log('📥 Cargando datos para edición...');
         
         // Cargar datos actuales del usuario
         const talentDoc = await db.collection('talents').doc(userId).get();
         if (talentDoc.exists) {
             userProfile = talentDoc.data();
-            console.log('🎭 Perfil de talento cargado:', userProfile);
+            console.log('✅ Perfil de talento cargado para edición');
             displayTalentEditForm(userProfile);
         } else {
             const clientDoc = await db.collection('clients').doc(userId).get();
             if (clientDoc.exists) {
                 userProfile = clientDoc.data();
-                console.log('👔 Perfil de cliente cargado:', userProfile);
+                console.log('✅ Perfil de cliente cargado para edición');
                 displayClientEditForm(userProfile);
             } else {
+                console.error('❌ No se encontró perfil para editar');
                 document.getElementById('editProfileForm').innerHTML = 
                     '<div class="error">No se encontró perfil para editar</div>';
-                return;
             }
         }
         
         // Mostrar el modal de edición
         document.getElementById('editProfileModal').style.display = 'flex';
+        console.log('✅ Modal de edición mostrado');
         
     } catch (error) {
         console.error('❌ Error abriendo editor de perfil:', error);
         document.getElementById('editProfileForm').innerHTML = 
-            '<div class="error">Error al cargar formulario de edición: ' + error.message + '</div>';
+            '<div class="error">Error al cargar formulario: ' + error.message + '</div>';
         document.getElementById('editProfileModal').style.display = 'flex';
     }
-};
+}
 
-// Mostrar formulario de edición para talentos - ACTUALIZADO CON UBICACIÓN
+// Mostrar formulario de edición para talentos
 function displayTalentEditForm(profile) {
     const editForm = document.getElementById('editProfileForm');
     
@@ -239,7 +251,7 @@ function displayTalentEditForm(profile) {
                 <input type="tel" id="editPhone" class="form-control" value="${profile.phone || ''}" required>
             </div>
             
-            <!-- CAMPOS DE UBICACIÓN AGREGADOS -->
+            <!-- CAMPOS DE UBICACIÓN -->
             <div class="form-group">
                 <label for="editCountry">País</label>
                 <select id="editCountry" class="form-control">
@@ -260,7 +272,6 @@ function displayTalentEditForm(profile) {
                     <option value="">Selecciona tu ciudad</option>
                 </select>
             </div>
-            <!-- FIN CAMPOS UBICACIÓN -->
             
             <div class="form-group">
                 <label for="editDescription">Descripción</label>
@@ -302,7 +313,7 @@ function displayTalentEditForm(profile) {
             <div class="form-group">
                 <label>Agregar nuevos demos de audio</label>
                 <input type="file" id="newDemos" class="form-control" accept="audio/*" multiple>
-                <small class="text-muted">Puedes seleccionar múltiples archivos. Formatos: MP3, WAV, OGG. Máximo 10MB por archivo.</small>
+                <small class="text-muted">Formatos: MP3, WAV, OGG. Máximo 10MB por archivo.</small>
             </div>
             
             ${profile.demos && profile.demos.length > 0 ? `
@@ -335,41 +346,13 @@ function displayTalentEditForm(profile) {
         </div>
     `;
     
-    // Cargar datos de ubicación en el formulario de edición
+    // Cargar datos de ubicación
     loadLocationDataForEdit(profile);
     
-    // Configurar event listeners para los dropdowns de ubicación
+    // Configurar event listeners
     setTimeout(() => {
-        const countrySelect = document.getElementById('editCountry');
-        const stateSelect = document.getElementById('editState');
-        const citySelect = document.getElementById('editCity');
-        
-        if (countrySelect) {
-            countrySelect.addEventListener('change', function() {
-                updateEditStates(this.value);
-            });
-        }
-        
-        if (stateSelect) {
-            stateSelect.addEventListener('change', function() {
-                updateEditCities(countrySelect.value, this.value);
-            });
-        }
-        
-        // Configurar checkbox de otros idiomas
-        const editLang10 = document.getElementById('editLang10');
-        const editOtherLanguages = document.getElementById('editOtherLanguages');
-        
-        if (editLang10 && editOtherLanguages) {
-            editLang10.addEventListener('change', function() {
-                editOtherLanguages.style.display = this.checked ? 'block' : 'none';
-            });
-            
-            if (editLang10.checked) {
-                editOtherLanguages.style.display = 'block';
-            }
-        }
-    }, 100);
+        setupEditFormListeners();
+    }, 200);
 }
 
 // Mostrar formulario de edición para clientes
@@ -405,16 +388,49 @@ function displayClientEditForm(profile) {
     `;
 }
 
+// Configurar event listeners para el formulario de edición
+function setupEditFormListeners() {
+    const countrySelect = document.getElementById('editCountry');
+    const stateSelect = document.getElementById('editState');
+    const editLang10 = document.getElementById('editLang10');
+    const editOtherLanguages = document.getElementById('editOtherLanguages');
+    
+    if (countrySelect) {
+        countrySelect.addEventListener('change', function() {
+            updateEditStates(this.value);
+        });
+    }
+    
+    if (stateSelect) {
+        stateSelect.addEventListener('change', function() {
+            const countrySelect = document.getElementById('editCountry');
+            updateEditCities(countrySelect.value, this.value);
+        });
+    }
+    
+    if (editLang10 && editOtherLanguages) {
+        editLang10.addEventListener('change', function() {
+            editOtherLanguages.style.display = this.checked ? 'block' : 'none';
+        });
+        
+        if (editLang10.checked) {
+            editOtherLanguages.style.display = 'block';
+        }
+    }
+}
+
 // Cargar datos de ubicación para edición
 function loadLocationDataForEdit(profile) {
     const countrySelect = document.getElementById('editCountry');
     const stateSelect = document.getElementById('editState');
     const citySelect = document.getElementById('editCity');
 
+    if (!countrySelect || !stateSelect || !citySelect) return;
+
     // Limpiar selects
-    if (countrySelect) countrySelect.innerHTML = '<option value="">Selecciona tu país</option>';
-    if (stateSelect) stateSelect.innerHTML = '<option value="">Selecciona tu provincia/estado</option>';
-    if (citySelect) citySelect.innerHTML = '<option value="">Selecciona tu ciudad</option>';
+    countrySelect.innerHTML = '<option value="">Selecciona tu país</option>';
+    stateSelect.innerHTML = '<option value="">Selecciona tu provincia/estado</option>';
+    citySelect.innerHTML = '<option value="">Selecciona tu ciudad</option>';
 
     // Llenar países
     if (locationData && locationData.paises) {
@@ -425,7 +441,7 @@ function loadLocationDataForEdit(profile) {
             if (profile.country === pais.id) {
                 option.selected = true;
             }
-            if (countrySelect) countrySelect.appendChild(option);
+            countrySelect.appendChild(option);
         });
 
         // Si hay país seleccionado, cargar estados
@@ -520,30 +536,15 @@ function getEditSelectedLanguages() {
             }
         }
     }
-    
     return languages;
 }
 
-// Actualizar perfil de talento - FUNCIÓN MEJORADA
+// Actualizar perfil de talento
 window.updateTalentProfile = async function() {
     const messageDiv = document.getElementById('editProfileMessage');
     
     try {
         const userId = currentUser.uid;
-        
-        console.log('🔄 Iniciando actualización de perfil...');
-        
-        // 1. OBTENER PRIMERO LOS DATOS ACTUALES
-        const currentDoc = await db.collection('talents').doc(userId).get();
-        if (!currentDoc.exists) {
-            throw new Error('No se encontró el perfil del talento');
-        }
-        
-        const currentData = currentDoc.data();
-        const currentDemos = currentData.demos || [];
-        console.log('🎵 Demos existentes:', currentDemos);
-        
-        // 2. Preparar datos de actualización
         const updateData = {
             name: document.getElementById('editName').value,
             phone: document.getElementById('editPhone').value,
@@ -556,20 +557,14 @@ window.updateTalentProfile = async function() {
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        // Agregar datos de ubicación si están disponibles
+        // Agregar datos de ubicación
         const countrySelect = document.getElementById('editCountry');
         const stateSelect = document.getElementById('editState');
         const citySelect = document.getElementById('editCity');
         
-        if (countrySelect && countrySelect.value) {
-            updateData.country = countrySelect.value;
-        }
-        if (stateSelect && stateSelect.value) {
-            updateData.state = stateSelect.value;
-        }
-        if (citySelect && citySelect.value) {
-            updateData.city = citySelect.value;
-        }
+        if (countrySelect && countrySelect.value) updateData.country = countrySelect.value;
+        if (stateSelect && stateSelect.value) updateData.state = stateSelect.value;
+        if (citySelect && citySelect.value) updateData.city = citySelect.value;
         
         if (!updateData.name || !updateData.phone) {
             showMessage(messageDiv, '❌ Nombre y teléfono son obligatorios', 'error');
@@ -578,50 +573,26 @@ window.updateTalentProfile = async function() {
         
         showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
         
-        // 3. SUBIR NUEVOS ARCHIVOS A CLOUDINARY
+        // Manejar nuevos archivos de audio
         const newAudioFiles = document.getElementById('newDemos').files;
-        let newDemos = [];
-        
         if (newAudioFiles.length > 0) {
-            showMessage(messageDiv, `🎵 Subiendo ${newAudioFiles.length} demo(s) a Cloudinary...`, 'success');
-            console.log('📤 Subiendo archivos a Cloudinary:', newAudioFiles);
-            
-            newDemos = await uploadAudioFiles(newAudioFiles);
-            console.log('✅ Nuevos demos subidos a Cloudinary:', newDemos);
-        }
-        
-        // 4. COMBINAR DEMOS EXISTENTES CON NUEVOS
-        if (newDemos.length > 0) {
+            const newDemos = await uploadAudioFiles(newAudioFiles);
+            const currentDoc = await db.collection('talents').doc(userId).get();
+            const currentDemos = currentDoc.data().demos || [];
             updateData.demos = [...currentDemos, ...newDemos];
-            console.log('🔄 Combinados. Total de demos:', updateData.demos.length);
-        } else {
-            updateData.demos = currentDemos;
-            console.log('📝 Manteniendo demos existentes');
         }
         
-        console.log('💾 Datos finales para Firestore:', updateData);
-        
-        // 5. GUARDAR TODO EN FIRESTORE
         await db.collection('talents').doc(userId).update(updateData);
-        console.log('✅ Datos guardados en Firestore correctamente');
         
-        // 6. VERIFICAR QUE SE GUARDÓ CORRECTAMENTE
-        const verificationDoc = await db.collection('talents').doc(userId).get();
-        const savedData = verificationDoc.data();
-        console.log('🔍 Verificación - Demos guardados en Firestore:', savedData.demos);
+        showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
         
-        showMessage(messageDiv, `✅ Perfil actualizado correctamente. ${newDemos.length} nuevo(s) demo(s) agregado(s). Total: ${updateData.demos.length} demos.`, 'success');
-        
-        // 7. RECARGAR TODO
         setTimeout(() => {
             closeEditProfileModal();
             loadUserProfile(userId);
-            loadTalents();
-            showDashboard();
         }, 2000);
         
     } catch (error) {
-        console.error('❌ Error actualizando perfil:', error);
+        console.error('Error actualizando perfil:', error);
         showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
 };
@@ -660,7 +631,7 @@ window.updateClientProfile = async function() {
         }, 2000);
         
     } catch (error) {
-        console.error('❌ Error actualizando perfil:', error);
+        console.error('Error actualizando perfil:', error);
         showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
 };
@@ -672,9 +643,6 @@ window.deleteDemo = async function(publicId, userId) {
     }
     
     try {
-        // Aquí podrías agregar código para eliminar el archivo de Cloudinary
-        // Por ahora solo lo eliminamos de Firestore
-        
         const currentDoc = await db.collection('talents').doc(userId).get();
         const currentDemos = currentDoc.data().demos || [];
         const updatedDemos = currentDemos.filter(demo => demo.publicId !== publicId);
@@ -683,7 +651,6 @@ window.deleteDemo = async function(publicId, userId) {
             demos: updatedDemos
         });
         
-        // Recargar perfil
         loadUserProfile(userId);
         
     } catch (error) {
@@ -704,3 +671,6 @@ function showMessage(element, message, type) {
         element.innerHTML = `<div class="${type}">${message}</div>`;
     }
 }
+
+// Hacer la función global
+window.openEditProfileModal = openEditProfileModal;
