@@ -14,52 +14,66 @@ function checkAuthState() {
     });
 }
 
-// ========== CLOUDINARY PARA VOICEBOOK ==========
+// ========== CLOUDINARY PARA VOICEBOOK - VERSIÓN CORREGIDA ==========
 
-// Subir archivo de audio a Cloudinary
+// Subir archivo de audio a Cloudinary - FUNCIÓN CORREGIDA
 async function uploadToCloudinary(file) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-    formData.append('cloud_name', cloudinaryConfig.cloudName);
+    formData.append('resource_type', 'auto'); // Cambiado a 'auto' para detectar tipo automáticamente
 
     try {
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/auto/upload`, {
-            method: 'POST',
-            body: formData
+        console.log('📤 Iniciando subida a Cloudinary:', file.name);
+        console.log('🔧 Configuración:', {
+            cloudName: cloudinaryConfig.cloudName,
+            uploadPreset: cloudinaryConfig.uploadPreset
         });
+
+        const response = await fetch(
+            `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/upload`,
+            {
+                method: 'POST',
+                body: formData
+            }
+        );
         
         const data = await response.json();
+        console.log('📥 Respuesta de Cloudinary:', data);
         
         if (data.secure_url) {
+            console.log('✅ Archivo subido exitosamente:', data.secure_url);
             return {
                 url: data.secure_url,
                 publicId: data.public_id,
                 duration: data.duration || 0,
-                format: data.format
+                format: data.format,
+                resource_type: data.resource_type
             };
         } else {
-            throw new Error(data.error?.message || 'Error subiendo archivo');
+            console.error('❌ Error de Cloudinary:', data);
+            throw new Error(data.error?.message || 'Error subiendo archivo a Cloudinary');
         }
     } catch (error) {
-        throw new Error('Error de conexión: ' + error.message);
+        console.error('❌ Error en uploadToCloudinary:', error);
+        throw new Error('Error de conexión con Cloudinary: ' + error.message);
     }
 }
 
-// Subir múltiples archivos de audio
+// Subir múltiples archivos de audio - FUNCIÓN MEJORADA
 async function uploadAudioFiles(files) {
     const uploadedFiles = [];
     
     for (const file of files) {
         // Validar que sea archivo de audio
         if (!file.type.startsWith('audio/')) {
-            alert(`❌ ${file.name} no es un archivo de audio válido`);
+            console.warn(`❌ ${file.name} no es un archivo de audio válido`);
             continue;
         }
         
         // Validar tamaño (10MB máximo)
         if (file.size > 10 * 1024 * 1024) {
-            alert(`❌ ${file.name} es muy grande (máximo 10MB)`);
+            console.warn(`❌ ${file.name} es muy grande (máximo 10MB)`);
             continue;
         }
         
@@ -72,14 +86,15 @@ async function uploadAudioFiles(files) {
                 url: result.url,
                 duration: result.duration,
                 format: result.format,
-                size: file.size
+                size: file.size,
+                publicId: result.publicId
             });
             
-            console.log(`✅ Demo subido: ${file.name}`);
+            console.log(`✅ Demo subido: ${file.name}`, result);
             
         } catch (error) {
             console.error(`❌ Error subiendo ${file.name}:`, error);
-            alert(`Error subiendo ${file.name}: ${error.message}`);
+            // No mostrar alert aquí, dejar que el flujo continúe
         }
     }
     
