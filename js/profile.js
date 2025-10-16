@@ -36,7 +36,6 @@ async function loadUserProfile(userId) {
 function displayUserProfile(profile) {
     const profileContent = document.getElementById('userProfileContent');
     console.log('📊 Mostrando perfil:', profile.type);
-    console.log('🎵 Demos en el perfil:', profile.demos);
     
     // Información de ubicación (si está disponible)
     const locationInfo = profile.country && profile.state && profile.city ? 
@@ -179,35 +178,48 @@ function displayUserProfile(profile) {
     }
 }
 
-// Abrir modal de edición de perfil
-function openEditProfileModal() {
-    loadEditProfileForm();
-    document.getElementById('editProfileModal').style.display = 'flex';
-}
-
-// Cargar formulario de edición
-async function loadEditProfileForm() {
+// Abrir modal de edición de perfil - FUNCIÓN CORREGIDA
+window.openEditProfileModal = async function() {
+    console.log('🔄 Abriendo editor de perfil...');
+    
+    // Ocultar dashboard y mostrar editor
+    document.getElementById('dashboardModal').style.display = 'none';
+    
     try {
         const userId = currentUser.uid;
         let userProfile = null;
         
-        // Cargar datos actuales
+        console.log('📥 Cargando datos para edición...');
+        
+        // Cargar datos actuales del usuario
         const talentDoc = await db.collection('talents').doc(userId).get();
         if (talentDoc.exists) {
             userProfile = talentDoc.data();
+            console.log('🎭 Perfil de talento cargado:', userProfile);
             displayTalentEditForm(userProfile);
         } else {
             const clientDoc = await db.collection('clients').doc(userId).get();
             if (clientDoc.exists) {
                 userProfile = clientDoc.data();
+                console.log('👔 Perfil de cliente cargado:', userProfile);
                 displayClientEditForm(userProfile);
+            } else {
+                document.getElementById('editProfileForm').innerHTML = 
+                    '<div class="error">No se encontró perfil para editar</div>';
+                return;
             }
         }
         
+        // Mostrar el modal de edición
+        document.getElementById('editProfileModal').style.display = 'flex';
+        
     } catch (error) {
-        console.error('Error cargando formulario de edición:', error);
+        console.error('❌ Error abriendo editor de perfil:', error);
+        document.getElementById('editProfileForm').innerHTML = 
+            '<div class="error">Error al cargar formulario de edición: ' + error.message + '</div>';
+        document.getElementById('editProfileModal').style.display = 'flex';
     }
-}
+};
 
 // Mostrar formulario de edición para talentos - ACTUALIZADO CON UBICACIÓN
 function displayTalentEditForm(profile) {
@@ -513,7 +525,7 @@ function getEditSelectedLanguages() {
 }
 
 // Actualizar perfil de talento - FUNCIÓN MEJORADA
-async function updateTalentProfile() {
+window.updateTalentProfile = async function() {
     const messageDiv = document.getElementById('editProfileMessage');
     
     try {
@@ -612,10 +624,10 @@ async function updateTalentProfile() {
         console.error('❌ Error actualizando perfil:', error);
         showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
-}
+};
 
 // Actualizar perfil de cliente
-async function updateClientProfile() {
+window.updateClientProfile = async function() {
     const messageDiv = document.getElementById('editProfileMessage');
     
     try {
@@ -651,10 +663,10 @@ async function updateClientProfile() {
         console.error('❌ Error actualizando perfil:', error);
         showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
-}
+};
 
 // Eliminar demo de audio
-async function deleteDemo(publicId, userId) {
+window.deleteDemo = async function(publicId, userId) {
     if (!confirm('¿Estás seguro de que quieres eliminar este demo?')) {
         return;
     }
@@ -678,12 +690,13 @@ async function deleteDemo(publicId, userId) {
         console.error('Error eliminando demo:', error);
         alert('Error eliminando el demo');
     }
-}
+};
 
 // Cerrar modal de edición
-function closeEditProfileModal() {
+window.closeEditProfileModal = function() {
     document.getElementById('editProfileModal').style.display = 'none';
-}
+    document.getElementById('dashboardModal').style.display = 'flex';
+};
 
 // Función auxiliar para mostrar mensajes
 function showMessage(element, message, type) {
@@ -691,11 +704,3 @@ function showMessage(element, message, type) {
         element.innerHTML = `<div class="${type}">${message}</div>`;
     }
 }
-
-// Funciones globales
-window.openEditProfileModal = openEditProfileModal;
-window.closeEditProfileModal = closeEditProfileModal;
-window.updateTalentProfile = updateTalentProfile;
-window.updateClientProfile = updateClientProfile;
-window.deleteDemo = deleteDemo;
-window.getEditSelectedLanguages = getEditSelectedLanguages;
