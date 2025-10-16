@@ -569,18 +569,25 @@ function displayUserProfile(profile) {
     }
 }
 
-// ========== SISTEMA DE EDICIÓN DE PERFIL COMPLETO ==========
+// ========== SISTEMA DE EDICIÓN DE PERFIL COMPLETO - CORREGIDO ==========
 
-// Abrir modal de edición de perfil
+// Abrir modal de edición de perfil - CORREGIDO
 window.openEditProfileModal = function() {
     console.log('🔄 Abriendo editor de perfil...');
+    
+    // Cerrar primero el modal del dashboard
+    document.getElementById('dashboardModal').style.display = 'none';
+    
+    // Cargar y mostrar el formulario de edición
     loadEditProfileForm();
     document.getElementById('editProfileModal').style.display = 'flex';
 };
 
-// Cerrar modal de edición
+// Cerrar modal de edición y volver al dashboard
 window.closeEditProfileModal = function() {
     document.getElementById('editProfileModal').style.display = 'none';
+    // Volver a mostrar el dashboard
+    document.getElementById('dashboardModal').style.display = 'flex';
 };
 
 // Cargar formulario de edición
@@ -621,102 +628,108 @@ function displayTalentEditForm(profile) {
     const editForm = document.getElementById('editProfileForm');
     
     editForm.innerHTML = `
-        <h3>Editar Perfil - Talento</h3>
-        
-        <div class="form-group">
-            <label for="editName">Nombre Completo *</label>
-            <input type="text" id="editName" class="form-control" value="${profile.name || ''}" required>
-        </div>
-        
-        <div class="form-group">
-            <label for="editPhone">Teléfono *</label>
-            <input type="tel" id="editPhone" class="form-control" value="${profile.phone || ''}" required>
-        </div>
-        
-        <div class="form-group">
-            <label for="editDescription">Descripción</label>
-            <textarea id="editDescription" class="form-control" rows="4" placeholder="Describe tu experiencia, estilo vocal, etc.">${profile.description || ''}</textarea>
-        </div>
-        
-        <div class="form-group">
-            <label for="editNationality">Nacionalidad</label>
-            <input type="text" id="editNationality" class="form-control" value="${profile.nationality || ''}" placeholder="Ej: Argentino, Mexicano, etc.">
-        </div>
-        
-        <div class="form-group">
-            <label for="editRealAge">Edad real</label>
-            <input type="number" id="editRealAge" class="form-control" value="${profile.realAge || ''}" min="1" max="100" placeholder="Tu edad actual">
-        </div>
-        
-        <div class="form-group">
-            <label for="editAgeRange">Rango de edades que puede interpretar</label>
-            <input type="text" id="editAgeRange" class="form-control" value="${profile.ageRange || ''}" placeholder="Ej: 20-40 años">
-        </div>
-        
-        <div class="form-group">
-            <label>Idiomas que manejas</label>
-            <div class="checkbox-group" id="editLanguagesContainer">
-                ${generateLanguageCheckboxes(profile.languages)}
-            </div>
-            <input type="text" id="editOtherLanguages" class="form-control" placeholder="Especifica otros idiomas" style="margin-top: 10px; display: none;">
-        </div>
-        
-        <div class="form-group">
-            <label for="editHomeStudio">Home Studio</label>
-            <select id="editHomeStudio" class="form-control">
-                <option value="">Selecciona una opción</option>
-                <option value="si" ${profile.homeStudio === 'si' ? 'selected' : ''}>Sí</option>
-                <option value="no" ${profile.homeStudio === 'no' ? 'selected' : ''}>No</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label>Foto de Perfil</label>
-            <input type="file" id="editProfilePhoto" class="form-control" accept="image/*">
-            <small class="text-muted">Formatos: JPG, PNG, GIF. Máximo 5MB</small>
-        </div>
-        
-        <div class="form-group">
-            <label>Agregar nuevos demos de audio</label>
-            <input type="file" id="newDemos" class="form-control" accept="audio/*" multiple>
-            <small class="text-muted">Puedes seleccionar múltiples archivos. Formatos: MP3, WAV, OGG. Máximo 10MB por archivo.</small>
-        </div>
-        
-        ${profile.demos && profile.demos.length > 0 ? `
+        <div style="max-height: 80vh; overflow-y: auto; padding-right: 10px;">
+            <h3>Editar Perfil - Talento</h3>
+            
             <div class="form-group">
-                <label>Demos existentes</label>
-                <div class="existing-demos">
-                    ${profile.demos.map(demo => `
-                        <div class="demo-item-existing">
-                            <audio controls style="width: 100%; margin-bottom: 5px;">
-                                <source src="${demo.url}" type="audio/mpeg">
-                            </audio>
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-size: 12px;">${demo.name}</span>
-                                <button type="button" class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId}', '${currentUser.uid}')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
+                <label for="editName">Nombre Completo *</label>
+                <input type="text" id="editName" class="form-control" value="${profile.name || ''}" required>
             </div>
-        ` : ''}
-        
-        <div id="editProfileMessage"></div>
-        
-        <div class="form-actions">
-            <button type="button" class="btn btn-secondary" onclick="closeEditProfileModal()">Cancelar</button>
-            <button type="button" class="btn btn-primary" onclick="updateTalentProfile()">Guardar Cambios</button>
+            
+            <div class="form-group">
+                <label for="editPhone">Teléfono *</label>
+                <input type="tel" id="editPhone" class="form-control" value="${profile.phone || ''}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="editDescription">Descripción</label>
+                <textarea id="editDescription" class="form-control" rows="4" placeholder="Describe tu experiencia, estilo vocal, etc.">${profile.description || ''}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="editNationality">Nacionalidad</label>
+                <input type="text" id="editNationality" class="form-control" value="${profile.nationality || ''}" placeholder="Ej: Argentino, Mexicano, etc.">
+            </div>
+            
+            <div class="form-group">
+                <label for="editRealAge">Edad real</label>
+                <input type="number" id="editRealAge" class="form-control" value="${profile.realAge || ''}" min="1" max="100" placeholder="Tu edad actual">
+            </div>
+            
+            <div class="form-group">
+                <label for="editAgeRange">Rango de edades que puede interpretar</label>
+                <input type="text" id="editAgeRange" class="form-control" value="${profile.ageRange || ''}" placeholder="Ej: 20-40 años">
+            </div>
+            
+            <div class="form-group">
+                <label>Idiomas que manejas</label>
+                <div class="checkbox-group" id="editLanguagesContainer">
+                    ${generateLanguageCheckboxes(profile.languages)}
+                </div>
+                <input type="text" id="editOtherLanguages" class="form-control" placeholder="Especifica otros idiomas" style="margin-top: 10px; display: none;">
+            </div>
+            
+            <div class="form-group">
+                <label for="editHomeStudio">Home Studio</label>
+                <select id="editHomeStudio" class="form-control">
+                    <option value="">Selecciona una opción</option>
+                    <option value="si" ${profile.homeStudio === 'si' ? 'selected' : ''}>Sí</option>
+                    <option value="no" ${profile.homeStudio === 'no' ? 'selected' : ''}>No</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Agregar nuevos demos de audio</label>
+                <input type="file" id="newDemos" class="form-control" accept="audio/*" multiple>
+                <small class="text-muted">Puedes seleccionar múltiples archivos. Formatos: MP3, WAV, OGG. Máximo 10MB por archivo.</small>
+            </div>
+            
+            ${profile.demos && profile.demos.length > 0 ? `
+                <div class="form-group">
+                    <label>Demos existentes</label>
+                    <div class="existing-demos">
+                        ${profile.demos.map(demo => `
+                            <div class="demo-item-existing" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                                <audio controls style="width: 100%; margin-bottom: 5px;">
+                                    <source src="${demo.url}" type="audio/mpeg">
+                                </audio>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 12px;">${demo.name}</span>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId}', '${currentUser.uid}')">
+                                        <i class="fas fa-trash"></i> Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+            
+            <div id="editProfileMessage"></div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeEditProfileModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="updateTalentProfile()">Guardar Cambios</button>
+            </div>
         </div>
     `;
     
     // Configurar event listeners para los checkboxes de idiomas
-    document.getElementById('editLanguagesContainer').addEventListener('change', function(e) {
-        if (e.target.id === 'editLang10') {
-            document.getElementById('editOtherLanguages').style.display = e.target.checked ? 'block' : 'none';
+    setTimeout(() => {
+        const editLang10 = document.getElementById('editLang10');
+        const editOtherLanguages = document.getElementById('editOtherLanguages');
+        
+        if (editLang10 && editOtherLanguages) {
+            editLang10.addEventListener('change', function() {
+                editOtherLanguages.style.display = this.checked ? 'block' : 'none';
+            });
+            
+            // Mostrar campo de otros idiomas si ya está seleccionado
+            if (editLang10.checked) {
+                editOtherLanguages.style.display = 'block';
+            }
         }
-    });
+    }, 100);
 }
 
 // Generar checkboxes de idiomas para edición
@@ -749,12 +762,16 @@ function getEditSelectedLanguages() {
     for (let i = 1; i <= 10; i++) {
         const checkbox = document.getElementById('editLang' + i);
         if (checkbox && checkbox.checked) {
-            languages.push(checkbox.value);
+            // Para "otros", usar el valor del campo de texto
+            if (checkbox.value === 'otros') {
+                const otherInput = document.getElementById('editOtherLanguages');
+                if (otherInput && otherInput.value) {
+                    languages.push(otherInput.value);
+                }
+            } else {
+                languages.push(checkbox.value);
+            }
         }
-    }
-    
-    if (document.getElementById('editLang10') && document.getElementById('editLang10').checked && document.getElementById('editOtherLanguages').value) {
-        languages.push(document.getElementById('editOtherLanguages').value);
     }
     
     return languages;
@@ -783,12 +800,6 @@ function displayClientEditForm(profile) {
                 <input type="text" id="editCompanyName" class="form-control" value="${profile.companyName || ''}">
             </div>
         ` : ''}
-        
-        <div class="form-group">
-            <label>Foto de Perfil</label>
-            <input type="file" id="editProfilePhoto" class="form-control" accept="image/*">
-            <small class="text-muted">Formatos: JPG, PNG, GIF. Máximo 5MB</small>
-        </div>
         
         <div id="editProfileMessage"></div>
         
