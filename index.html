@@ -215,6 +215,15 @@
                     <label for="talentPhone">Teléfono con código internacional *</label>
                     <input type="tel" id="talentPhone" class="form-control" required>
                 </div>
+                
+                <!-- === CAMPO DE AUDIO AGREGADO AQUÍ === -->
+                <div class="form-group">
+                    <label for="talentDemos">Demos de Audio (MP3, WAV, OGG - máximo 10MB)</label>
+                    <input type="file" id="talentDemos" class="form-control" accept="audio/*" multiple>
+                    <small class="text-muted">Puedes seleccionar múltiples archivos. Formatos: MP3, WAV, OGG. Máximo 10MB por archivo.</small>
+                </div>
+                <!-- === FIN DEL CAMPO DE AUDIO === -->
+                
                 <div class="form-group">
                     <label for="talentDescription">Descripción (máx. 1000 caracteres)</label>
                     <textarea id="talentDescription" class="form-control" maxlength="1000" rows="4"></textarea>
