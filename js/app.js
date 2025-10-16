@@ -67,14 +67,17 @@ function displayTalentCard(talent, talentId) {
     if (talent.demos && talent.demos.length > 0) {
         audioPlayers = `
             <div class="audio-demos" style="margin-top: 15px;">
-                <p><strong>Demos:</strong></p>
+                <p><strong>Demos de Audio:</strong></p>
                 ${talent.demos.map(demo => `
-                    <div style="margin-bottom: 10px;">
-                        <p style="font-size: 14px; margin-bottom: 5px;">${demo.name}</p>
-                        <audio controls style="width: 100%; height: 40px;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                        <p style="font-size: 14px; margin-bottom: 8px; font-weight: 500;">${demo.name}</p>
+                        <audio controls style="width: 100%; height: 40px; border-radius: 20px;">
                             <source src="${demo.url}" type="audio/mpeg">
                             Tu navegador no soporta audio.
                         </audio>
+                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                            ${Math.round(demo.duration)} segundos • ${(demo.size / 1024 / 1024).toFixed(1)} MB
+                        </div>
                     </div>
                 `).join('')}
             </div>
@@ -101,7 +104,6 @@ function displayTalentCard(talent, talentId) {
     
     talentsContainer.appendChild(talentCard);
 }
-
 
 // Cargar ofertas de trabajo
 async function loadJobOffers() {
