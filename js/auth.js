@@ -21,7 +21,7 @@ async function uploadToCloudinary(file) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-    formData.append('resource_type', 'auto'); // Cambiado a 'auto' para detectar tipo automáticamente
+    formData.append('resource_type', 'auto');
 
     try {
         console.log('📤 Iniciando subida a Cloudinary:', file.name);
@@ -94,7 +94,6 @@ async function uploadAudioFiles(files) {
             
         } catch (error) {
             console.error(`❌ Error subiendo ${file.name}:`, error);
-            // No mostrar alert aquí, dejar que el flujo continúe
         }
     }
     
@@ -138,7 +137,7 @@ async function registerTalent(e) {
             ageRange: document.getElementById('talentAgeRange').value,
             nationality: document.getElementById('talentNationality').value,
             realAge: parseInt(document.getElementById('talentRealAge').value) || null,
-            demos: demos, // ← AQUÍ SE GUARDAN LOS AUDIOS
+            demos: demos,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
@@ -153,7 +152,7 @@ async function registerTalent(e) {
         setTimeout(() => {
             closeAllModals();
             document.getElementById('talentForm').reset();
-            loadTalents(); // Recargar la lista de talentos
+            loadTalents();
         }, 3000);
         
     } catch (error) {
@@ -239,5 +238,72 @@ function updateUIAfterLogout() {
     document.getElementById('userMenu').style.display = 'none';
     document.getElementById('dashboardLink').style.display = 'none';
 }
+
+// Actualizar perfil de talento - FUNCIÓN CORREGIDA
+window.updateTalentProfile = async function() {
+    const messageDiv = document.getElementById('editProfileMessage');
+    
+    try {
+        const userId = currentUser.uid;
+        const updateData = {
+            name: document.getElementById('editName').value,
+            phone: document.getElementById('editPhone').value,
+            description: document.getElementById('editDescription').value,
+            languages: getEditSelectedLanguages(),
+            homeStudio: document.getElementById('editHomeStudio').value,
+            nationality: document.getElementById('editNationality').value,
+            realAge: parseInt(document.getElementById('editRealAge').value) || null,
+            ageRange: document.getElementById('editAgeRange').value,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        if (!updateData.name || !updateData.phone) {
+            showMessage(messageDiv, '❌ Nombre y teléfono son obligatorios', 'error');
+            return;
+        }
+        
+        showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
+        
+        // Subir nuevos archivos de audio si existen
+        const newAudioFiles = document.getElementById('newDemos').files;
+        let newDemos = [];
+        
+        if (newAudioFiles.length > 0) {
+            showMessage(messageDiv, `🎵 Subiendo ${newAudioFiles.length} demo(s) de audio...`, 'success');
+            newDemos = await uploadAudioFiles(newAudioFiles);
+            console.log('📁 Nuevos demos subidos:', newDemos);
+        }
+        
+        // Obtener demos existentes
+        const currentDoc = await db.collection('talents').doc(userId).get();
+        const currentDemos = currentDoc.data().demos || [];
+        
+        // Combinar demos existentes con nuevos
+        if (newDemos.length > 0) {
+            updateData.demos = [...currentDemos, ...newDemos];
+        } else {
+            updateData.demos = currentDemos;
+        }
+        
+        console.log('💾 Actualizando perfil con datos:', updateData);
+        
+        // Actualizar en Firestore
+        await db.collection('talents').doc(userId).update(updateData);
+        
+        showMessage(messageDiv, `✅ Perfil actualizado correctamente. ${newDemos.length} nuevo(s) demo(s) agregado(s).`, 'success');
+        
+        // Recargar TODO después de 2 segundos
+        setTimeout(() => {
+            closeEditProfileModal();
+            loadUserProfile(userId);
+            loadTalents();
+            showDashboard();
+        }, 2000);
+        
+    } catch (error) {
+        console.error('❌ Error actualizando perfil:', error);
+        showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
+    }
+};
 
 window.loadUserProfile = loadUserProfile;
