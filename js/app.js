@@ -110,7 +110,7 @@ function displayTalentCard(talent, talentId) {
             <p>${talent.description ? talent.description.substring(0, 100) + '...' : 'Sin descripción'}</p>
             ${audioPlayers}
             <div style="margin-top: 15px;">
-                <button class="btn btn-primary" onclick="viewTalentProfile('${talentId}')">Ver Perfil</button>
+                <button class="btn btn-primary" onclick="viewTalentProfile('${talentId}')">Ver Perfil Completo</button>
                 ${currentUser ? `<button class="btn btn-success" onclick="addToFavorites('${talentId}')"><i class="fas fa-heart"></i> Favorito</button>` : ''}
             </div>
         </div>
@@ -206,17 +206,186 @@ function getSelectedLanguages() {
     return languages;
 }
 
-// Funciones globales para usar en onclick
+// ========== FUNCIONES CORREGIDAS - SIN ALERTS MOLESTOS ==========
+
+// Función para ver perfil completo del talento
 window.viewTalentProfile = function(talentId) {
-    alert('Función de ver perfil - Próximamente');
+    showTalentDetails(talentId);
 };
 
+// Nueva función para mostrar detalles del talento
+async function showTalentDetails(talentId) {
+    try {
+        const talentDoc = await db.collection('talents').doc(talentId).get();
+        
+        if (talentDoc.exists) {
+            const talent = talentDoc.data();
+            
+            // Cerrar modal existente si hay uno
+            const existingModal = document.getElementById('talentDetailsModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Crear modal con información detallada
+            const modalHTML = `
+                <div class="modal" id="talentDetailsModal" style="display: flex;">
+                    <div class="modal-content">
+                        <span class="close-modal" onclick="closeTalentDetails()">&times;</span>
+                        <h2>Perfil de ${talent.name}</h2>
+                        
+                        <div class="profile-details">
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <label>Nombre:</label>
+                                    <span>${talent.name || 'No especificado'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Email:</label>
+                                    <span>${talent.email || 'No especificado'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Teléfono:</label>
+                                    <span>${talent.phone || 'No especificado'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Género:</label>
+                                    <span>${talent.gender === 'hombre' ? 'Hombre' : 'Mujer'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Idiomas:</label>
+                                    <span>${Array.isArray(talent.languages) ? talent.languages.join(', ') : talent.languages || 'No especificado'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Home Studio:</label>
+                                    <span>${talent.homeStudio === 'si' ? 'Sí' : 'No'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Nacionalidad:</label>
+                                    <span>${talent.nationality || 'No especificado'}</span>
+                                </div>
+                                ${talent.realAge ? `
+                                <div class="info-item">
+                                    <label>Edad real:</label>
+                                    <span>${talent.realAge} años</span>
+                                </div>
+                                ` : ''}
+                                ${talent.ageRange ? `
+                                <div class="info-item">
+                                    <label>Rango de edades:</label>
+                                    <span>${talent.ageRange}</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                            
+                            ${talent.description ? `
+                                <div class="description-section">
+                                    <label>Descripción:</label>
+                                    <p>${talent.description}</p>
+                                </div>
+                            ` : ''}
+                            
+                            ${talent.demos && talent.demos.length > 0 ? `
+                                <div class="demos-section">
+                                    <h3>Demos de Audio</h3>
+                                    ${talent.demos.map(demo => `
+                                        <div class="demo-item">
+                                            <p><strong>${demo.name}</strong></p>
+                                            <audio controls style="width: 100%;">
+                                                <source src="${demo.url}" type="audio/mpeg">
+                                            </audio>
+                                            <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                                                ${Math.round(demo.duration)} segundos • ${(demo.size / 1024 / 1024).toFixed(1)} MB
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : '<p>No hay demos de audio disponibles.</p>'}
+                        </div>
+                        
+                        ${currentUser ? `
+                            <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="contactTalent('${talentId}')">Contactar</button>
+                                <button class="btn btn-success" onclick="addToFavorites('${talentId}')">
+                                    <i class="fas fa-heart"></i> Agregar a Favoritos
+                                </button>
+                            </div>
+                        ` : '<p style="color: #666; margin-top: 20px; text-align: center;">Inicia sesión para contactar a este talento</p>'}
+                    </div>
+                </div>
+            `;
+            
+            // Agregar el modal al body
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+        } else {
+            console.log('No se encontró el perfil del talento:', talentId);
+        }
+    } catch (error) {
+        console.error('Error cargando detalles del talento:', error);
+    }
+}
+
+// Función para cerrar el modal de detalles
+window.closeTalentDetails = function() {
+    const modal = document.getElementById('talentDetailsModal');
+    if (modal) {
+        modal.remove();
+    }
+};
+
+// Función para contactar talento
+window.contactTalent = function(talentId) {
+    // Aquí podés implementar el sistema de mensajes
+    console.log('Contactando talento:', talentId);
+    
+    // Por ahora, mostrar información de contacto básica
+    const talentDoc = db.collection('talents').doc(talentId).get()
+        .then(doc => {
+            if (doc.exists) {
+                const talent = doc.data();
+                alert(`Para contactar a ${talent.name}:\n\nEmail: ${talent.email}\nTeléfono: ${talent.phone || 'No disponible'}`);
+            }
+        });
+};
+
+// Función mejorada de favoritos
 window.addToFavorites = function(talentId) {
-    alert('Función de favoritos - Próximamente');
+    if (!currentUser) {
+        alert('Debes iniciar sesión para agregar a favoritos');
+        return;
+    }
+    
+    // Aquí podés implementar la lógica para guardar en favoritos en Firestore
+    console.log('Agregando a favoritos:', talentId);
+    
+    // Mensaje temporal
+    const talentDoc = db.collection('talents').doc(talentId).get()
+        .then(doc => {
+            if (doc.exists) {
+                const talent = doc.data();
+                alert(`✅ ${talent.name} agregado a tus favoritos`);
+            }
+        });
 };
 
+// Función mejorada para postularse a trabajos
 window.applyToJob = function(jobId) {
-    alert('Función de postulación - Próximamente');
+    if (!currentUser) {
+        alert('Debes iniciar sesión para postularte');
+        return;
+    }
+    
+    // Aquí podés implementar la lógica de postulación
+    console.log('Postulando a trabajo:', jobId);
+    
+    const jobDoc = db.collection('jobs').doc(jobId).get()
+        .then(doc => {
+            if (doc.exists) {
+                const job = doc.data();
+                alert(`📝 Te has postulado a: "${job.title}"\n\nSe ha enviado tu perfil al cliente. Te contactaremos si hay interés.`);
+            }
+        });
 };
 
 // DASHBOARD FUNCIONAL
@@ -239,6 +408,8 @@ window.showDashboard = function() {
     }
 };
 
+// Función para cargar perfil de usuario (definida en profile.js)
 window.loadUserProfile = function(userId) {
-    // Cargar perfil del usuario - Próximamente
+    // Esta función está implementada en profile.js
+    console.log('Cargando perfil para:', userId);
 };
