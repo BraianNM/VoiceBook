@@ -1,4 +1,74 @@
-// Este archivo contiene toda la lógica de autenticación (Registro, Login, Logout)
+// auth.js - Gestión de autenticación (CORREGIDO)
+
+// Variable global para controlar la inicialización
+let authInitialized = false;
+
+// Configuración de Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyC6G6NgMqrMDyd5PB6_HmLNHpPU-vNJdf0",
+    authDomain: "voicebook-8ba6c.firebaseapp.com",
+    projectId: "voicebook-8ba6c",
+    storageBucket: "voicebook-8ba6c.firebasestorage.app",
+    messagingSenderId: "534166349589",
+    appId: "1:534166349589:web:e5e9c11b488fa52828ab1c"
+};
+
+// Inicializar Firebase solo una vez
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+// Inicializar servicios
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+// Configuración de Cloudinary
+const cloudinaryConfig = {
+    cloudName: 'dkujz9gj8',
+    uploadPreset: 'voicebook_demos'
+};
+
+// Estado global de la aplicación
+let currentUser = null;
+let currentUserData = null;
+
+// Función para inicializar autenticación UNA SOLA VEZ
+function initializeAuth() {
+    if (authInitialized) {
+        console.log('✅ Auth ya estaba inicializado');
+        return;
+    }
+    
+    authInitialized = true;
+    console.log('🚀 Inicializando autenticación...');
+    
+    auth.onAuthStateChanged(async (user) => {
+        console.log('🔄 Estado de autenticación cambiado:', user ? 'Usuario autenticado' : 'Usuario no autenticado');
+        
+        currentUser = user;
+        
+        if (user) {
+            console.log('✅ Usuario autenticado:', user.uid);
+            await loadUserData(user.uid);
+            updateUIAfterLogin();
+            
+            // Solo cargar perfil si estamos en profile.html
+            if (window.location.pathname.includes('profile.html') && typeof window.loadUserProfile === 'function') {
+                console.log('📁 Cargando perfil desde auth.js');
+                window.loadUserProfile(user.uid);
+            }
+        } else {
+            console.log('❌ Usuario no autenticado');
+            updateUIAfterLogout();
+            
+            // Redirigir solo si estamos en profile.html
+            if (window.location.pathname.includes('profile.html')) {
+                console.log('🔄 Redirigiendo a index.html');
+                window.location.href = 'index.html';
+            }
+        }
+    });
+}
 
 // Funciones auxiliares
 function showMessage(element, message, type) {
@@ -269,23 +339,10 @@ function logoutUser() {
 }
 window.logoutUser = logoutUser;
 
-// Chequear el estado de autenticación al cargar la página
+// Chequear el estado de autenticación al cargar la página (para compatibilidad)
 function checkAuthState() {
-    auth.onAuthStateChanged(async (user) => {
-        currentUser = user;
-        if (user) {
-            // Cargar datos del usuario
-            await loadUserData(user.uid);
-            updateUIAfterLogin();
-            
-            // Cargar perfil si estamos en profile.html
-            if (window.location.href.includes('profile.html') && typeof window.loadUserProfile === 'function') {
-                window.loadUserProfile(user.uid);
-            }
-        } else {
-            updateUIAfterLogout();
-        }
-    });
+    console.log('⚠️ Usando checkAuthState (legacy)');
+    initializeAuth();
 }
 window.checkAuthState = checkAuthState;
 
