@@ -28,7 +28,6 @@ async function loadUserProfile(userId) {
         if (userProfile) {
             displayUserProfile(userProfile);
         } else {
-             // Si el usuario existe pero no tiene perfil (ej. acaba de registrarse), redirigir o mostrar mensaje
              const profileContent = document.getElementById('userProfileContent');
              if (profileContent) profileContent.innerHTML = '<p>Tu perfil no está completo. Por favor, completa tu registro.</p>';
         }
@@ -42,10 +41,9 @@ window.loadUserProfile = loadUserProfile; // Hacer global
 // Mostrar perfil en el dashboard
 function displayUserProfile(profile) {
     const profileContent = document.getElementById('userProfileContent');
-    if (!profileContent) return; // Salir si no estamos en la página de perfil
+    if (!profileContent) return; 
     
     // Información de ubicación (si está disponible)
-    // Asumiendo que getCityName, getStateName y getCountryName están en locations.js
     const locationInfo = profile.country && profile.state && profile.city && typeof getCountryName !== 'undefined' ? 
         `<div class="info-item">
             <label>Ubicación:</label>
@@ -53,14 +51,13 @@ function displayUserProfile(profile) {
         </div>` : '';
     
     if (profile.type === 'talent') {
-        // Lógica de visualización para Talentos
         let demosHtml = '';
         if (profile.demos && profile.demos.length > 0) {
             demosHtml = profile.demos.map(demo => `
                 <div class="demo-item">
                     <span>${demo.name} (${demo.duration ? Math.round(demo.duration) + 's' : ''})</span>
                     <audio controls src="${demo.url}"></audio>
-                    <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId}', '${profile.id}')">Eliminar</button>
+                    <button class="btn btn-danger btn-sm" onclick="window.deleteDemo('${demo.publicId}', '${profile.id}')">Eliminar</button>
                 </div>
             `).join('');
         } else {
@@ -70,7 +67,7 @@ function displayUserProfile(profile) {
         profileContent.innerHTML = `
             <div class="profile-header">
                 <h2>Perfil de Talento</h2>
-                <button class="btn btn-secondary" onclick="openEditProfileModal('${profile.id}', 'talent')">
+                <button class="btn btn-secondary" onclick="window.openEditProfileModal('${profile.id}', 'talent')">
                     <i class="fas fa-edit"></i> Editar Perfil
                 </button>
             </div>
@@ -95,16 +92,14 @@ function displayUserProfile(profile) {
             </div>
         `;
         
-        // Mostrar pestañas específicas de talento
         if (document.getElementById('jobsTab')) document.getElementById('jobsTab').style.display = 'block';
         if (document.getElementById('applicationsTab')) document.getElementById('applicationsTab').style.display = 'block';
         
     } else if (profile.type === 'client') {
-        // Lógica de visualización para Clientes
         profileContent.innerHTML = `
             <div class="profile-header">
                 <h2>Perfil de Cliente</h2>
-                <button class="btn btn-secondary" onclick="openEditProfileModal('${profile.id}', 'client')">
+                <button class="btn btn-secondary" onclick="window.openEditProfileModal('${profile.id}', 'client')">
                     <i class="fas fa-edit"></i> Editar Perfil
                 </button>
             </div>
@@ -117,7 +112,6 @@ function displayUserProfile(profile) {
             </div>
         `;
         
-        // Mostrar pestañas específicas de cliente/empresa
         if (document.getElementById('jobsTab')) document.getElementById('jobsTab').style.display = 'block';
         if (document.getElementById('applicationsTab')) document.getElementById('applicationsTab').style.display = 'none';
         
@@ -125,24 +119,21 @@ function displayUserProfile(profile) {
         profileContent.innerHTML = '<p>No se pudo cargar el perfil del usuario.</p>';
     }
     
-    // Abrir el modal del dashboard si aún no está visible
     if (document.getElementById('dashboardModal')) document.getElementById('dashboardModal').style.display = 'flex';
 }
 
-// Abrir modal de edición (CORREGIDO)
+// Abrir modal de edición
 window.openEditProfileModal = async function(userId, type) {
     const dashboardModal = document.getElementById('dashboardModal');
     const editModal = document.getElementById('editProfileModal');
     const messageDiv = document.getElementById('editProfileMessage');
 
-    // 1. Ocultar Dashboard y Mostrar Modal de Edición
     if (dashboardModal) dashboardModal.style.display = 'none';
     if (editModal) editModal.style.display = 'flex';
     if (messageDiv) messageDiv.innerHTML = '';
     
-    // Si no encontramos el modal, reportar en la consola y salir
     if (!editModal) {
-        console.error("❌ ERROR: No se encontró el modal de edición ('editProfileModal'). Asegúrate de que existe en el HTML.");
+        console.error("❌ ERROR: No se encontró el modal de edición ('editProfileModal').");
         return;
     }
 
@@ -151,7 +142,6 @@ window.openEditProfileModal = async function(userId, type) {
         const talentFields = document.getElementById('editTalentFields');
         const clientFields = document.getElementById('editClientFields');
 
-        // 2. Mostrar/Ocultar campos según el tipo de usuario
         if (type === 'talent') {
             if (talentFields) talentFields.style.display = 'block';
             if (clientFields) clientFields.style.display = 'none';
@@ -162,16 +152,13 @@ window.openEditProfileModal = async function(userId, type) {
             docRef = db.collection('clients').doc(userId);
         }
 
-        // 3. Cargar datos del perfil
         const doc = await docRef.get();
         if (doc.exists) {
             const data = doc.data();
             
-            // 4. Rellenar campos comunes (con verificación de existencia)
             if (document.getElementById('editName')) document.getElementById('editName').value = data.name || '';
             if (document.getElementById('editPhone')) document.getElementById('editPhone').value = data.phone || '';
             
-            // 5. Rellenar campos específicos (con verificación de existencia)
             if (type === 'talent') {
                 if (document.getElementById('editDescription')) document.getElementById('editDescription').value = data.description || '';
                 if (document.getElementById('editHomeStudio')) document.getElementById('editHomeStudio').value = data.homeStudio || '';
@@ -188,15 +175,15 @@ window.openEditProfileModal = async function(userId, type) {
                 }
             }
         } else {
-            showMessage(messageDiv, '❌ Error: No se encontró el perfil del usuario.', 'error');
+            window.showMessage(messageDiv, '❌ Error: No se encontró el perfil del usuario.', 'error');
         }
     } catch (error) {
         console.error('❌ Error al cargar datos para edición:', error);
-        showMessage(messageDiv, `❌ Error al cargar datos: ${error.message}`, 'error');
+        window.showMessage(messageDiv, `❌ Error al cargar datos: ${error.message}`, 'error');
     }
 };
 
-// Actualizar perfil de talento (CORREGIDO: AÑADIDA LÓGICA DE SUBIDA DE DEMOS)
+// Actualizar perfil de talento (CORREGIDO CON SUBIDA DE DEMOS)
 window.updateTalentProfile = async function() {
     const messageDiv = document.getElementById('editProfileMessage');
     
@@ -213,37 +200,36 @@ window.updateTalentProfile = async function() {
         };
         
         if (!updateData.name || !updateData.description) {
-            showMessage(messageDiv, '❌ Nombre y descripción son obligatorios', 'error');
+            window.showMessage(messageDiv, '❌ Nombre y descripción son obligatorios', 'error');
             return;
         }
 
         // 2. Manejar Demos de Audio (Si hay archivos nuevos)
         const demoFiles = document.getElementById('editTalentDemos')?.files;
-        const MAX_FILES = 2; // Máximo de archivos a subir por vez
+        const MAX_FILES = 2;
         const MAX_SIZE_MB = 10;
         const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
         
         if (demoFiles && demoFiles.length > 0) {
-            // Validación de archivos
+            
             if (demoFiles.length > MAX_FILES) {
-                showMessage(messageDiv, `❌ Solo puedes subir un máximo de ${MAX_FILES} demos a la vez.`, 'error');
+                window.showMessage(messageDiv, `❌ Solo puedes subir un máximo de ${MAX_FILES} demos a la vez.`, 'error');
                 return;
             }
             for (const file of demoFiles) {
                 if (file.size > MAX_SIZE_BYTES) {
-                    showMessage(messageDiv, `❌ El archivo "${file.name}" supera el límite de ${MAX_SIZE_MB}MB.`, 'error');
+                    window.showMessage(messageDiv, `❌ El archivo "${file.name}" supera el límite de ${MAX_SIZE_MB}MB.`, 'error');
                     return;
                 }
             }
             
-            showMessage(messageDiv, '🔄 Guardando cambios y subiendo nuevos demos (esto puede tardar)...', 'success');
+            window.showMessage(messageDiv, '🔄 Guardando cambios y subiendo nuevos demos (esto puede tardar)...', 'success');
             
-            // Subir nuevos demos (Asumimos window.uploadToCloudinary está disponible globalmente)
+            // Subir nuevos demos
             const newDemos = [];
             for (const file of demoFiles) {
-                // Verificar que la función de subida esté disponible
                 if (typeof window.uploadToCloudinary !== 'function') {
-                    throw new Error("La función 'uploadToCloudinary' no está disponible globalmente. Asegúrate de que auth.js se cargue correctamente.");
+                    throw new Error("La función 'uploadToCloudinary' no está disponible. Revisa auth.js.");
                 }
                 const demoData = await window.uploadToCloudinary(file);
                 newDemos.push({
@@ -259,20 +245,19 @@ window.updateTalentProfile = async function() {
             const talentDoc = await db.collection('talents').doc(userId).get();
             const existingDemos = talentDoc.data()?.demos || [];
             
-            // Actualizar el objeto updateData con el array de demos combinado
             updateData.demos = [...existingDemos, ...newDemos];
             
             // Limpiar el input de archivos
             const fileInput = document.getElementById('editTalentDemos');
             if(fileInput) fileInput.value = '';
         } else {
-            showMessage(messageDiv, '🔄 Guardando cambios de perfil...', 'success');
+            window.showMessage(messageDiv, '🔄 Guardando cambios de perfil...', 'success');
         }
 
         // 3. Guardar todos los datos (texto y demos) en Firestore
         await db.collection('talents').doc(userId).update(updateData);
         
-        showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
+        window.showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
         
         setTimeout(() => {
             window.closeEditProfileModal();
@@ -281,7 +266,7 @@ window.updateTalentProfile = async function() {
         
     } catch (error) {
         console.error('Error actualizando perfil:', error);
-        showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
+        window.showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
 };
 
@@ -303,15 +288,15 @@ window.updateClientProfile = async function() {
         }
         
         if (!updateData.name) {
-            showMessage(messageDiv, '❌ Nombre es obligatorio', 'error');
+            window.showMessage(messageDiv, '❌ Nombre es obligatorio', 'error');
             return;
         }
         
-        showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
+        window.showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
         
         await db.collection('clients').doc(userId).update(updateData);
         
-        showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
+        window.showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
         
         setTimeout(() => {
             window.closeEditProfileModal();
@@ -320,7 +305,7 @@ window.updateClientProfile = async function() {
         
     } catch (error) {
         console.error('❌ Error actualizando perfil:', error);
-        showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
+        window.showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
 };
 
@@ -355,10 +340,3 @@ window.closeEditProfileModal = function() {
     if (editModal) editModal.style.display = 'none';
     if (dashboardModal) dashboardModal.style.display = 'flex';
 };
-
-// Función auxiliar para mostrar mensajes
-function showMessage(element, message, type) {
-    if (element) {
-        element.innerHTML = `<div class="${type}">${message}</div>`;
-    }
-}
