@@ -129,7 +129,7 @@ function displayUserProfile(profile) {
     if (document.getElementById('dashboardModal')) document.getElementById('dashboardModal').style.display = 'flex';
 }
 
-// Abrir modal de edición (CORRECCIÓN: VERIFICACIÓN DE ELEMENTOS)
+// Abrir modal de edición (CORREGIDO)
 window.openEditProfileModal = async function(userId, type) {
     const dashboardModal = document.getElementById('dashboardModal');
     const editModal = document.getElementById('editProfileModal');
@@ -175,7 +175,6 @@ window.openEditProfileModal = async function(userId, type) {
             if (type === 'talent') {
                 if (document.getElementById('editDescription')) document.getElementById('editDescription').value = data.description || '';
                 if (document.getElementById('editHomeStudio')) document.getElementById('editHomeStudio').value = data.homeStudio || '';
-                // Ejemplo de otros campos de talento:
                 if (document.getElementById('editGender')) document.getElementById('editGender').value = data.gender || '';
             } else {
                 const companyGroup = document.getElementById('editCompanyNameGroup');
@@ -197,12 +196,14 @@ window.openEditProfileModal = async function(userId, type) {
     }
 };
 
-// Actualizar perfil de talento (HECHA GLOBAL)
+// Actualizar perfil de talento (CORREGIDO: AÑADIDA LÓGICA DE SUBIDA DE DEMOS)
 window.updateTalentProfile = async function() {
     const messageDiv = document.getElementById('editProfileMessage');
     
     try {
         const userId = currentUser.uid;
+        
+        // 1. Obtener datos de texto a actualizar
         const updateData = {
             name: document.getElementById('editName').value,
             phone: document.getElementById('editPhone').value,
@@ -215,16 +216,67 @@ window.updateTalentProfile = async function() {
             showMessage(messageDiv, '❌ Nombre y descripción son obligatorios', 'error');
             return;
         }
+
+        // 2. Manejar Demos de Audio (Si hay archivos nuevos)
+        const demoFiles = document.getElementById('editTalentDemos')?.files;
+        const MAX_FILES = 2; // Máximo de archivos a subir por vez
+        const MAX_SIZE_MB = 10;
+        const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
         
-        showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
-        
+        if (demoFiles && demoFiles.length > 0) {
+            // Validación de archivos
+            if (demoFiles.length > MAX_FILES) {
+                showMessage(messageDiv, `❌ Solo puedes subir un máximo de ${MAX_FILES} demos a la vez.`, 'error');
+                return;
+            }
+            for (const file of demoFiles) {
+                if (file.size > MAX_SIZE_BYTES) {
+                    showMessage(messageDiv, `❌ El archivo "${file.name}" supera el límite de ${MAX_SIZE_MB}MB.`, 'error');
+                    return;
+                }
+            }
+            
+            showMessage(messageDiv, '🔄 Guardando cambios y subiendo nuevos demos (esto puede tardar)...', 'success');
+            
+            // Subir nuevos demos (Asumimos window.uploadToCloudinary está disponible globalmente)
+            const newDemos = [];
+            for (const file of demoFiles) {
+                // Verificar que la función de subida esté disponible
+                if (typeof window.uploadToCloudinary !== 'function') {
+                    throw new Error("La función 'uploadToCloudinary' no está disponible globalmente. Asegúrate de que auth.js se cargue correctamente.");
+                }
+                const demoData = await window.uploadToCloudinary(file);
+                newDemos.push({
+                    url: demoData.url,
+                    publicId: demoData.publicId,
+                    name: file.name,
+                    duration: demoData.duration,
+                    size: file.size
+                });
+            }
+
+            // Obtener demos existentes y combinarlos
+            const talentDoc = await db.collection('talents').doc(userId).get();
+            const existingDemos = talentDoc.data()?.demos || [];
+            
+            // Actualizar el objeto updateData con el array de demos combinado
+            updateData.demos = [...existingDemos, ...newDemos];
+            
+            // Limpiar el input de archivos
+            const fileInput = document.getElementById('editTalentDemos');
+            if(fileInput) fileInput.value = '';
+        } else {
+            showMessage(messageDiv, '🔄 Guardando cambios de perfil...', 'success');
+        }
+
+        // 3. Guardar todos los datos (texto y demos) en Firestore
         await db.collection('talents').doc(userId).update(updateData);
         
         showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
         
         setTimeout(() => {
-            closeEditProfileModal();
-            loadUserProfile(userId);
+            window.closeEditProfileModal();
+            window.loadUserProfile(userId);
         }, 2000);
         
     } catch (error) {
@@ -262,8 +314,8 @@ window.updateClientProfile = async function() {
         showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
         
         setTimeout(() => {
-            closeEditProfileModal();
-            loadUserProfile(userId);
+            window.closeEditProfileModal();
+            window.loadUserProfile(userId);
         }, 2000);
         
     } catch (error) {
@@ -287,7 +339,7 @@ window.deleteDemo = async function(publicId, userId) {
             demos: updatedDemos
         });
         
-        loadUserProfile(userId);
+        window.loadUserProfile(userId);
         
     } catch (error) {
         console.error('Error eliminando demo:', error);
