@@ -31,6 +31,9 @@ async function loadUserProfile(userId) {
         // Mostrar el perfil
         displayUserProfile(currentUserData);
 
+        // CONFIGURAR EVENT LISTENER DEL FORMULARIO DESPUÉS DE CARGAR EL PERFIL
+        setupEditProfileFormListener();
+
     } catch (error) {
         console.error('Error cargando perfil:', error);
         const profileContent = document.getElementById('viewProfileContent');
@@ -307,7 +310,7 @@ function setupTalentEditForm(talent) {
                 }
             }
             // Manejar "otros"
-            const commonLanguages = ['Español rioplatense', 'Español latino neutro', 'Español (España)', 'Inglés', 'Portugués', 'Francés', 'Alemán', 'Italiano', 'Japonés', 'Chino'];
+            const commonLanguages = ['Español (Latam)', 'Español (España)', 'Inglés', 'Portugués', 'Francés', 'Alemán', 'Italiano', 'Japonés', 'Chino'];
             if (!commonLanguages.includes(lang)) {
                 document.getElementById('editLang10').checked = true;
                 document.getElementById('editOtherLanguages').value = lang;
@@ -320,12 +323,10 @@ function setupTalentEditForm(talent) {
     const editLang10 = document.getElementById('editLang10');
     const editOtherLanguages = document.getElementById('editOtherLanguages');
     if (editLang10 && editOtherLanguages) {
-        editLang10.addEventListener('change', function() {
-            editOtherLanguages.style.display = this.checked ? 'block' : 'none';
-            if (!this.checked) {
-                editOtherLanguages.value = '';
-            }
-        });
+        // Remover event listeners existentes para evitar duplicados
+        editLang10.removeEventListener('change', handleEditLang10Change);
+        // Agregar nuevo event listener
+        editLang10.addEventListener('change', handleEditLang10Change);
     }
     
     // Ubicación - Cargar después de un breve delay para asegurar que los selects estén listos
@@ -335,6 +336,17 @@ function setupTalentEditForm(talent) {
                             talent.country, talent.state, talent.city);
         }
     }, 500);
+}
+
+// Función auxiliar para manejar el cambio en "otros" idiomas
+function handleEditLang10Change() {
+    const editOtherLanguages = document.getElementById('editOtherLanguages');
+    if (editOtherLanguages) {
+        editOtherLanguages.style.display = this.checked ? 'block' : 'none';
+        if (!this.checked) {
+            editOtherLanguages.value = '';
+        }
+    }
 }
 
 // Configurar formulario de edición para cliente (FUNCIÓN MEJORADA)
@@ -366,12 +378,10 @@ function setupClientEditForm(client) {
     const editClientType = document.getElementById('editClientType');
     const editCompanyNameGroup = document.getElementById('editCompanyNameGroup');
     if (editClientType && editCompanyNameGroup) {
-        editClientType.addEventListener('change', function() {
-            editCompanyNameGroup.style.display = this.value === 'empresa' ? 'block' : 'none';
-            if (this.value !== 'empresa') {
-                document.getElementById('editCompanyName').value = '';
-            }
-        });
+        // Remover event listeners existentes para evitar duplicados
+        editClientType.removeEventListener('change', handleEditClientTypeChange);
+        // Agregar nuevo event listener
+        editClientType.addEventListener('change', handleEditClientTypeChange);
     }
     
     // Ubicación - Cargar después de un breve delay
@@ -381,6 +391,17 @@ function setupClientEditForm(client) {
                             client.country, client.state, client.city);
         }
     }, 500);
+}
+
+// Función auxiliar para manejar el cambio en tipo de cliente
+function handleEditClientTypeChange() {
+    const editCompanyNameGroup = document.getElementById('editCompanyNameGroup');
+    if (editCompanyNameGroup) {
+        editCompanyNameGroup.style.display = this.value === 'empresa' ? 'block' : 'none';
+        if (this.value !== 'empresa') {
+            document.getElementById('editCompanyName').value = '';
+        }
+    }
 }
 
 // CORRECCIÓN CRÍTICA: Actualizar perfil de talento (FUNCIÓN COMPLETAMENTE FUNCIONAL)
@@ -625,9 +646,46 @@ window.updateClientProfile = async function(e) {
     }
 };
 
+// CORRECCIÓN CRÍTICA: Configurar event listener del formulario GLOBALMENTE
+function setupEditProfileFormListener() {
+    console.log('Configurando event listener del formulario de edición...');
+    
+    const editProfileForm = document.getElementById('editProfileForm');
+    if (editProfileForm) {
+        // Remover event listener existente para evitar duplicados
+        editProfileForm.removeEventListener('submit', handleEditProfileSubmit);
+        
+        // Agregar nuevo event listener
+        editProfileForm.addEventListener('submit', handleEditProfileSubmit);
+        console.log('✅ Event listener del formulario configurado correctamente');
+    } else {
+        console.error('❌ No se encontró el formulario de edición');
+    }
+}
+
+// Función manejadora del evento submit (CORREGIDA)
+function handleEditProfileSubmit(e) {
+    console.log('📝 Formulario de edición enviado');
+    e.preventDefault();
+    
+    const userType = document.getElementById('editProfileUserType').value;
+    console.log('👤 Tipo de usuario:', userType);
+    
+    if (userType === 'talent') {
+        console.log('🎯 Ejecutando updateTalentProfile...');
+        window.updateTalentProfile(e);
+    } else if (userType === 'client') {
+        console.log('🎯 Ejecutando updateClientProfile...');
+        window.updateClientProfile(e);
+    } else {
+        console.error('❌ Tipo de usuario no válido:', userType);
+        window.showMessage('editProfileMessage', '❌ Error: Tipo de usuario no válido.', 'error');
+    }
+}
+
 // Función para cambiar entre secciones (FUNCIÓN CORREGIDA)
 function toggleProfileSection(sectionId) {
-    console.log('Cambiando a sección:', sectionId);
+    console.log('🔄 Cambiando a sección:', sectionId);
     
     // Ocultar todas las secciones
     document.querySelectorAll('.profile-section').forEach(section => {
@@ -649,6 +707,14 @@ function toggleProfileSection(sectionId) {
     const activeButton = document.querySelector(`[onclick="toggleProfileSection('${sectionId}')"]`);
     if (activeButton) {
         activeButton.classList.add('active');
+    }
+    
+    // Si se cambia a la sección de edición, configurar el event listener
+    if (sectionId === 'editProfileSection') {
+        console.log('✏️ Sección de edición activada, configurando event listener...');
+        setTimeout(() => {
+            setupEditProfileFormListener();
+        }, 100);
     }
     
     // Cargar datos específicos de la sección
@@ -723,51 +789,14 @@ function showUploadDemoModal() {
     alert('Para subir demos, ve a la sección "Editar Perfil" y utiliza el campo "Subir Demos".');
 }
 
-// CORRECCIÓN CRÍTICA: Configurar event listener del formulario GLOBALMENTE
-function setupEditProfileFormListener() {
-    console.log('Configurando event listener del formulario de edición...');
-    
-    const editProfileForm = document.getElementById('editProfileForm');
-    if (editProfileForm) {
-        // Remover event listener existente para evitar duplicados
-        editProfileForm.removeEventListener('submit', handleEditProfileSubmit);
-        
-        // Agregar nuevo event listener
-        editProfileForm.addEventListener('submit', handleEditProfileSubmit);
-        console.log('Event listener del formulario configurado correctamente');
-    } else {
-        console.error('No se encontró el formulario de edición');
-    }
-}
-
-// Función manejadora del evento submit
-function handleEditProfileSubmit(e) {
-    console.log('Formulario de edición enviado');
-    e.preventDefault();
-    
-    const userType = document.getElementById('editProfileUserType').value;
-    console.log('Tipo de usuario:', userType);
-    
-    if (userType === 'talent') {
-        console.log('Ejecutando updateTalentProfile...');
-        window.updateTalentProfile(e);
-    } else if (userType === 'client') {
-        console.log('Ejecutando updateClientProfile...');
-        window.updateClientProfile(e);
-    } else {
-        console.error('Tipo de usuario no válido:', userType);
-        window.showMessage('editProfileMessage', '❌ Error: Tipo de usuario no válido.', 'error');
-    }
-}
-
 // Inicialización del perfil cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Profile.js cargado - DOM completamente cargado');
+    console.log('🚀 Profile.js cargado - DOM completamente cargado');
     
     // Verificar autenticación
     auth.onAuthStateChanged(user => {
         if (user) {
-            console.log('Usuario autenticado:', user.uid);
+            console.log('✅ Usuario autenticado:', user.uid);
             currentUser = user;
             // El perfil se cargará cuando checkAuthState se ejecute
             
@@ -776,7 +805,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setupEditProfileFormListener();
             }, 1000);
         } else {
-            console.log('Usuario no autenticado, redirigiendo...');
+            console.log('❌ Usuario no autenticado, redirigiendo...');
             window.location.href = 'index.html';
         }
     });
@@ -786,49 +815,5 @@ document.addEventListener('DOMContentLoaded', function() {
         setupEditProfileFormListener();
     }, 500);
 
-    console.log('Profile.js inicializado correctamente');
+    console.log('✅ Profile.js inicializado correctamente');
 });
-
-// Configurar también cuando se cambia a la sección de edición
-window.toggleProfileSection = function(sectionId) {
-    console.log('Cambiando a sección:', sectionId);
-    
-    // Ocultar todas las secciones
-    document.querySelectorAll('.profile-section').forEach(section => {
-        section.classList.remove('active-section');
-    });
-    
-    // Mostrar la sección seleccionada
-    const targetSection = document.getElementById(sectionId);
-    if (targetSection) {
-        targetSection.classList.add('active-section');
-    }
-    
-    // Actualizar botones activos
-    document.querySelectorAll('.profile-nav-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Marcar el botón correspondiente como activo
-    const activeButton = document.querySelector(`[onclick="toggleProfileSection('${sectionId}')"]`);
-    if (activeButton) {
-        activeButton.classList.add('active');
-    }
-    
-    // Si se cambia a la sección de edición, configurar el event listener
-    if (sectionId === 'editProfileSection') {
-        console.log('Sección de edición activada, configurando event listener...');
-        setTimeout(() => {
-            setupEditProfileFormListener();
-        }, 100);
-    }
-    
-    // Cargar datos específicos de la sección
-    if (sectionId === 'applicationsSection') {
-        loadTalentApplications();
-    } else if (sectionId === 'jobsSection') {
-        loadClientJobs();
-    } else if (sectionId === 'notificationsSection') {
-        loadUserNotifications();
-    }
-};
