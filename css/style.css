@@ -101,52 +101,6 @@ header nav ul li a:hover {
     border: 2px solid #e0e0e0;
 }
 
-.dropdown {
-    position: relative;
-    display: inline-block;
-}
-
-.dropdown-toggle {
-    background: none;
-    border: 1px solid white;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.dropdown-menu {
-    display: none;
-    position: absolute;
-    right: 0;
-    top: 100%;
-    background: white;
-    min-width: 160px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    border-radius: 4px;
-    z-index: 1000;
-}
-
-.dropdown:hover .dropdown-menu {
-    display: block;
-}
-
-.dropdown-menu a {
-    display: block;
-    padding: 10px 15px;
-    color: #333;
-    text-decoration: none;
-    border-bottom: 1px solid #eee;
-}
-
-.dropdown-menu a:hover {
-    background: #f5f5f5;
-}
-
-.dropdown-menu a:last-child {
-    border-bottom: none;
-}
-
 /* Button Styles */
 .btn {
     padding: 10px 20px;
@@ -808,8 +762,9 @@ footer .container {
 }
 
 .profile-nav-btn.active {
-    background: var(--secondary);
+    background-color: var(--secondary);
     color: white;
+    border-color: var(--secondary);
 }
 
 .profile-nav-btn:hover {
@@ -1232,7 +1187,50 @@ footer .container {
     font-style: italic;
 }
 
-/* Media Queries for Responsiveness */
+/* Profile Sections Management */
+.profile-section {
+    display: none;
+}
+
+.profile-section.active-section {
+    display: block;
+}
+
+.profile-name-info {
+    text-align: center;
+}
+
+.profile-name-info h1 {
+    margin-bottom: 5px;
+    color: var(--primary);
+}
+
+.talent-only, .client-only {
+    display: none !important;
+}
+
+.user-type-talent .talent-only {
+    display: flex !important;
+}
+
+.user-type-client .client-only {
+    display: flex !important;
+}
+
+/* Mejoras para los botones de acción del perfil */
+.profile-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Estilos para las secciones del perfil */
+.profile-details {
+    padding: 20px 0;
+}
+
+/* Mejoras para la visualización móvil */
 @media (max-width: 900px) {
     .header-content {
         flex-direction: column;
@@ -1397,5 +1395,15 @@ footer .container {
     .btn {
         padding: 8px 16px;
         font-size: 14px;
+    }
+    
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .user-avatar {
+        width: 24px;
+        height: 24px;
     }
 }
