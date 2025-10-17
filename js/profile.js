@@ -807,22 +807,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     profileInitialized = true;
-
-    // Verificar autenticación - SOLO UNA VEZ
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            console.log('✅ Usuario autenticado en profile.js:', user.uid);
-            currentUser = user;
-            
-            // Cargar perfil del usuario
-            if (typeof loadUserProfile === 'function') {
-                loadUserProfile(user.uid);
-            }
-        } else {
-            console.log('❌ Usuario no autenticado, redirigiendo...');
-            window.location.href = 'index.html';
-        }
-    });
-
     console.log('✅ Profile.js inicializado correctamente');
+    
+    // NO inicializamos auth aquí, ya se hace en app.js
+    // Solo nos aseguramos de que el usuario esté autenticado
+    if (!currentUser && window.location.pathname.includes('profile.html')) {
+        console.log('⚠️ Usuario no autenticado en profile.html');
+        // La redirección se maneja en auth.js
+    }
 });
