@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Configurar event listeners (CORREGIDO: Llamada más robusta a funciones de edición)
+// Configurar event listeners (CORRECCIÓN CLAVE AQUÍ)
 function setupEventListeners() {
     // Listeners de Modales y Navegación
     document.getElementById('heroTalentBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
@@ -41,26 +41,26 @@ function setupEventListeners() {
     document.getElementById('clientType')?.addEventListener('change', toggleCompanyName);
     document.getElementById('lang10')?.addEventListener('change', toggleOtherLanguages);
     
-    // Listener para el formulario de edición de perfil (CORRECCIÓN CLAVE AQUÍ)
+    // Listener para el formulario de edición de perfil 
     document.getElementById('editProfileForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
         
         const isTalent = document.getElementById('editTalentFields')?.style.display !== 'none';
         
-        // CORRECCIÓN: Usamos `window.` y verificamos que la función exista en el ámbito global
+        // CORRECCIÓN: Usamos `window.` y verificamos que la función exista 
         if (isTalent) {
             if (typeof window.updateTalentProfile === 'function') {
-                window.updateTalentProfile(e); // Pasamos el evento por si acaso
+                window.updateTalentProfile(e); // Llama a la función de profile.js
             } else {
                  console.error('❌ Error: La función updateTalentProfile no está definida o no es global.');
-                 showMessage('editProfileMessage', '❌ Funcionalidad de edición de talento no disponible.', 'error');
+                 window.showMessage('editProfileMessage', '❌ Funcionalidad de edición de talento no disponible.', 'error');
             }
         } else {
             if (typeof window.updateClientProfile === 'function') {
-                window.updateClientProfile(e); // Pasamos el evento por si acaso
+                window.updateClientProfile(e); // Llama a la función de profile.js
             } else {
                  console.error('❌ Error: La función updateClientProfile no está definida o no es global.');
-                 showMessage('editProfileMessage', '❌ Funcionalidad de edición de cliente no disponible.', 'error');
+                 window.showMessage('editProfileMessage', '❌ Funcionalidad de edición de cliente no disponible.', 'error');
             }
         }
     });
@@ -126,13 +126,10 @@ function displayTalentCard(talent, talentId) {
         audioPlayers = '<p style="color: #666; font-size: 14px; margin-top: 10px;">No hay demos de audio disponibles</p>';
     }
     
-    // Información de ubicación (siempre visible)
-    // Se añade un chequeo adicional para getCountryName por si locations.js falla
     const locationInfo = (talent.city && talent.state && talent.country && typeof getCountryName === 'function') ? 
         `<p class="talent-details"><i class="fas fa-map-marker-alt"></i> ${getCityName(talent.country, talent.state, talent.city)}, ${getCountryName(talent.country)}</p>` :
         '<p class="talent-details"><i class="fas fa-map-marker-alt"></i> Ubicación no especificada</p>';
     
-    // CORRECCIÓN: Definir contactInfo y solo mostrar los datos sensibles si currentUser existe
     let contactInfo = '';
     if (currentUser) {
         contactInfo = `
@@ -163,8 +160,8 @@ function displayTalentCard(talent, talentId) {
             ${contactInfo}
             ${audioPlayers}
             <div style="margin-top: 15px;">
-                <button class="btn btn-primary" onclick="viewTalentProfile('${talentId}')">Ver Perfil Completo</button>
-                ${currentUser ? `<button class="btn btn-success" onclick="addToFavorites('${talentId}')"><i class="fas fa-heart"></i> Favorito</button>` : ''}
+                <button class="btn btn-primary" onclick="window.viewTalentProfile('${talentId}')">Ver Perfil Completo</button>
+                ${currentUser ? `<button class="btn btn-success" onclick="window.addToFavorites('${talentId}')"><i class="fas fa-heart"></i> Favorito</button>` : ''}
             </div>
         </div>
     `;
@@ -219,7 +216,7 @@ function displayJobCard(job, jobId) {
         </div>
         ${currentUser ? `
             <div style="margin-top: 15px;">
-                <button class="btn btn-primary" onclick="applyToJob('${jobId}')">Postularme</button>
+                <button class="btn btn-primary" onclick="window.applyToJob('${jobId}')">Postularme</button>
             </div>
         ` : ''}
     `;
@@ -233,6 +230,7 @@ function closeAllModals() {
         modal.style.display = 'none';
     });
 }
+window.closeAllModals = closeAllModals; // Hacer global
 
 function toggleCompanyName() {
     const companyNameGroup = document.getElementById('companyNameGroup');
@@ -259,12 +257,11 @@ window.applyToJob = function(jobId) {
     alert(`Postular al trabajo ${jobId}. Funcionalidad pendiente.`);
 };
 
-// Se asume que showMessage ya está definido globalmente en auth.js o aquí.
-// Si no lo está, debe definirse aquí para que app.js no falle.
+// Función auxiliar para mostrar mensajes (hecha global)
 function showMessage(element, message, type) {
     const el = typeof element === 'string' ? document.getElementById(element) : element;
     if (el) {
         el.innerHTML = `<div class="${type}">${message}</div>`;
     }
 }
-window.showMessage = showMessage; // Aseguramos que sea global.
+window.showMessage = showMessage; 
