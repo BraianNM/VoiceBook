@@ -2,9 +2,6 @@
 
 // Cargar perfil del usuario
 async function loadUserProfile(userId) {
-    const profileContent = document.getElementById('userProfileContent');
-    if (!profileContent) return; // Si no hay contenedor (no estamos en profile.html)
-
     try {
         let userProfile = null;
         
@@ -13,7 +10,8 @@ async function loadUserProfile(userId) {
         if (talentDoc.exists) {
             userProfile = {
                 type: 'talent',
-                ...talentDoc.data()
+                ...talentDoc.data(),
+                id: talentDoc.id
             };
         } else {
             // Intentar cargar como cliente
@@ -21,27 +19,21 @@ async function loadUserProfile(userId) {
             if (clientDoc.exists) {
                 userProfile = {
                     type: 'client',
-                    ...clientDoc.data()
+                    ...clientDoc.data(),
+                    id: clientDoc.id
                 };
             }
         }
         
         if (userProfile) {
             displayUserProfile(userProfile);
-            // Mostrar u ocultar pestañas de dashboard
-            document.getElementById('jobsTab').style.display = userProfile.type === 'client' ? 'block' : 'none';
-            document.getElementById('applicationsTab').style.display = userProfile.type === 'talent' ? 'block' : 'none';
-        } else {
-            profileContent.innerHTML = 
-                '<div class="error">No se encontró perfil. Completa tu registro en la sección correspondiente.</div>';
         }
         
     } catch (error) {
         console.error('Error cargando perfil:', error);
-        profileContent.innerHTML = 
-            '<div class="error">Error al cargar el perfil: ' + error.message + '</div>';
     }
 }
+window.loadUserProfile = loadUserProfile; // Hacer global
 
 // Mostrar perfil en el dashboard
 function displayUserProfile(profile) {
@@ -54,274 +46,149 @@ function displayUserProfile(profile) {
             <span>${getCityName(profile.country, profile.state, profile.city)}, ${getStateName(profile.country, profile.state)}, ${getCountryName(profile.country)}</span>
         </div>` : '';
     
-    let demosHTML = '';
-    if (profile.type === 'talent' && profile.demos && profile.demos.length > 0) {
-        demosHTML = `
-            <div class="demos-section">
-                <h4>Demos de Audio (${profile.demos.length})</h4>
-                ${profile.demos.map(demo => `
-                    <div class="demo-item">
-                        <span class="demo-name">${demo.name || 'Demo sin nombre'}</span>
-                        <audio controls src="${demo.url}"></audio>
-                        <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId}', '${currentUser.uid}')">Eliminar</button>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }
-
     if (profile.type === 'talent') {
-        profileContent.innerHTML = `
-            <div class="profile-header">
-                <h3>Mi Perfil - Talento</h3>
-                <button class="btn btn-primary" onclick="editProfile()">
-                    <i class="fas fa-edit"></i> Editar Perfil
-                </button>
-            </div>
-            
-            <div class="profile-info">
-                <div class="info-grid">
-                    <div class="info-item">
-                        <label>Nombre:</label>
-                        <span>${profile.name || 'No especificado'}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Email:</label>
-                        <span>${profile.email || 'No especificado'}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Teléfono:</label>
-                        <span>${profile.phone || 'No especificado'}</span>
-                    </div>
-                    ${locationInfo}
-                    <div class="info-item">
-                        <label>Género:</label>
-                        <span>${profile.gender === 'hombre' ? 'Hombre' : 'Mujer'}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Idiomas:</label>
-                        <span>${Array.isArray(profile.languages) ? profile.languages.join(', ') : profile.languages || 'No especificado'}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Home Studio:</label>
-                        <span>${profile.homeStudio === 'si' ? 'Sí' : 'No'}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Nacionalidad:</label>
-                        <span>${profile.nationality || 'No especificado'}</span>
-                    </div>
-                    ${profile.realAge ? `
-                    <div class="info-item">
-                        <label>Edad real:</label>
-                        <span>${profile.realAge} años</span>
-                    </div>
-                    ` : ''}
-                    ${profile.ageRange ? `
-                    <div class="info-item">
-                        <label>Rango de edades:</label>
-                        <span>${profile.ageRange}</span>
-                    </div>
-                    ` : ''}
+        // Lógica de visualización para Talentos
+        let demosHtml = '';
+        if (profile.demos && profile.demos.length > 0) {
+            demosHtml = profile.demos.map(demo => `
+                <div class="demo-item">
+                    <span>${demo.name} (${demo.duration ? Math.round(demo.duration) + 's' : ''})</span>
+                    <audio controls src="${demo.url}"></audio>
+                    <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId}', '${profile.id}')">Eliminar</button>
                 </div>
-                
-                <div class="description-section">
-                    <label>Descripción:</label>
-                    <p>${profile.description || 'Sin descripción'}</p>
-                </div>
-                ${demosHTML}
-            </div>
-        `;
-    } else {
-        // Perfil de Cliente
-        profileContent.innerHTML = `
-            <div class="profile-header">
-                <h3>Mi Perfil - Cliente</h3>
-                <button class="btn btn-primary" onclick="editProfile()">
-                    <i class="fas fa-edit"></i> Editar Perfil
-                </button>
-            </div>
-            
-            <div class="profile-info">
-                <div class="info-grid">
-                    <div class="info-item">
-                        <label>Nombre:</label>
-                        <span>${profile.name || 'No especificado'}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Email:</label>
-                        <span>${profile.email || 'No especificado'}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Teléfono:</label>
-                        <span>${profile.phone || 'No especificado'}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Tipo:</label>
-                        <span>${profile.type === 'empresa' ? 'Empresa' : 'Particular'}</span>
-                    </div>
-                    ${profile.companyName ? `
-                        <div class="info-item">
-                            <label>Empresa:</label>
-                            <span>${profile.companyName}</span>
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    }
-}
-
-// Iniciar proceso de edición
-window.editProfile = function() {
-    if (!currentUser) return;
-    
-    loadUserProfile(currentUser.uid).then(profile => {
-        if (profile) {
-            openEditProfileModal(profile);
+            `).join('');
         } else {
-             alert('No se pudo cargar la información del perfil para edición.');
+            demosHtml = '<p>No has subido demos aún.</p>';
         }
-    });
-};
+
+        profileContent.innerHTML = `
+            <div class="profile-header">
+                <h2>Perfil de Talento</h2>
+                <button class="btn btn-secondary" onclick="openEditProfileModal('${profile.id}', 'talent')">
+                    <i class="fas fa-edit"></i> Editar Perfil
+                </button>
+            </div>
+            <div class="info-grid">
+                <div class="info-item"><label>Nombre:</label><span>${profile.name}</span></div>
+                <div class="info-item"><label>Email:</label><span>${profile.email}</span></div>
+                <div class="info-item"><label>Teléfono:</label><span>${profile.phone || 'N/A'}</span></div>
+                <div class="info-item"><label>Género:</label><span>${profile.gender}</span></div>
+                <div class="info-item"><label>Edad (Real):</label><span>${profile.realAge || 'N/A'}</span></div>
+                <div class="info-item"><label>Rango de edad (Roles):</label><span>${profile.ageRange}</span></div>
+                <div class="info-item"><label>Nacionalidad:</label><span>${profile.nationality || 'N/A'}</span></div>
+                <div class="info-item"><label>Home Studio:</label><span>${profile.homeStudio === 'si' ? 'Sí' : 'No'}</span></div>
+                ${locationInfo}
+            </div>
+            <div class="description-section">
+                <h3>Acerca de mí:</h3>
+                <p>${profile.description || 'Sin descripción'}</p>
+            </div>
+            <div class="demos-section">
+                <h3>Demos de Audio:</h3>
+                ${demosHtml}
+            </div>
+        `;
+    } else if (profile.type === 'client') {
+        // Lógica de visualización para Clientes
+        profileContent.innerHTML = `
+            <div class="profile-header">
+                <h2>Perfil de Cliente</h2>
+                <button class="btn btn-secondary" onclick="openEditProfileModal('${profile.id}', 'client')">
+                    <i class="fas fa-edit"></i> Editar Perfil
+                </button>
+            </div>
+            <div class="info-grid">
+                <div class="info-item"><label>Nombre:</label><span>${profile.name}</span></div>
+                <div class="info-item"><label>Email:</label><span>${profile.email}</span></div>
+                <div class="info-item"><label>Teléfono:</label><span>${profile.phone || 'N/A'}</span></div>
+                <div class="info-item"><label>Tipo de Cliente:</label><span>${profile.type === 'empresa' ? 'Empresa' : 'Particular'}</span></div>
+                ${profile.companyName ? `<div class="info-item"><label>Empresa:</label><span>${profile.companyName}</span></div>` : ''}
+            </div>
+        `;
+        
+        // Mostrar pestañas específicas de cliente/empresa
+        document.getElementById('jobsTab').style.display = 'block';
+        document.getElementById('applicationsTab').style.display = 'none'; // Clientes no tienen postulaciones
+    } else {
+        profileContent.innerHTML = '<p>No se pudo cargar el perfil del usuario.</p>';
+    }
+    
+    // Abrir el modal del dashboard si aún no está visible
+    document.getElementById('dashboardModal').style.display = 'flex';
+}
 
 // Abrir modal de edición
-window.openEditProfileModal = function(profile) {
-    document.getElementById('editProfileMessage').innerHTML = ''; // Limpiar mensajes
+window.openEditProfileModal = async function(userId, type) {
+    document.getElementById('dashboardModal').style.display = 'none';
+    const editModal = document.getElementById('editProfileModal');
+    editModal.style.display = 'flex';
+    document.getElementById('editProfileMessage').innerHTML = '';
 
-    // 1. Campos comunes
-    document.getElementById('editName').value = profile.name || '';
-    document.getElementById('editPhone').value = profile.phone || '';
-
-    // 2. Ocultar/Mostrar secciones
-    const talentFields = document.getElementById('editTalentFields');
-    const clientFields = document.getElementById('editClientFields');
-
-    if (profile.type === 'talent') {
-        // Mostrar Talento, Ocultar Cliente
-        talentFields.style.display = 'block';
-        clientFields.style.display = 'none';
-
-        // 3. Llenar campos de Talento
-        document.getElementById('editDescription').value = profile.description || '';
-        document.getElementById('editNationality').value = profile.nationality || '';
-        document.getElementById('editRealAge').value = profile.realAge || '';
-        document.getElementById('editAgeRange').value = profile.ageRange || '';
-        
-        // Cargar demos actuales
-        displayCurrentDemosForEdit(profile.demos);
-
-    } else {
-        // Mostrar Cliente, Ocultar Talento
-        talentFields.style.display = 'none';
-        clientFields.style.display = 'block';
-
-        // 3. Llenar campos de Cliente
-        const companyInput = document.getElementById('editCompanyName');
-        if (companyInput) {
-            companyInput.value = profile.companyName || '';
+    try {
+        let docRef;
+        if (type === 'talent') {
+            docRef = db.collection('talents').doc(userId);
+            document.getElementById('editTalentFields').style.display = 'block';
+            document.getElementById('editClientFields').style.display = 'none';
+        } else {
+            docRef = db.collection('clients').doc(userId);
+            document.getElementById('editTalentFields').style.display = 'none';
+            document.getElementById('editClientFields').style.display = 'block';
         }
-    }
-    
-    // Limpiar el input de archivo al abrir el modal
-    const audioInput = document.getElementById('editAudioFiles');
-    if (audioInput) audioInput.value = '';
 
-    document.getElementById('editProfileModal').style.display = 'flex';
+        const doc = await docRef.get();
+        if (doc.exists) {
+            const data = doc.data();
+            document.getElementById('editName').value = data.name || '';
+            document.getElementById('editPhone').value = data.phone || '';
+            
+            if (type === 'talent') {
+                document.getElementById('editDescription').value = data.description || '';
+                document.getElementById('editHomeStudio').value = data.homeStudio || '';
+                // Cargar otros campos del talento si existen en el formulario
+            } else {
+                if (data.companyName) {
+                    document.getElementById('editCompanyNameGroup').style.display = 'block';
+                    document.getElementById('editCompanyName').value = data.companyName || '';
+                } else {
+                    document.getElementById('editCompanyNameGroup').style.display = 'none';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error cargando datos para edición:', error);
+        showMessage(document.getElementById('editProfileMessage'), '❌ Error al cargar datos.', 'error');
+    }
 };
 
-// Mostrar demos en el modal de edición
-window.displayCurrentDemosForEdit = function(demos) {
-    const container = document.getElementById('currentDemosEdit');
-    if (!container) return;
-
-    if (demos && demos.length > 0) {
-        container.innerHTML = `
-            <h4 style="margin-top: 0;">Demos Actuales (${demos.length})</h4>
-            ${demos.map(demo => `
-                <div class="demo-item" style="justify-content: space-between;">
-                    <span class="demo-name">${demo.name || 'Demo sin nombre'}</span>
-                    <audio controls src="${demo.url}"></audio>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId}', '${currentUser.uid}')">Eliminar</button>
-                </div>
-            `).join('')}
-        `;
-    } else {
-        container.innerHTML = `<p class="text-muted">No tienes demos de audio subidos.</p>`;
-    }
-}
-
-// Actualizar perfil de talento (MODIFICADO para subida y validación)
+// Actualizar perfil de talento (CORREGIDA: HECHA GLOBAL)
 window.updateTalentProfile = async function() {
     const messageDiv = document.getElementById('editProfileMessage');
-    const demoFiles = document.getElementById('editAudioFiles').files;
-    const userId = currentUser.uid;
-    const MAX_FILES = 2;
-    const MAX_SIZE_MB = 10;
-    const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
     
     try {
-        // 1. VALIDACIÓN DE ARCHIVOS
-        if (demoFiles.length > MAX_FILES) {
-            showMessage(messageDiv, `❌ Solo puedes subir un máximo de ${MAX_FILES} demos.`, 'error');
-            return;
-        }
-        
-        for (const file of demoFiles) {
-            if (file.size > MAX_SIZE_BYTES) {
-                showMessage(messageDiv, `❌ El archivo "${file.name}" supera el límite de ${MAX_SIZE_MB}MB.`, 'error');
-                return;
-            }
-        }
-        
-        // 2. PREPARAR DEMOS
-        showMessage(messageDiv, '🔄 Guardando cambios y subiendo demos (si aplica)...', 'success');
-
-        let updatedDemos = [];
-        const currentDoc = await db.collection('talents').doc(userId).get();
-        
-        if (demoFiles.length > 0) {
-            // Si se suben nuevos demos, SOBREESCRIBIR todos los existentes
-            for (const file of demoFiles) {
-                const demoData = await uploadToCloudinary(file);
-                updatedDemos.push({
-                    url: demoData.url,
-                    publicId: demoData.publicId,
-                    name: file.name,
-                    duration: demoData.duration,
-                    size: file.size
-                });
-            }
-        } else {
-            // Si no se sube nada, mantener los demos actuales
-            updatedDemos = currentDoc.data().demos || [];
-        }
-
-        // 3. PREPARAR DATOS DE PERFIL
+        const userId = currentUser.uid;
         const updateData = {
             name: document.getElementById('editName').value,
             phone: document.getElementById('editPhone').value,
             description: document.getElementById('editDescription').value,
-            nationality: document.getElementById('editNationality').value,
-            realAge: document.getElementById('editRealAge').value ? parseInt(document.getElementById('editRealAge').value) : null,
-            ageRange: document.getElementById('editAgeRange').value,
-            demos: updatedDemos, // Guardar la lista actualizada de demos
+            homeStudio: document.getElementById('editHomeStudio').value,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        if (!updateData.name || !updateData.phone) {
-            showMessage(messageDiv, '❌ Nombre y teléfono son obligatorios', 'error');
+        if (!updateData.name || !updateData.description) {
+            showMessage(messageDiv, '❌ Nombre y descripción son obligatorios', 'error');
             return;
         }
         
-        // 4. ACTUALIZAR FIRESTORE
+        showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
+        
         await db.collection('talents').doc(userId).update(updateData);
         
         showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
         
-        // 5. RECARGAR UI
         setTimeout(() => {
             closeEditProfileModal();
-            loadUserProfile(userId); // Recargar perfil en profile.html
+            loadUserProfile(userId);
         }, 2000);
         
     } catch (error) {
@@ -330,7 +197,7 @@ window.updateTalentProfile = async function() {
     }
 };
 
-// Actualizar perfil de cliente
+// Actualizar perfil de cliente (CORREGIDA: HECHA GLOBAL)
 window.updateClientProfile = async function() {
     const messageDiv = document.getElementById('editProfileMessage');
     
@@ -343,7 +210,7 @@ window.updateClientProfile = async function() {
         };
         
         const companyNameInput = document.getElementById('editCompanyName');
-        if (companyNameInput) {
+        if (companyNameInput && document.getElementById('editClientFields').style.display !== 'none') {
             updateData.companyName = companyNameInput.value;
         }
         
@@ -378,14 +245,12 @@ window.deleteDemo = async function(publicId, userId) {
     try {
         const currentDoc = await db.collection('talents').doc(userId).get();
         const currentDemos = currentDoc.data().demos || [];
-        // Filtra el demo a eliminar
         const updatedDemos = currentDemos.filter(demo => demo.publicId !== publicId);
         
         await db.collection('talents').doc(userId).update({
             demos: updatedDemos
         });
         
-        // Recargar la vista de perfil
         loadUserProfile(userId);
         
     } catch (error) {
@@ -394,11 +259,15 @@ window.deleteDemo = async function(publicId, userId) {
     }
 };
 
-// Cerrar modal de edición (ahora vuelve a la vista de perfil completo)
+// Cerrar modal de edición
 window.closeEditProfileModal = function() {
     document.getElementById('editProfileModal').style.display = 'none';
+    document.getElementById('dashboardModal').style.display = 'flex';
 };
 
-
-// Exportar funciones
-window.loadUserProfile = loadUserProfile;
+// Función auxiliar para mostrar mensajes (redundante, pero necesaria en profile.js si no se carga app.js después)
+function showMessage(element, message, type) {
+    if (element) {
+        element.innerHTML = `<div class="${type}">${message}</div>`;
+    }
+}
