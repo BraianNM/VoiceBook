@@ -1,11 +1,11 @@
 // Este archivo contiene toda la lógica de autenticación (Registro, Login, Logout)
 // y la subida a Cloudinary.
 
-// Funciones auxiliares (asegúrate de que estén definidas en app.js si no lo están aquí)
+// Funciones auxiliares (definidas aquí para garantizar su disponibilidad)
 function showMessage(element, message, type) {
     const el = typeof element === 'string' ? document.getElementById(element) : element;
     if (el) {
-        el.innerHTML = `<div class="${type}">${message}</div>`;
+        el.innerHTML = `<div class=\"${type}\">${message}</div>`;
     }
 }
 window.showMessage = showMessage;
@@ -19,10 +19,18 @@ window.closeAllModals = closeAllModals;
 
 function getSelectedLanguages() {
     const languages = [];
+    const otherLanguagesInput = document.getElementById('otherLanguages');
+    
     for (let i = 1; i <= 10; i++) {
         const checkbox = document.getElementById('lang' + i);
         if (checkbox && checkbox.checked) {
-            languages.push(checkbox.value === 'otros' ? document.getElementById('otherLanguages').value : checkbox.value);
+            if (checkbox.value === 'otros') {
+                if (otherLanguagesInput.value.trim()) {
+                    languages.push(otherLanguagesInput.value.trim());
+                }
+            } else {
+                languages.push(checkbox.value);
+            }
         }
     }
     return languages.filter(lang => lang);
@@ -30,47 +38,63 @@ function getSelectedLanguages() {
 
 
 // Funciones para actualizar la interfaz de usuario
-function updateUIAfterLogin() {
+function updateUIAfterLogin(userName) {
     const authButtons = document.getElementById('authButtons');
     const userMenu = document.getElementById('userMenu');
     const dashboardLink = document.getElementById('dashboardLink');
-    const userName = document.getElementById('userName');
+    const userNameEl = document.getElementById('userName');
 
     if (authButtons) authButtons.style.display = 'none';
-    if (userMenu) userMenu.style.display = 'flex';
+    if (userMenu) userMenu.style.display = 'block';
     if (dashboardLink) dashboardLink.style.display = 'block';
-    
-    if (userName && currentUser) {
-        // Se asume que el nombre está en el perfil de usuario o se cargará
-        userName.textContent = currentUser.email; 
-    }
+    if (userNameEl) userNameEl.textContent = `Hola, ${userName}`;
 }
 
 function updateUIAfterLogout() {
     const authButtons = document.getElementById('authButtons');
     const userMenu = document.getElementById('userMenu');
     const dashboardLink = document.getElementById('dashboardLink');
-
+    
     if (authButtons) authButtons.style.display = 'flex';
     if (userMenu) userMenu.style.display = 'none';
     if (dashboardLink) dashboardLink.style.display = 'none';
     
-    // Redirigir al index si no está en index
+    // Redirigir a la página principal si estamos en el dashboard
     if (window.location.pathname.includes('profile.html')) {
         window.location.href = 'index.html';
     }
 }
 
-
-// Funciones de Autenticación
+// =========================================================================
+// FUNCIONES DE AUTENTICACIÓN
+// =========================================================================
 
 // Verificar estado de autenticación
 function checkAuthState() {
-    auth.onAuthStateChanged((user) => {
+    auth.onAuthStateChanged(async (user) => {
         if (user) {
-            currentUser = user;
-            updateUIAfterLogin();
-            // loadUserProfile se llama en profile.html o app.js
+            // Cargar el perfil para obtener el nombre y el tipo
+            const talentDoc = await db.collection('talents').doc(user.uid).get();
+            if (talentDoc.exists) {
+                currentUser = { ...user, isTalent: true, ...talentDoc.data() };
+                updateUIAfterLogin(currentUser.name);
+            } else {
+                const clientDoc = await db.collection('clients').doc(user.uid).get();
+                if (clientDoc.exists) {
+                    currentUser = { ...user, isTalent: false, ...clientDoc.data() };
+                    updateUIAfterLogin(currentUser.name);
+                } else {
+                    // Caso raro: usuario existe pero no tiene perfil (recién registrado)
+                    currentUser = user;
+                    updateUIAfterLogin('Usuario');
+                }
+            }
+            
+            // Solo cargar perfil si estamos en profile.html
+            if (window.location.pathname.includes('profile.html')) {
+                window.loadUserProfile(user.uid);
+            }
+
         } else {
             currentUser = null;
             updateUIAfterLogout();
@@ -79,119 +103,148 @@ function checkAuthState() {
 }
 window.checkAuthState = checkAuthState;
 
-// Registro de Talento (Lógica simplificada)
+
+// Registro de Talento
 async function registerTalent(e) {
     e.preventDefault();
-    const form = e.target;
+    const name = document.getElementById('talentName').value;
+    const email = document.getElementById('talentEmail').value;
+    const password = document.getElementById('talentPassword').value;
     const messageDiv = document.getElementById('talentMessage');
+    
+    // Obtener datos de ubicación con IDs de TALENTO
+    const country = document.getElementById('country').value;
+    const state = document.getElementById('state').value;
+    const city = document.getElementById('city').value;
+    const languages = getSelectedLanguages();
+
+    if (!country || !state || !city) {
+        showMessage(messageDiv, '❌ Debes seleccionar País, Provincia/Estado y Ciudad.', 'error');
+        return;
+    }
+
+    showMessage(messageDiv, '🔄 Creando cuenta...', 'success');
 
     try {
-        const email = form.email.value;
-        const password = form.password.value;
-        
-        // 1. Crear usuario en Firebase Auth
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const user = userCredential.user;
-
-        // 2. Guardar perfil de talento en Firestore
-        const talentData = {
-            name: form.name.value,
-            email: email,
-            phone: form.phone.value,
-            gender: form.gender.value,
-            nationality: form.nationality.value,
-            homeStudio: form.homeStudio.value,
-            city: form.city.value,
-            state: form.state.value,
-            country: form.country.value,
-            realAge: form.realAge.value,
-            ageRange: form.ageRange.value,
-            languages: getSelectedLanguages(),
-            description: '', // Se actualizará en la edición
-            demos: [], // Se actualizará en la edición
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
+        const userId = userCredential.user.uid;
         
-        await db.collection('talents').doc(user.uid).set(talentData);
+        await db.collection('talents').doc(userId).set({
+            name,
+            email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            // Datos de perfil
+            country,
+            state,
+            city,
+            languages,
+            isTalent: true,
+            photoURL: '',
+            specialty: '',
+            bio: '',
+            homeStudio: false,
+            demos: [],
+            realAge: null,
+            ageRange: ''
+        });
         
-        showMessage(messageDiv, '✅ Registro de talento exitoso. Redirigiendo...', 'success');
-        
+        showMessage(messageDiv, '✅ ¡Registro exitoso! Redirigiendo...', 'success');
         setTimeout(() => {
             closeAllModals();
             window.location.href = 'profile.html';
         }, 1500);
 
     } catch (error) {
-        console.error('❌ Error de registro:', error);
-        let errorMessage = 'Error al registrar. Intenta con otro email.';
+        console.error('Error de registro de talento:', error);
+        let errorMessage = 'Error al registrar. Inténtalo de nuevo.';
         if (error.code === 'auth/email-already-in-use') {
-             errorMessage = 'El email ya está registrado.';
+            errorMessage = 'El email ya está registrado.';
+        } else if (error.code === 'auth/weak-password') {
+            errorMessage = 'La contraseña debe tener al menos 6 caracteres.';
         }
         showMessage(messageDiv, `❌ ${errorMessage}`, 'error');
     }
 }
 window.registerTalent = registerTalent;
 
+
 // Registro de Cliente
 async function registerClient(e) {
     e.preventDefault();
-    const form = e.target;
+    const name = document.getElementById('clientName').value;
+    const email = document.getElementById('clientEmail').value;
+    const password = document.getElementById('clientPassword').value;
+    const clientType = document.getElementById('clientType').value;
+    const companyName = document.getElementById('companyName').value;
     const messageDiv = document.getElementById('clientMessage');
+    
+    // Obtener datos de ubicación con IDs de CLIENTE
+    const country = document.getElementById('clientCountry').value;
+    const state = document.getElementById('clientState').value;
+    const city = document.getElementById('clientCity').value;
+
+    if (!country || !state || !city) {
+        showMessage(messageDiv, '❌ Debes seleccionar País, Provincia/Estado y Ciudad.', 'error');
+        return;
+    }
+
+    showMessage(messageDiv, '🔄 Creando cuenta...', 'success');
 
     try {
-        const email = form.email.value;
-        const password = form.password.value;
-        
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const user = userCredential.user;
-
-        const clientType = form.clientType.value;
+        const userId = userCredential.user.uid;
         
-        const clientData = {
-            name: form.name.value,
-            email: email,
-            phone: form.phone.value,
-            type: clientType,
-            companyName: clientType === 'empresa' ? form.companyName.value : null,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
+        await db.collection('clients').doc(userId).set({
+            name,
+            email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            // Datos de perfil
+            clientType,
+            companyName: clientType === 'empresa' ? companyName : '',
+            country,
+            state,
+            city,
+            isTalent: false
+        });
         
-        await db.collection('clients').doc(user.uid).set(clientData);
-        
-        showMessage(messageDiv, '✅ Registro de cliente exitoso. Redirigiendo...', 'success');
-        
+        showMessage(messageDiv, '✅ ¡Registro exitoso! Redirigiendo...', 'success');
         setTimeout(() => {
             closeAllModals();
             window.location.href = 'profile.html';
         }, 1500);
 
     } catch (error) {
-        console.error('❌ Error de registro:', error);
-        let errorMessage = 'Error al registrar. Intenta con otro email.';
+        console.error('Error de registro de cliente:', error);
+        let errorMessage = 'Error al registrar. Inténtalo de nuevo.';
         if (error.code === 'auth/email-already-in-use') {
-             errorMessage = 'El email ya está registrado.';
+            errorMessage = 'El email ya está registrado.';
+        } else if (error.code === 'auth/weak-password') {
+            errorMessage = 'La contraseña debe tener al menos 6 caracteres.';
         }
         showMessage(messageDiv, `❌ ${errorMessage}`, 'error');
     }
 }
 window.registerClient = registerClient;
 
-// Inicio de sesión
+
+// Iniciar Sesión - CORREGIDO
 async function loginUser(e) {
     e.preventDefault();
-    const form = e.target;
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
     const messageDiv = document.getElementById('loginMessage');
-    
+
+    showMessage(messageDiv, '🔄 Iniciando sesión...', 'success');
+
     try {
-        const email = form.loginEmail.value;
-        const password = form.loginPassword.value;
-        
         await auth.signInWithEmailAndPassword(email, password);
         
+        // La redirección se maneja en checkAuthState/updateUIAfterLogin al cargar el perfil
         showMessage(messageDiv, '¡Inicio de sesión exitoso! Redirigiendo a tu perfil...', 'success');
         
         setTimeout(() => {
             closeAllModals();
+            // Redirigir a profile.html después de un login exitoso
             window.location.href = 'profile.html';
         }, 1000);
         
@@ -222,19 +275,18 @@ async function logoutUser(e) {
 }
 window.logoutUser = logoutUser;
 
+// =========================================================================
+// CLOUDINARY PARA VOICEBOOK - Subida de Archivos
+// =========================================================================
 
-// ========== CLOUDINARY PARA SUBIDA DE ARCHIVOS (CRÍTICO) ==========
-
-// Subir archivo de audio a Cloudinary - FUNCIÓN GLOBAL
+// Subir archivo de audio a Cloudinary
 async function uploadToCloudinary(file) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-    formData.append('resource_type', 'auto');
+    formData.append('resource_type', 'auto'); // Permite audio o imagen
 
     try {
-        console.log('📤 Iniciando subida a Cloudinary:', file.name);
-        
         const response = await fetch(
             `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/upload`,
             {
@@ -246,21 +298,20 @@ async function uploadToCloudinary(file) {
         const data = await response.json();
         
         if (data.secure_url) {
-            console.log('✅ Archivo subido exitosamente:', data.secure_url);
             return {
                 url: data.secure_url,
                 publicId: data.public_id,
-                duration: data.duration || 0, // Cloudinary devuelve la duración para audios
+                duration: data.duration || 0,
                 format: data.format,
                 resource_type: data.resource_type
             };
         } else {
-            console.error('❌ Falló la subida de Cloudinary:', data);
-            throw new Error(`Error en Cloudinary: ${data.error ? data.error.message : 'Respuesta inesperada'}`);
+            throw new Error(data.error?.message || 'Fallo en la subida a Cloudinary.');
         }
+
     } catch (error) {
-        console.error('❌ Error general al subir a Cloudinary:', error);
-        throw new Error('Error al subir el archivo de audio. Revisa tu conexión y configuración de Cloudinary.');
+        console.error('Error en uploadToCloudinary:', error);
+        throw error;
     }
 }
 window.uploadToCloudinary = uploadToCloudinary;
