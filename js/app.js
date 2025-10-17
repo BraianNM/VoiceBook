@@ -1,33 +1,26 @@
 // Funciones principales de la aplicación
 
-// Variables globales (asumiendo que están en firebase-config.js o definidas globalmente)
-// let currentUser = null; 
-// const db = firebase.firestore();
-// const auth = firebase.auth();
-
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     checkAuthState();
     
-    // Solo cargar talentos y ofertas si NO estamos en profile.html
+    // CORRECCIÓN: Asegurar que la carga de talentos solo corra en index.html
     if (!window.location.href.includes('profile.html')) {
         loadTalents();
         loadJobOffers();
-        loadLocationData(); // Cargar la data de ubicación en el index para el modal de registro
-    } else {
-        // En profile.html, checkAuthState se encargará de llamar a loadUserProfile y loadLocationData
+        loadLocationData(); // Cargar la data de ubicación para el modal de registro
     }
 });
 
-// Configurar event listeners (MODIFICADO para la redirección y limpieza de dashboardModal)
+// Configurar event listeners (MODIFICADO para la redirección)
 function setupEventListeners() {
     document.getElementById('heroTalentBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
     document.getElementById('heroClientBtn')?.addEventListener('click', () => document.getElementById('clientModal').style.display = 'flex');
     document.getElementById('registerBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
     document.getElementById('loginBtn')?.addEventListener('click', () => document.getElementById('loginModal').style.display = 'flex');
     
-    // CAMBIO: showDashboard AHORA REDIRECCIONA (solo en index.html)
+    // CAMBIO: El listener ahora solo redirige al nuevo profile.html
     document.getElementById('dashboardLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         window.location.href = 'profile.html';
@@ -46,7 +39,7 @@ function setupEventListeners() {
     document.getElementById('clientType')?.addEventListener('change', toggleCompanyName);
     document.getElementById('lang10')?.addEventListener('change', toggleOtherLanguages);
     
-    // Listener para el formulario de edición de perfil (Necesario en profile.html y index.html)
+    // Listener para el formulario de edición de perfil
     document.getElementById('editProfileForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -59,7 +52,6 @@ function setupEventListeners() {
         }
     });
 
-    // Los listeners de pestañas se manejan ahora en profile.html (Script al final del body)
 }
 
 // Cargar talentos
@@ -68,7 +60,7 @@ async function loadTalents() {
         const snapshot = await db.collection('talents').get();
         const talentsContainer = document.getElementById('talentsContainer');
         
-        if (!talentsContainer) return; // Si no estamos en index.html, salir
+        if (!talentsContainer) return; 
         
         if (snapshot.empty) {
             talentsContainer.innerHTML = '<p>No hay talentos registrados aún.</p>';
@@ -111,7 +103,7 @@ function displayTalentCard(talent, talentId) {
                             Tu navegador no soporta audio.
                         </audio>
                         <div style="font-size: 12px; color: #666; margin-top: 5px;">
-                            ${Math.round(demo.duration || 0)} segundos • ${demo.size ? (demo.size / 1024 / 1024).toFixed(1) + ' MB' : 'Tamaño no disponible'}
+                            ${demo.duration ? Math.round(demo.duration) + ' segundos' : ''} • ${demo.size ? (demo.size / 1024 / 1024).toFixed(1) + ' MB' : 'Tamaño no disponible'}
                         </div>
                     </div>
                 `).join('')}
@@ -217,13 +209,6 @@ function displayJobCard(job, jobId) {
 }
 
 // Funciones auxiliares
-function showMessage(element, message, type) {
-    const el = typeof element === 'string' ? document.getElementById(element) : element;
-    if (el) {
-        el.innerHTML = `<div class="${type}">${message}</div>`;
-    }
-}
-
 function closeAllModals() {
     document.querySelectorAll('.modal').forEach(modal => {
         modal.style.display = 'none';
@@ -244,27 +229,12 @@ function toggleOtherLanguages() {
     }
 }
 
-function getSelectedLanguages() {
-    const languages = [];
-    for (let i = 1; i <= 10; i++) {
-        const checkbox = document.getElementById('lang' + i);
-        if (checkbox && checkbox.checked) {
-            languages.push(checkbox.value === 'otros' ? document.getElementById('otherLanguages').value : checkbox.value);
-        }
-    }
-    // Filtramos vacíos por si el campo 'otros' estaba vacío
-    return languages.filter(lang => lang);
-}
-
 window.viewTalentProfile = function(talentId) {
-    showTalentDetails(talentId);
+    alert(`Ver perfil completo del talento ${talentId}. Funcionalidad pendiente.`);
 };
-
-// ... (El resto de funciones auxiliares como showTalentDetails, addToFavorites, applyToJob, updateUIAfterLogin, updateUIAfterLogout, loginUser, registerClient) 
-// Se asume que las funciones de autenticación (auth.js) y perfil (profile.js) están en sus respectivos archivos, 
-// a excepción de las que necesitan ser sobreescritas en el flujo principal (como loadUserProfile si estuviera aquí).
-
-// En este setup, `auth.js` contendrá checkAuthState, registerTalent, registerClient, loginUser, logoutUser.
-// `profile.js` contendrá loadUserProfile, displayUserProfile, editProfile, updateTalentProfile, updateClientProfile, etc.
-
-// Por simplicidad y evitar duplicidad de código en el flujo principal, se asume que las funciones de autenticación y perfil están en sus propios archivos.
+window.addToFavorites = function(talentId) {
+    alert(`Añadir talento ${talentId} a favoritos. Funcionalidad pendiente.`);
+};
+window.applyToJob = function(jobId) {
+    alert(`Postular al trabajo ${jobId}. Funcionalidad pendiente.`);
+};
