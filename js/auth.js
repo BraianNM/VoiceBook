@@ -1,5 +1,4 @@
 // Funciones de Autenticación
-// (Asegúrate de que tus variables globales 'currentUser', 'db', 'auth' están definidas en firebase-config.js)
 
 // Verificar estado de autenticación
 function checkAuthState() {
@@ -7,43 +6,13 @@ function checkAuthState() {
         if (user) {
             currentUser = user;
             updateUIAfterLogin();
-            
-            // Si estamos en la página de perfil, cargamos el perfil
-            if (window.location.pathname.endsWith('profile.html')) {
-                loadUserProfile(user.uid);
-            }
+            // En profile.html, loadUserProfile se llama en el script final
+            // En index.html, solo se actualiza la UI
         } else {
             currentUser = null;
             updateUIAfterLogout();
-            
-            // Si no hay usuario y estamos en profile.html, redirigir a index.html
-            if (window.location.pathname.endsWith('profile.html')) {
-                 window.location.href = 'index.html';
-            }
         }
     });
-}
-
-// Función auxiliar para obtener idiomas seleccionados (se asume que existe)
-function getSelectedLanguages(formId) {
-    const checkboxes = document.querySelectorAll(`#${formId} input[name="lang"]:checked`);
-    const languages = [];
-    let otherLangInput = null;
-
-    for (const checkbox of checkboxes) {
-        if (checkbox.value === 'otro') {
-            otherLangInput = document.querySelector(`#${formId} input[placeholder="Otros idiomas, separados por coma"]`);
-            if (otherLangInput && otherLangInput.value) {
-                // Añadir los idiomas separados por coma
-                otherLangInput.value.split(',').map(lang => lang.trim()).forEach(lang => {
-                    if (lang) languages.push(lang);
-                });
-            }
-        } else {
-            languages.push(checkbox.value);
-        }
-    }
-    return languages;
 }
 
 // ========== CLOUDINARY PARA VOICEBOOK - VERSIÓN CORREGIDA ==========
@@ -79,102 +48,91 @@ async function uploadToCloudinary(file) {
                 resource_type: data.resource_type
             };
         } else {
-            console.error('❌ Error de Cloudinary:', data);
-            throw new Error(data.error?.message || 'Error subiendo archivo a Cloudinary');
+            throw new Error(`Error en la respuesta de Cloudinary: ${data.error ? data.error.message : 'Desconocido'}`);
         }
+        
     } catch (error) {
-        console.error('❌ Error en uploadToCloudinary:', error);
-        throw new Error('Error de conexión con Cloudinary: ' + error.message);
+        console.error('❌ Error al subir a Cloudinary:', error);
+        throw new Error('Fallo la subida del demo de audio.');
     }
 }
 
-// Subir múltiples archivos de audio - FUNCIÓN MEJORADA
-async function uploadAudioFiles(files) {
-    const uploadedFiles = [];
-    
-    for (const file of files) {
-        if (!file.type.startsWith('audio/')) {
-            console.warn(`❌ ${file.name} no es un archivo de audio válido`);
-            continue;
-        }
-        
-        if (file.size > 10 * 1024 * 1024) {
-            console.warn(`❌ ${file.name} es muy grande (máximo 10MB)`);
-            continue;
-        }
-        
-        try {
-            console.log(`🎵 Subiendo demo: ${file.name}...`);
-            const result = await uploadToCloudinary(file);
-            
-            uploadedFiles.push({
-                name: file.name,
-                url: result.url,
-                duration: result.duration,
-                format: result.format,
-                size: file.size,
-                publicId: result.publicId
-            });
-            console.log(`✅ Demo subido: ${file.name}`);
-        } catch (error) {
-            console.error(`❌ Error subiendo ${file.name}:`, error);
-        }
-    }
-    return uploadedFiles;
-}
-
-// Registrar talento
+// Registrar talento (MODIFICADO para manejar 2 demos de 10MB)
 async function registerTalent(e) {
     e.preventDefault();
     const messageDiv = document.getElementById('talentFormMessage');
+    const demoFiles = document.getElementById('talentDemos').files;
+    const MAX_FILES = 2;
+    const MAX_SIZE_MB = 10;
+    const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+    
     try {
-        const email = document.getElementById('talentEmail').value;
-        const password = document.getElementById('talentPassword').value;
-        showMessage(messageDiv, 'Creando cuenta...', 'success');
-        
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const userId = userCredential.user.uid;
-        
-        // Subir demos
-        const audioFiles = document.getElementById('audioDemos').files;
-        let demos = [];
-        if (audioFiles.length > 0) {
-            showMessage(messageDiv, 'Subiendo demos de audio (puede tardar)...', 'warning');
-            demos = await uploadAudioFiles(audioFiles);
+        // 1. VALIDACIÓN DE ARCHIVOS
+        if (demoFiles.length > MAX_FILES) {
+            showMessage(messageDiv, `❌ Solo puedes subir un máximo de ${MAX_FILES} demos.`, 'error');
+            return;
         }
         
-        // Obtener idiomas
-        const languages = getSelectedLanguages('talentForm');
+        for (const file of demoFiles) {
+            if (file.size > MAX_SIZE_BYTES) {
+                showMessage(messageDiv, `❌ El archivo "${file.name}" supera el límite de ${MAX_SIZE_MB}MB.`, 'error');
+                return;
+            }
+        }
         
-        // Crear documento en Firestore
-        await db.collection('talents').doc(userId).set({
+        const email = document.getElementById('talentEmail').value;
+        const password = document.getElementById('talentPassword').value;
+        
+        showMessage(messageDiv, 'Creando cuenta y subiendo demos (esto puede tardar)...', 'success');
+        
+        // 2. Crear usuario
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+        
+        // 3. Subir demos
+        const demos = [];
+        for (const file of demoFiles) {
+            const demoData = await uploadToCloudinary(file);
+            demos.push({
+                url: demoData.url,
+                publicId: demoData.publicId,
+                name: file.name,
+                duration: demoData.duration,
+                size: file.size
+            });
+        }
+        
+        // 4. Guardar perfil con demos
+        const talentData = {
             name: document.getElementById('talentName').value,
             email: email,
-            gender: document.getElementById('talentGender').value,
-            nationality: document.getElementById('talentNationality').value,
-            languages: languages,
-            realAge: document.getElementById('talentRealAge').value,
-            ageRange: document.getElementById('talentAgeRange').value,
-            homeStudio: document.getElementById('talentHomeStudio').value,
             phone: document.getElementById('talentPhone').value,
-            description: document.getElementById('talentDescription').value,
-            demos: demos,
+            gender: document.getElementById('talentGender').value,
             country: document.getElementById('talentCountry').value,
             state: document.getElementById('talentState').value,
             city: document.getElementById('talentCity').value,
+            description: document.getElementById('talentDescription').value,
+            languages: getSelectedLanguages(),
+            homeStudio: document.getElementById('talentHomeStudio').value,
+            ageRange: document.getElementById('talentAgeRange').value,
+            nationality: document.getElementById('talentNationality').value,
+            realAge: document.getElementById('talentRealAge').value ? parseInt(document.getElementById('talentRealAge').value) : null,
+            demos: demos, // Guardar los demos subidos
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        };
         
-        showMessage(messageDiv, '✅ Registro de Talento exitoso. Redirigiendo...', 'success');
-        closeAllModals();
+        await db.collection('talents').doc(user.uid).set(talentData);
         
-        // Redirigir a la nueva página de perfil después del registro
+        showMessage(messageDiv, '🎉 ¡Registro y subida exitosa! Ya puedes iniciar sesión.', 'success');
+        
         setTimeout(() => {
-            window.location.href = 'profile.html';
-        }, 1500);
-
+            closeAllModals();
+            document.getElementById('talentForm').reset();
+            loadTalents();
+        }, 3000);
+        
     } catch (error) {
-        console.error('Error en registro de talento:', error);
+        console.error('Error en registro/subida:', error);
         showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
 }
@@ -183,174 +141,90 @@ async function registerTalent(e) {
 async function registerClient(e) {
     e.preventDefault();
     const messageDiv = document.getElementById('clientFormMessage');
+    
     try {
         const email = document.getElementById('clientEmail').value;
         const password = document.getElementById('clientPassword').value;
-        const clientType = document.getElementById('clientType').value;
-        
-        showMessage(messageDiv, 'Creando cuenta...', 'success');
         
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const userId = userCredential.user.uid;
+        const user = userCredential.user;
         
         const clientData = {
             name: document.getElementById('clientName').value,
             email: email,
             phone: document.getElementById('clientPhone').value,
-            type: clientType,
+            type: document.getElementById('clientType').value,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        if (clientType === 'empresa') {
-            clientData.companyName = document.getElementById('clientCompanyName').value;
+        if (clientData.type === 'empresa') {
+            clientData.companyName = document.getElementById('companyName').value;
         }
         
-        await db.collection('clients').doc(userId).set(clientData);
+        await db.collection('clients').doc(user.uid).set(clientData);
         
-        showMessage(messageDiv, '✅ Registro de Cliente exitoso. Redirigiendo...', 'success');
-        closeAllModals();
-        
-        // Redirigir a la nueva página de perfil después del registro
+        showMessage(messageDiv, '¡Registro exitoso!', 'success');
         setTimeout(() => {
-            window.location.href = 'profile.html';
-        }, 1500);
-
+            closeAllModals();
+            document.getElementById('clientForm').reset();
+        }, 2000);
+        
     } catch (error) {
-        console.error('Error en registro de cliente:', error);
-        showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
+        showMessage(messageDiv, 'Error: ' + error.message, 'error');
     }
 }
 
-// Iniciar Sesión
+// Iniciar sesión
 async function loginUser(e) {
     e.preventDefault();
     const messageDiv = document.getElementById('loginFormMessage');
+    
     try {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
         
-        showMessage(messageDiv, 'Iniciando sesión...', 'success');
-        
         await auth.signInWithEmailAndPassword(email, password);
+        showMessage(messageDiv, '¡Inicio de sesión exitoso!', 'success');
         
-        showMessage(messageDiv, '✅ Sesión iniciada. Redirigiendo...', 'success');
-        closeAllModals();
-        
-        // Redirigir a la nueva página de perfil después de iniciar sesión
+        // Redirección después del login
         setTimeout(() => {
+            closeAllModals();
             window.location.href = 'profile.html';
-        }, 1500);
+        }, 1000);
         
     } catch (error) {
-        console.error('Error en login:', error);
-        showMessage(messageDiv, '❌ Error: Credenciales incorrectas o usuario no encontrado.', 'error');
+        showMessage(messageDiv, 'Error: ' + error.message, 'error');
     }
 }
 
-// Cerrar Sesión
-window.logoutUser = async function() {
+// Cerrar sesión
+async function logoutUser() {
     try {
         await auth.signOut();
-        window.location.href = 'index.html'; // Redirigir a inicio tras cerrar sesión
+        // Redirección al index.html al cerrar sesión
+        window.location.href = 'index.html'; 
     } catch (error) {
         console.error('Error al cerrar sesión:', error);
     }
-};
+}
 
-// Actualizar UI tras Login
+// Actualizar UI después del login
 function updateUIAfterLogin() {
-    document.getElementById('authButtons').style.display = 'none';
-    document.getElementById('userMenu').style.display = 'flex';
-    document.getElementById('dashboardLink').style.display = 'block';
+    document.getElementById('authButtons')?.style.display = 'none';
+    document.getElementById('userMenu')?.style.display = 'block';
     document.getElementById('userName').textContent = currentUser.email;
+    document.getElementById('dashboardLink')?.style.display = 'block';
 }
 
-// Actualizar UI tras Logout
+// Actualizar UI después del logout
 function updateUIAfterLogout() {
-    document.getElementById('authButtons').style.display = 'flex';
-    document.getElementById('userMenu').style.display = 'none';
-    document.getElementById('dashboardLink').style.display = 'none';
+    document.getElementById('authButtons')?.style.display = 'flex';
+    document.getElementById('userMenu')?.style.display = 'none';
+    document.getElementById('dashboardLink')?.style.display = 'none';
 }
 
-// Funciones para actualizar perfil (usadas por openEditProfileModal y el form de edición)
-
-// Actualizar perfil de talento
-window.updateTalentProfile = async function(e) {
-    e.preventDefault();
-    const messageDiv = document.getElementById('editProfileMessage');
-    
-    try {
-        const userId = currentUser.uid;
-        const updateData = {
-            name: document.getElementById('editName').value,
-            phone: document.getElementById('editPhone').value,
-            description: document.getElementById('editDescription').value,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            // NOTA: La lógica para actualizar idiomas, ubicación y demos es más compleja y se omite aquí por brevedad,
-            // pero el esqueleto de la función ya existe y puede ser completado.
-        };
-        
-        if (!updateData.name) {
-            showMessage(messageDiv, '❌ Nombre es obligatorio', 'error');
-            return;
-        }
-        
-        showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
-        
-        await db.collection('talents').doc(userId).update(updateData);
-        
-        showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
-        
-        setTimeout(() => {
-            closeEditProfileModal();
-            loadUserProfile(userId); // Recargar el perfil para ver los cambios
-        }, 2000);
-        
-    } catch (error) {
-        console.error('Error actualizando perfil:', error);
-        showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
-    }
-};
-
-// Actualizar perfil de cliente
-window.updateClientProfile = async function(e) {
-    e.preventDefault();
-    const messageDiv = document.getElementById('editProfileMessage');
-    
-    try {
-        const userId = currentUser.uid;
-        const updateData = {
-            name: document.getElementById('editName').value,
-            phone: document.getElementById('editPhone').value,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
-        const companyNameInput = document.getElementById('editCompanyName');
-        if (companyNameInput) {
-            updateData.companyName = companyNameInput.value;
-        }
-        
-        if (!updateData.name) {
-            showMessage(messageDiv, '❌ Nombre es obligatorio', 'error');
-            return;
-        }
-        
-        showMessage(messageDiv, '🔄 Guardando cambios...', 'success');
-        
-        await db.collection('clients').doc(userId).update(updateData);
-        
-        showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
-        
-        setTimeout(() => {
-            closeEditProfileModal();
-            loadUserProfile(userId); // Recargar el perfil para ver los cambios
-        }, 2000);
-        
-    } catch (error) {
-        console.error('❌ Error actualizando perfil:', error);
-        showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
-    }
-};
-
-// Hacer la función global para que se pueda llamar desde profile.js
-window.loadUserProfile = loadUserProfile;
+// Exportar funciones para uso global
+window.loginUser = loginUser;
+window.registerTalent = registerTalent;
+window.registerClient = registerClient;
+window.logoutUser = logoutUser;
