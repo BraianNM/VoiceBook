@@ -1,4 +1,4 @@
-// Funciones principales de la aplicación (CORREGIDAS)
+// Funciones principales de la aplicación (CORREGIDAS Y MEJORADAS)
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
@@ -10,13 +10,33 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!window.location.href.includes('profile.html')) {
         loadTalents();
         loadJobOffers();
-        // Cargar datos de ubicación para los modales
+        // Cargar datos de ubicación para los modales y filtros
         if (typeof window.loadLocationData === 'function') { 
             window.loadLocationData('countrySelectTalent', 'stateSelectTalent', 'citySelectTalent');
             window.loadLocationData('countrySelectClient', 'stateSelectClient', 'citySelectClient');
+            loadCountriesFilter(); // Cargar países en el filtro
         }
     }
 });
+
+// Cargar países en el filtro (FUNCIÓN NUEVA)
+function loadCountriesFilter() {
+    const filterCountry = document.getElementById('filterCountry');
+    if (!filterCountry) return;
+
+    // Limpiar opciones existentes
+    filterCountry.innerHTML = '<option value="">Cualquiera</option>';
+    
+    // Agregar países desde locationData
+    if (typeof locationData !== 'undefined') {
+        for (const countryCode in locationData) {
+            const option = document.createElement('option');
+            option.value = countryCode;
+            option.textContent = locationData[countryCode].name;
+            filterCountry.appendChild(option);
+        }
+    }
+}
 
 // Configurar event listeners 
 function setupEventListeners() {
@@ -78,7 +98,7 @@ function setupEventListeners() {
     console.log('Event listeners configurados correctamente');
 }
 
-// Cargar talentos (función corregida)
+// Cargar talentos (función corregida con filtros mejorados)
 async function loadTalents() {
     try {
         const talentsContainer = document.getElementById('talentsContainer');
@@ -118,7 +138,7 @@ async function loadTalents() {
                 talentsHtml += `
                     <div class="talent-card">
                         <div class="talent-card-header">
-                            <img src="${profilePicture}" alt="${talent.name}" class="talent-profile-pic">
+                            <img src="${profilePicture}" alt="${talent.name}" class="talent-profile-pic" onerror="this.src='img/default-avatar.png'">
                             <h3>${talent.name || 'Talento Anónimo'}</h3>
                         </div>
                         <p><strong>País:</strong> ${countryName || 'N/A'}</p>
@@ -219,7 +239,7 @@ window.viewTalentProfile = async function(talentId) {
 
         profileContent.innerHTML = `
             <div class="profile-view-header">
-                <img src="${profilePicture}" alt="${talent.name}" class="profile-view-pic">
+                <img src="${profilePicture}" alt="${talent.name}" class="profile-view-pic" onerror="this.src='img/default-avatar.png'">
                 <div class="profile-view-info">
                     <h2>${talent.name || 'Talento Anónimo'}</h2>
                     <p class="profile-location"><i class="fas fa-map-marker-alt"></i> ${locationInfo}</p>
