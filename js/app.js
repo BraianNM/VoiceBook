@@ -9,14 +9,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!window.location.href.includes('profile.html')) {
         loadTalents();
         loadJobOffers();
-        window.loadLocationData(); // Cargar la data de ubicación para el modal de registro
+        // Asegúrate que locations.js está cargado y define window.loadLocationData
+        if (typeof window.loadLocationData === 'function') { 
+            window.loadLocationData(); // Cargar la data de ubicación para el modal de registro
+        }
     }
     
     // CORRECCIÓN: Agregar listener para el select de edición de cliente
     document.getElementById('editClientType')?.addEventListener('change', toggleCompanyNameEdit);
 });
 
-// Configurar event listeners (CORRECCIÓN CLAVE AQUÍ)
+// Configurar event listeners 
 function setupEventListeners() {
     // Listeners de Modales y Navegación
     document.getElementById('heroTalentBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
@@ -51,6 +54,7 @@ function setupEventListeners() {
         const isTalent = document.getElementById('editProfileUserType')?.value === 'talent';
         
         if (isTalent) {
+            // Se asume que updateTalentProfile es global y definido en profile.js
             if (typeof window.updateTalentProfile === 'function') {
                 window.updateTalentProfile(e);
             } else {
@@ -58,6 +62,7 @@ function setupEventListeners() {
                  window.showMessage('editProfileMessage', '❌ Funcionalidad de edición de talento no disponible.', 'error');
             }
         } else {
+            // Se asume que updateClientProfile es global y definido en profile.js
             if (typeof window.updateClientProfile === 'function') {
                 window.updateClientProfile(e);
             } else {
@@ -80,7 +85,7 @@ function toggleCompanyNameEdit() {
     }
 }
 
-// Cargar talentos
+// Cargar talentos (función corregida para usar el botón de ver perfil)
 async function loadTalents() {
     try {
         const talentsContainer = document.getElementById('talentsContainer');
@@ -88,7 +93,7 @@ async function loadTalents() {
 
         talentsContainer.innerHTML = '<div class="loading">Cargando talentos...</div>';
 
-        // Recoger filtros
+        // Recoger filtros (omitiendo la lógica de filtrado compleja por brevedad, se mantiene el filtro de Firestore)
         const filterGender = document.getElementById('filterGender')?.value;
         const filterLanguage = document.getElementById('filterLanguage')?.value;
         const filterCountry = document.getElementById('filterCountry')?.value;
@@ -107,7 +112,6 @@ async function loadTalents() {
         if (filterCountry) {
             query = query.where('country', '==', filterCountry);
         }
-        // Nota: Filtrar por idioma o nombre debe hacerse en cliente después de la consulta
         
         const snapshot = await query.get();
         let talentsHtml = '';
@@ -209,15 +213,16 @@ window.viewTalentProfile = async function(talentId) {
             `;
             authPrompt.style.display = 'none';
         } else {
+            // Mostrar la ventana de restricción y ocultar el contenido de contacto en el modal de vista
             contactInfoHtml = '<div style="text-align:center; padding: 10px;">Información de contacto oculta.</div>';
-            authPrompt.style.display = 'block';
+            authPrompt.style.display = 'block'; 
         }
         
         // Renderizar el contenido
         profileContent.innerHTML = `
             <div class="profile-header">
-                <h2>${talent.name || 'Talento'}</h2>
-            </div>
+                <h2>Perfil de ${talent.name || 'Talento'}</h2>
+                </div>
             
             <h3>Datos Públicos</h3>
             <div class="info-grid">
@@ -249,7 +254,7 @@ window.closeViewProfileModal = function() {
     document.getElementById('viewTalentProfileModal').style.display = 'none';
 };
 
-// Funciones auxiliares para modales y otros (no modificadas, solo se muestra el fin del archivo por si lo necesitas)
+// Funciones auxiliares para modales y otros
 function closeAllModals() {
     document.querySelectorAll('.modal').forEach(modal => {
         modal.style.display = 'none';
@@ -272,9 +277,11 @@ function toggleOtherLanguages() {
 }
 
 window.addToFavorites = function(talentId) {
+    // Aquí iría la lógica para añadir a favoritos
     alert(`Añadir talento ${talentId} a favoritos. Funcionalidad pendiente.`);
 };
 window.applyToJob = function(jobId) {
+    // Aquí iría la lógica para postularse
     alert(`Postular al trabajo ${jobId}. Funcionalidad pendiente.`);
 };
 
@@ -287,7 +294,7 @@ function showMessage(element, message, type) {
 }
 window.showMessage = showMessage;
 
-// Cargar ofertas de trabajo (función completa)
+// Cargar ofertas de trabajo
 async function loadJobOffers() {
     try {
         const offersContainer = document.getElementById('jobOffersContainer');
@@ -295,7 +302,6 @@ async function loadJobOffers() {
 
         offersContainer.innerHTML = '<div class="loading">Cargando ofertas...</div>';
 
-        // Ordenar por fecha de creación descendente
         const snapshot = await db.collection('job_offers').orderBy('createdAt', 'desc').get(); 
         let offersHtml = '';
         
@@ -306,7 +312,7 @@ async function loadJobOffers() {
                 const job = doc.data();
                 const jobId = doc.id;
                 const clientName = job.clientName || 'Cliente Anónimo';
-                const location = job.country ? `${job.city}, ${getCountryName(job.country)}` : 'Remoto';
+                const location = job.country && typeof getCountryName !== 'undefined' ? `${getCountryName(job.country)}` : 'Remoto/N/A';
                 const jobType = job.jobType || 'Locución';
                 
                 offersHtml += `
