@@ -268,6 +268,11 @@ h2 {
     animation: fadeIn 0.3s;
 }
 
+/* Ajuste para el modal de edición de perfil (más grande) */
+#editProfileModal .modal-content {
+    max-width: 700px; 
+}
+
 .close-modal {
     color: #aaa;
     float: right;
@@ -355,7 +360,7 @@ h2 {
 /* ESTILOS DE PERFIL (profile.html y tarjetas) */
 /* ============================================== */
 
-/* Para las tarjetas de talento en index.html */
+/* Fotos de Perfil */
 .profile-picture-sm {
     width: 50px;
     height: 50px;
@@ -365,18 +370,6 @@ h2 {
     border: 2px solid var(--secondary);
 }
 
-
-/* Para el dashboard en profile.html */
-.profile-header-container {
-    display: flex;
-    align-items: center;
-    gap: 30px;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #ddd;
-}
-
-/* CORRECCIÓN: Tamaño de la foto grande */
 .profile-picture-lg {
     width: 120px;
     height: 120px;
@@ -386,22 +379,23 @@ h2 {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-.profile-picture-placeholder {
+/* Dashboard Layout */
+.profile-header-container, .profile-edit-header-container {
     display: flex;
-    justify-content: center;
     align-items: center;
-    background-color: #f0f0f0;
-    color: #ccc;
-    font-size: 60px;
+    gap: 30px;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #ddd;
 }
 
 .profile-header-text {
     flex-grow: 1;
+    text-align: left;
 }
-
 .profile-header-text h2 {
-    margin-bottom: 10px;
-    color: var(--primary);
+    margin-bottom: 0px;
+    text-align: left;
 }
 
 .description-section, .demos-section {
@@ -422,6 +416,7 @@ h2 {
     color: var(--primary);
     display: block;
     margin-bottom: 3px;
+    font-size: 14px;
 }
 
 .info-item span {
@@ -429,11 +424,13 @@ h2 {
     font-size: 16px;
 }
 
+/* Pestañas del Dashboard */
 .dashboard-tabs {
     display: flex;
     border-bottom: 1px solid #ddd;
     margin-bottom: 20px;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 .dashboard-tabs .tab {
@@ -443,6 +440,7 @@ h2 {
     border-bottom: none;
     transition: background-color 0.3s;
     font-weight: 600;
+    color: #666;
 }
 
 .dashboard-tabs .tab:hover {
@@ -459,6 +457,10 @@ h2 {
 .tab-content {
     display: none;
     animation: fadeIn 0.5s;
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .tab-content.active {
@@ -485,18 +487,36 @@ h2 {
 .demo-item audio {
     flex-grow: 1;
     margin-right: 20px;
+    width: 60%; 
+}
+
+/* Edición de perfil */
+.form-edit-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-    .header-content {
+    .header-content, .header-content-custom {
         flex-direction: column;
         gap: 15px;
     }
     
-    .profile-header-container {
+    .profile-header-container, .profile-edit-header-container {
         flex-direction: column;
         align-items: flex-start;
+        gap: 15px;
+    }
+    .profile-header-text h2 {
+        text-align: center;
     }
     
     nav ul {
@@ -531,7 +551,7 @@ h2 {
         gap: 8px;
     }
     
-    .info-grid {
+    .info-grid, .form-edit-grid {
         grid-template-columns: 1fr;
     }
     
@@ -548,17 +568,21 @@ h2 {
     
     .dashboard-tabs {
         flex-direction: column;
+        align-items: stretch;
     }
     
     .dashboard-tabs .tab {
         text-align: left;
         border-bottom: 1px solid #e9ecef;
         border-left: 3px solid transparent;
+        border-right: 1px solid transparent;
+        margin: 0;
     }
     
     .dashboard-tabs .tab.active {
         border-left-color: var(--secondary);
         border-bottom-color: #e9ecef; 
         background-color: #f8f9fa;
+        border-right: 1px solid transparent;
     }
 }
