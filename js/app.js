@@ -1,7 +1,7 @@
 // Funciones principales de la aplicación
 
 // =========================================================
-// CONSTANTES Y FUNCIONES DE FILTRO (NUEVO)
+// CONSTANTES Y FUNCIONES DE FILTRO
 // =========================================================
 const VOICE_TYPES = ['Masculina', 'Femenina', 'Infantil'];
 const AGE_RANGES = ['Niño/Adolescente', 'Joven Adulto', 'Adulto', 'Mayor'];
@@ -39,21 +39,19 @@ function setupFilterControls() {
     // 3. Listener de Limpiar Filtros
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
-            // Resetear valores
             if (languageSelect) languageSelect.value = '';
             if (document.getElementById('filterVoiceType')) document.getElementById('filterVoiceType').value = '';
             if (document.getElementById('filterAgeRange')) document.getElementById('filterAgeRange').value = '';
             if (document.getElementById('filterKeyword')) document.getElementById('filterKeyword').value = '';
             
-            // Recargar todos los talentos
-            loadTalents({});
+            loadTalents({}); // Recargar todos los talentos
         });
     }
 }
 
 
 // =========================================================
-// FUNCIONES DE CARGA Y RENDERIZADO (MODIFICADAS)
+// FUNCIONES DE CARGA Y RENDERIZADO
 // =========================================================
 
 // Cargar y filtrar Talentos
@@ -66,30 +64,35 @@ async function loadTalents(filters = {}) {
     try {
         let query = db.collection('talents');
 
-        // Aplicar filtros de FireStore (solo si es necesario para índices)
-        // Nota: FireStore solo permite un array-contains y una 'where' en la misma consulta sin índices compuestos.
+        // FireStore Query: Solo podemos usar UNA where clause de array-contains y UNA de igualdad.
+        // Optamos por usar 'language' y 'voiceType' para la query de FireStore
         if (filters.language && filters.language !== '') {
             query = query.where('languages', 'array-contains', filters.language);
         }
-        if (filters.voiceType && filters.voiceType !== '') {
-            query = query.where('voiceType', '==', filters.voiceType);
-        }
-        if (filters.ageRange && filters.ageRange !== '') {
-            query = query.where('ageRange', '==', filters.ageRange);
-        }
+        
+        // Si usamos voiceType también como query, FireStore requerirá un índice compuesto.
+        // Si no se usa, el filtrado se hace en el cliente. Usaremos solo lenguaje para la query,
+        // y el resto para filtrado en el cliente para evitar problemas de índices complejos.
         
         const snapshot = await query.get();
         let talents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // Filtro de palabras clave en el cliente (para Nombre, Acento o Biografía)
-        if (filters.keyword && filters.keyword !== '') {
-            const keyword = filters.keyword.toLowerCase();
-            talents = talents.filter(talent => 
-                (talent.name && talent.name.toLowerCase().includes(keyword)) ||
-                (talent.bio && talent.bio.toLowerCase().includes(keyword)) ||
-                (Array.isArray(talent.accents) && talent.accents.some(accent => accent.toLowerCase().includes(keyword)))
-            );
-        }
+        // Filtrado en el cliente para voiceType, ageRange y keyword (más flexible)
+        talents = talents.filter(talent => {
+            const matchesVoiceType = !filters.voiceType || filters.voiceType === '' || talent.voiceType === filters.voiceType;
+            const matchesAgeRange = !filters.ageRange || filters.ageRange === '' || talent.ageRange === filters.ageRange;
+            
+            let matchesKeyword = true;
+            if (filters.keyword && filters.keyword !== '') {
+                const keyword = filters.keyword.toLowerCase();
+                matchesKeyword = (talent.name && talent.name.toLowerCase().includes(keyword)) ||
+                                 (talent.bio && talent.bio.toLowerCase().includes(keyword)) ||
+                                 (Array.isArray(talent.accents) && talent.accents.some(accent => accent.toLowerCase().includes(keyword)));
+            }
+
+            return matchesVoiceType && matchesAgeRange && matchesKeyword;
+        });
+
 
         if (talents.length === 0) {
             talentList.innerHTML = '<p class="info-box">No se encontraron talentos que coincidan con los filtros.</p>';
@@ -100,7 +103,7 @@ async function loadTalents(filters = {}) {
 
     } catch (error) {
         console.error('Error cargando talentos con filtros:', error);
-        talentList.innerHTML = '<p class="error-box">Error al cargar los talentos. Revisa la consola para más detalles (posiblemente falta un índice de FireStore).</p>';
+        talentList.innerHTML = '<p class="error-box">Error al cargar los talentos. Revisa la consola para más detalles.</p>';
     }
 }
 window.loadTalents = loadTalents;
@@ -151,7 +154,7 @@ async function loadJobOffers() {
                 <div class="job-card">
                     <h3>${job.title}</h3>
                     <p><strong>Presupuesto:</strong> ${job.budget || 'A negociar'}</p>
-                    <p><strong>Requisitos:</strong> ${job.requirements || 'N/A'}</p>
+                    <p><strong>Requisitos:</strong> ${job.requirements ? job.requirements.substring(0, 100) + '...' : 'N/A'}</p>
                     <button class="btn btn-primary btn-small" onclick="applyToJob('${job.id}')">Postular</button>
                 </div>
             `;
@@ -171,21 +174,21 @@ window.loadJobOffers = loadJobOffers;
 // FUNCIONES AUXILIARES Y EVENTOS
 // =========================================================
 
-// Inicialización
+// Inicialización: Asegura que la carga de talentos y filtros se hace solo en index.html
 document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     checkAuthState();
     
-    // CORRECCIÓN: Asegurar que la carga de talentos solo corra en index.html
+    // CORRECCIÓN: Ejecutar la lógica de carga solo en la página principal
     if (!window.location.href.includes('profile.html')) {
-        setupFilterControls(); // Configurar los controles de filtro (NUEVO)
-        loadTalents({}); // Cargar talentos inicialmente sin filtros
-        loadJobOffers();
-        loadLocationData(); // Cargar la data de ubicación para el modal de registro
+        setupFilterControls(); // 1. Configurar los controles de filtro
+        loadTalents({});      // 2. Cargar talentos (usando los filtros iniciales)
+        loadJobOffers();      // 3. Cargar ofertas
+        // loadLocationData() se asume que está en locations.js y se carga con el script
     }
 });
 
-// Configurar event listeners (CORREGIDO: Llamada más robusta a funciones de edición)
+// Configurar event listeners
 function setupEventListeners() {
     // Listeners de Modales y Navegación
     document.getElementById('heroTalentBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
@@ -199,7 +202,8 @@ function setupEventListeners() {
         window.location.href = 'profile.html';
     });
     
-    document.getElementById('logoutBtn')?.addEventListener('click', logoutUser);
+    // CORRECCIÓN: logoutUser y loginUser ya son globales desde auth.js
+    document.getElementById('logoutBtn')?.addEventListener('click', logoutUser); 
 
     document.querySelectorAll('.close-modal').forEach(button => {
         button.addEventListener('click', closeAllModals);
@@ -209,19 +213,13 @@ function setupEventListeners() {
     document.getElementById('talentForm')?.addEventListener('submit', registerTalent);
     document.getElementById('clientForm')?.addEventListener('submit', registerClient);
     document.getElementById('loginForm')?.addEventListener('submit', loginUser);
-    document.getElementById('jobForm')?.addEventListener('submit', postJobOffer); // Se asume que postJobOffer está en auth.js
+    document.getElementById('jobForm')?.addEventListener('submit', postJobOffer);
 
     // Listeners de Campos Dinámicos
     document.getElementById('clientType')?.addEventListener('change', toggleCompanyName);
-    document.getElementById('lang10')?.addEventListener('change', toggleOtherLanguages); // Asumiendo lang10 es el checkbox de 'otros'
+    document.getElementById('lang10')?.addEventListener('change', toggleOtherLanguages);
 }
 
-// Funciones para cerrar modales
-function closeAllModals() {
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.style.display = 'none';
-    });
-}
 
 function toggleCompanyName() {
     const companyNameGroup = document.getElementById('companyNameGroup');
@@ -237,25 +235,14 @@ function toggleOtherLanguages() {
     }
 }
 
-// Funciones globales (aún pendientes de implementar su lógica completa)
+
+// Funciones globales (stubs)
 window.viewTalentProfile = function(talentId) {
-    // En una aplicación real, esto redirigiría a la página del perfil del talento
     alert(`Ver perfil completo del talento ${talentId}. Funcionalidad pendiente.`);
 };
 window.addToFavorites = function(talentId) {
-    // La lógica de FireStore para añadir favoritos debe estar en profile.js o auth.js
     alert(`Añadir talento ${talentId} a favoritos. Funcionalidad pendiente.`);
 };
 window.applyToJob = function(jobId) {
-    // La lógica de postulación debe estar en auth.js o app.js
     alert(`Postular al trabajo ${jobId}. Funcionalidad pendiente.`);
 };
-
-// Se asume que showMessage ya está definido globalmente en auth.js
-function showMessage(element, message, type) {
-    const el = typeof element === 'string' ? document.getElementById(element) : element;
-    if (el) {
-        el.innerHTML = `<div class=\"${type}\">${message}</div>`;
-    }
-}
-window.showMessage = showMessage;
