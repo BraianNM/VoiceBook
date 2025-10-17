@@ -385,6 +385,7 @@ function setupClientEditForm(client) {
 
 // CORRECCIÓN CRÍTICA: Actualizar perfil de talento (FUNCIÓN COMPLETAMENTE FUNCIONAL)
 window.updateTalentProfile = async function(e) {
+    console.log('Iniciando actualización de perfil de talento...');
     e.preventDefault();
     const messageDiv = 'editProfileMessage';
     window.showMessage(messageDiv, '⌛ Actualizando perfil...', 'info');
@@ -532,6 +533,7 @@ window.updateTalentProfile = async function(e) {
 
 // CORRECCIÓN CRÍTICA: Actualizar perfil de cliente (FUNCIÓN COMPLETAMENTE FUNCIONAL)
 window.updateClientProfile = async function(e) {
+    console.log('Iniciando actualización de perfil de cliente...');
     e.preventDefault();
     const messageDiv = 'editProfileMessage';
     window.showMessage(messageDiv, '⌛ Actualizando perfil...', 'info');
@@ -721,9 +723,46 @@ function showUploadDemoModal() {
     alert('Para subir demos, ve a la sección "Editar Perfil" y utiliza el campo "Subir Demos".');
 }
 
+// CORRECCIÓN CRÍTICA: Configurar event listener del formulario GLOBALMENTE
+function setupEditProfileFormListener() {
+    console.log('Configurando event listener del formulario de edición...');
+    
+    const editProfileForm = document.getElementById('editProfileForm');
+    if (editProfileForm) {
+        // Remover event listener existente para evitar duplicados
+        editProfileForm.removeEventListener('submit', handleEditProfileSubmit);
+        
+        // Agregar nuevo event listener
+        editProfileForm.addEventListener('submit', handleEditProfileSubmit);
+        console.log('Event listener del formulario configurado correctamente');
+    } else {
+        console.error('No se encontró el formulario de edición');
+    }
+}
+
+// Función manejadora del evento submit
+function handleEditProfileSubmit(e) {
+    console.log('Formulario de edición enviado');
+    e.preventDefault();
+    
+    const userType = document.getElementById('editProfileUserType').value;
+    console.log('Tipo de usuario:', userType);
+    
+    if (userType === 'talent') {
+        console.log('Ejecutando updateTalentProfile...');
+        window.updateTalentProfile(e);
+    } else if (userType === 'client') {
+        console.log('Ejecutando updateClientProfile...');
+        window.updateClientProfile(e);
+    } else {
+        console.error('Tipo de usuario no válido:', userType);
+        window.showMessage('editProfileMessage', '❌ Error: Tipo de usuario no válido.', 'error');
+    }
+}
+
 // Inicialización del perfil cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Profile.js cargado');
+    console.log('Profile.js cargado - DOM completamente cargado');
     
     // Verificar autenticación
     auth.onAuthStateChanged(user => {
@@ -731,25 +770,65 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Usuario autenticado:', user.uid);
             currentUser = user;
             // El perfil se cargará cuando checkAuthState se ejecute
+            
+            // Configurar event listener del formulario después de que el usuario esté autenticado
+            setTimeout(() => {
+                setupEditProfileFormListener();
+            }, 1000);
         } else {
             console.log('Usuario no autenticado, redirigiendo...');
             window.location.href = 'index.html';
         }
     });
 
-    // Configurar event listeners para el formulario de edición
-    const editProfileForm = document.getElementById('editProfileForm');
-    if (editProfileForm) {
-        editProfileForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const userType = document.getElementById('editProfileUserType').value;
-            if (userType === 'talent') {
-                window.updateTalentProfile(e);
-            } else {
-                window.updateClientProfile(e);
-            }
-        });
-    }
+    // También configurar el event listener inmediatamente por si acaso
+    setTimeout(() => {
+        setupEditProfileFormListener();
+    }, 500);
 
     console.log('Profile.js inicializado correctamente');
 });
+
+// Configurar también cuando se cambia a la sección de edición
+window.toggleProfileSection = function(sectionId) {
+    console.log('Cambiando a sección:', sectionId);
+    
+    // Ocultar todas las secciones
+    document.querySelectorAll('.profile-section').forEach(section => {
+        section.classList.remove('active-section');
+    });
+    
+    // Mostrar la sección seleccionada
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.classList.add('active-section');
+    }
+    
+    // Actualizar botones activos
+    document.querySelectorAll('.profile-nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Marcar el botón correspondiente como activo
+    const activeButton = document.querySelector(`[onclick="toggleProfileSection('${sectionId}')"]`);
+    if (activeButton) {
+        activeButton.classList.add('active');
+    }
+    
+    // Si se cambia a la sección de edición, configurar el event listener
+    if (sectionId === 'editProfileSection') {
+        console.log('Sección de edición activada, configurando event listener...');
+        setTimeout(() => {
+            setupEditProfileFormListener();
+        }, 100);
+    }
+    
+    // Cargar datos específicos de la sección
+    if (sectionId === 'applicationsSection') {
+        loadTalentApplications();
+    } else if (sectionId === 'jobsSection') {
+        loadClientJobs();
+    } else if (sectionId === 'notificationsSection') {
+        loadUserNotifications();
+    }
+};
