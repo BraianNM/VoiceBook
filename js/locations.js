@@ -121,8 +121,14 @@ function populateCountrySelect(countrySelect, stateSelect, citySelect, selectedC
     });
 
     // Inicializar Estado y Ciudad
-    if (stateSelect) stateSelect.innerHTML = '<option value="">Seleccionar Provincia/Estado *</option>';
-    if (citySelect) citySelect.innerHTML = '<option value="">Seleccionar Ciudad *</option>';
+    if (stateSelect) {
+        stateSelect.innerHTML = '<option value="">Seleccionar Provincia/Estado *</option>';
+        stateSelect.disabled = !selectedCountryCode;
+    }
+    if (citySelect) {
+        citySelect.innerHTML = '<option value="">Seleccionar Ciudad *</option>';
+        citySelect.disabled = true;
+    }
 }
 
 /**
@@ -133,6 +139,7 @@ function populateStateSelect(stateSelect, citySelect, countryCode, selectedState
     
     stateSelect.innerHTML = '<option value="">Seleccionar Provincia/Estado *</option>';
     if (citySelect) citySelect.innerHTML = '<option value="">Seleccionar Ciudad *</option>';
+    if (citySelect) citySelect.disabled = true;
 
     if (countryCode && locationData[countryCode]) {
         const states = locationData[countryCode].states;
@@ -143,6 +150,9 @@ function populateStateSelect(stateSelect, citySelect, countryCode, selectedState
             if (code === selectedStateCode) option.selected = true;
             stateSelect.appendChild(option);
         }
+        stateSelect.disabled = false;
+    } else {
+        stateSelect.disabled = true;
     }
 }
 
@@ -164,6 +174,9 @@ function populateCitySelect(citySelect, countryCode, stateCode, selectedCityName
             if (cityName === selectedCityName) option.selected = true;
             citySelect.appendChild(option);
         });
+        citySelect.disabled = false;
+    } else {
+        citySelect.disabled = true;
     }
 }
 
