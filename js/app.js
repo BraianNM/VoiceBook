@@ -1,10 +1,18 @@
-// Funciones principales de la aplicación (CORREGIDAS Y MEJORADAS)
+// app.js - Funciones principales de la aplicación (CORREGIDAS Y MEJORADAS)
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
     console.log('App.js inicializando...');
+    
+    // Inicializar autenticación UNA SOLA VEZ
+    if (typeof initializeAuth === 'function') {
+        initializeAuth();
+    } else {
+        console.log('⚠️ initializeAuth no disponible, usando checkAuthState');
+        window.checkAuthState();
+    }
+    
     setupEventListeners();
-    window.checkAuthState();
     
     // CORRECCIÓN: Asegurar que la carga de talentos solo corra en index.html
     if (!window.location.href.includes('profile.html')) {
