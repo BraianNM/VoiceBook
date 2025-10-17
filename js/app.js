@@ -13,14 +13,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Configurar event listeners (MODIFICADO para la redirección)
+// Configurar event listeners (CORREGIDO: Llamada más robusta a funciones de edición)
 function setupEventListeners() {
+    // Listeners de Modales y Navegación
     document.getElementById('heroTalentBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
     document.getElementById('heroClientBtn')?.addEventListener('click', () => document.getElementById('clientModal').style.display = 'flex');
     document.getElementById('registerBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
     document.getElementById('loginBtn')?.addEventListener('click', () => document.getElementById('loginModal').style.display = 'flex');
     
-    // CAMBIO: El listener ahora solo redirige al nuevo profile.html
+    // Redirección al Dashboard/Profile
     document.getElementById('dashboardLink')?.addEventListener('click', (e) => {
         e.preventDefault();
         window.location.href = 'profile.html';
@@ -32,6 +33,7 @@ function setupEventListeners() {
         button.addEventListener('click', closeAllModals);
     });
 
+    // Listeners de Formularios de Autenticación/Registro
     document.getElementById('talentForm')?.addEventListener('submit', registerTalent);
     document.getElementById('clientForm')?.addEventListener('submit', registerClient);
     document.getElementById('loginForm')?.addEventListener('submit', loginUser);
@@ -39,19 +41,27 @@ function setupEventListeners() {
     document.getElementById('clientType')?.addEventListener('change', toggleCompanyName);
     document.getElementById('lang10')?.addEventListener('change', toggleOtherLanguages);
     
-    // Listener para el formulario de edición de perfil
+    // Listener para el formulario de edición de perfil (CORRECCIÓN CLAVE AQUÍ)
     document.getElementById('editProfileForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        // CORRECCIÓN: Llamar a las funciones de forma global (usando window.)
-        const isTalent = document.getElementById('editTalentFields').style.display !== 'none';
-
-        if (isTalent && typeof window.updateTalentProfile === 'function') {
-            window.updateTalentProfile();
-        } else if (typeof window.updateClientProfile === 'function') {
-            window.updateClientProfile();
+        const isTalent = document.getElementById('editTalentFields')?.style.display !== 'none';
+        
+        // CORRECCIÓN: Usamos `window.` y verificamos que la función exista en el ámbito global
+        if (isTalent) {
+            if (typeof window.updateTalentProfile === 'function') {
+                window.updateTalentProfile(e); // Pasamos el evento por si acaso
+            } else {
+                 console.error('❌ Error: La función updateTalentProfile no está definida o no es global.');
+                 showMessage('editProfileMessage', '❌ Funcionalidad de edición de talento no disponible.', 'error');
+            }
         } else {
-             console.error('Funciones de actualización de perfil no definidas.');
+            if (typeof window.updateClientProfile === 'function') {
+                window.updateClientProfile(e); // Pasamos el evento por si acaso
+            } else {
+                 console.error('❌ Error: La función updateClientProfile no está definida o no es global.');
+                 showMessage('editProfileMessage', '❌ Funcionalidad de edición de cliente no disponible.', 'error');
+            }
         }
     });
 
@@ -117,7 +127,8 @@ function displayTalentCard(talent, talentId) {
     }
     
     // Información de ubicación (siempre visible)
-    const locationInfo = talent.city && talent.state && talent.country ? 
+    // Se añade un chequeo adicional para getCountryName por si locations.js falla
+    const locationInfo = (talent.city && talent.state && talent.country && typeof getCountryName === 'function') ? 
         `<p class="talent-details"><i class="fas fa-map-marker-alt"></i> ${getCityName(talent.country, talent.state, talent.city)}, ${getCountryName(talent.country)}</p>` :
         '<p class="talent-details"><i class="fas fa-map-marker-alt"></i> Ubicación no especificada</p>';
     
@@ -237,6 +248,7 @@ function toggleOtherLanguages() {
     }
 }
 
+// Hacemos que estas funciones sean globales (en caso de que sean llamadas desde HTML)
 window.viewTalentProfile = function(talentId) {
     alert(`Ver perfil completo del talento ${talentId}. Funcionalidad pendiente.`);
 };
@@ -247,47 +259,12 @@ window.applyToJob = function(jobId) {
     alert(`Postular al trabajo ${jobId}. Funcionalidad pendiente.`);
 };
 
-// Funciones que deben estar en app.js para evitar errores de referencia en otros scripts
-// Aunque deberían estar en auth.js, las mantengo aquí por el flujo de trabajo previo:
-// window.closeAllModals = closeAllModals; // Ya están en el ámbito global si no usas 'let' o 'const'
-
-// ========== FUNCIÓN PARA VERIFICAR CONFIGURACIÓN (del snippet anterior) ==========
-function checkCloudinaryConfig() {
-    console.log('🔍 Verificando configuración de Cloudinary:');
-    console.log('☁️  Cloud Name:', typeof cloudinaryConfig !== 'undefined' ? cloudinaryConfig.cloudName : 'No definido');
-    console.log('📝 Upload Preset:', typeof cloudinaryConfig !== 'undefined' ? cloudinaryConfig.uploadPreset : 'No definido');
-    
-    if (typeof cloudinaryConfig === 'undefined') {
-        console.warn('⚠️  cloudinaryConfig no está definido');
-        return false;
+// Se asume que showMessage ya está definido globalmente en auth.js o aquí.
+// Si no lo está, debe definirse aquí para que app.js no falle.
+function showMessage(element, message, type) {
+    const el = typeof element === 'string' ? document.getElementById(element) : element;
+    if (el) {
+        el.innerHTML = `<div class="${type}">${message}</div>`;
     }
-    
-    if (!cloudinaryConfig.cloudName || cloudinaryConfig.cloudName === 'TU_CLOUD_NAME') {
-        console.error('❌ Cloud Name no configurado');
-        return false;
-    }
-    
-    if (!cloudinaryConfig.uploadPreset || cloudinaryConfig.uploadPreset === 'TU_UPLOAD_PRESET') {
-        console.error('❌ Upload Preset no configurado');
-        return false;
-    }
-    
-    console.log('✅ Configuración de Cloudinary OK');
-    return true;
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    setupEventListeners();
-    checkAuthState();
-    
-    // CORRECCIÓN: Asegurar que la carga de talentos solo corra en index.html
-    if (!window.location.href.includes('profile.html')) {
-        loadTalents();
-        loadJobOffers();
-        loadLocationData(); // Cargar la data de ubicación para el modal de registro
-    }
-    
-    setTimeout(() => {
-        checkCloudinaryConfig();
-    }, 1000);
-});
+window.showMessage = showMessage; // Aseguramos que sea global.
