@@ -2,24 +2,24 @@
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
-    setupEventListeners();
-    checkAuthState();
+    window.setupEventListeners();
+    window.checkAuthState();
     
     // CORRECCIÓN: Asegurar que la carga de talentos solo corra en index.html
-    if (!window.location.href.includes('profile.html')) {
-        loadTalents();
-        loadJobOffers();
-        loadLocationData(); // Cargar la data de ubicación para los modales de registro
+    if (!window.location.pathname.includes('profile.html')) {
+        window.loadTalents();
+        window.loadJobOffers();
+        window.loadLocationData(); // Cargar la data de ubicación para los modales de registro
     }
 });
 
 // Configurar event listeners
 function setupEventListeners() {
     // Listeners de Modales y Navegación
-    document.getElementById('heroTalentBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
-    document.getElementById('heroClientBtn')?.addEventListener('click', () => document.getElementById('clientModal').style.display = 'flex');
-    document.getElementById('registerBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
-    document.getElementById('loginBtn')?.addEventListener('click', () => document.getElementById('loginModal').style.display = 'flex');
+    document.getElementById('heroTalentBtn')?.addEventListener('click', () => window.openModal('talentModal'));
+    document.getElementById('heroClientBtn')?.addEventListener('click', () => window.openModal('clientModal'));
+    document.getElementById('registerBtn')?.addEventListener('click', () => window.openModal('talentModal'));
+    document.getElementById('loginBtn')?.addEventListener('click', () => window.openModal('loginModal'));
     
     // Redirección al Dashboard/Profile
     document.getElementById('dashboardLink')?.addEventListener('click', (e) => {
@@ -27,29 +27,27 @@ function setupEventListeners() {
         window.location.href = 'profile.html';
     });
     
-    document.getElementById('logoutBtn')?.addEventListener('click', logoutUser);
+    document.getElementById('logoutBtn')?.addEventListener('click', window.logoutUser);
 
     document.querySelectorAll('.close-modal').forEach(button => {
-        button.addEventListener('click', closeAllModals);
+        button.addEventListener('click', window.closeAllModals);
     });
 
-    // Listeners de Formularios
-    document.getElementById('talentForm')?.addEventListener('submit', registerTalent);
-    document.getElementById('clientForm')?.addEventListener('submit', registerClient);
-    document.getElementById('loginForm')?.addEventListener('submit', loginUser);
+    // Listeners de Formularios de Autenticación
+    document.getElementById('talentForm')?.addEventListener('submit', window.registerTalent);
+    document.getElementById('clientForm')?.addEventListener('submit', window.registerClient);
+    document.getElementById('loginForm')?.addEventListener('submit', window.loginUser);
     
-    // Listeners Auxiliares
-    document.getElementById('clientType')?.addEventListener('change', toggleCompanyName);
-    document.getElementById('lang10')?.addEventListener('change', toggleOtherLanguages);
+    // Listeners Auxiliares de registro
+    document.getElementById('clientType')?.addEventListener('change', window.toggleCompanyName);
+    document.getElementById('lang10')?.addEventListener('change', window.toggleOtherLanguages);
     
-    // Listener de Foto de Perfil en el modal de edición (de profile.js)
+    // Listeners de Edición de Perfil (Solo en profile.html)
     document.getElementById('editPhotoInput')?.addEventListener('change', window.handleProfilePhotoUpload);
-    
-    // Listener de guardado de perfil en el modal de edición (de profile.js)
     document.getElementById('editProfileForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
-        const userId = currentUser.uid;
-        if (currentUser.isTalent) {
+        const userId = window.currentUser.uid;
+        if (window.currentUser.isTalent) {
             window.updateTalentProfile(userId);
         } else {
             window.updateClientProfile(userId);
@@ -57,7 +55,7 @@ function setupEventListeners() {
     });
 
 }
-
+window.setupEventListeners = setupEventListeners; // Hacer global para profile.html
 
 // =========================================================================
 // FUNCIONES DE CARGA EN PÁGINA PRINCIPAL (INDEX.HTML)
@@ -73,12 +71,11 @@ async function loadTalents() {
     talentCardsContainer.innerHTML = '<div class="loading">Cargando talentos...</div>';
 
     try {
-        // Asumiendo que 'db' está definido en firebase-config.js
         const snapshot = await db.collection('talents').limit(6).get();
         const talents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         if (talents.length === 0) {
-            talentCardsContainer.innerHTML = '<p class="loading">No se encontraron talentos registrados aún.</p>';
+            talentCardsContainer.innerHTML = '<p class="loading">No se encontraron talentos registrados aún. ¡Sé el primero en registrarte!</p>';
             return;
         }
 
@@ -118,6 +115,7 @@ async function loadTalents() {
         talentCardsContainer.innerHTML = '<p class="error">❌ Error al cargar los talentos. Inténtalo de nuevo más tarde.</p>';
     }
 }
+window.loadTalents = loadTalents;
 
 /**
  * Carga y muestra las ofertas de trabajo (funcionalidad pendiente).
@@ -146,32 +144,40 @@ function loadJobOffers() {
         </div>
     `;
 }
+window.loadJobOffers = loadJobOffers;
 
 // =========================================================================
 // FUNCIONES AUXILIARES GLOBALES
 // =========================================================================
 
-function closeAllModals() {
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.style.display = 'none';
-    });
+function openModal(modalId) {
+    window.closeAllModals(); // Cierra cualquier modal abierto
+    const modal = document.getElementById(modalId);
+    if (modal) modal.style.display = 'flex';
 }
-window.closeAllModals = closeAllModals;
+window.openModal = openModal;
 
 function toggleCompanyName() {
     const companyNameGroup = document.getElementById('companyNameGroup');
     if (companyNameGroup) {
-        document.getElementById('companyNameGroup').style.display = document.getElementById('clientType').value === 'empresa' ? 'block' : 'none';
+        companyNameGroup.style.display = document.getElementById('clientType').value === 'empresa' ? 'block' : 'none';
     }
 }
+window.toggleCompanyName = toggleCompanyName;
+
 
 function toggleOtherLanguages() {
     const otherLanguagesInput = document.getElementById('otherLanguagesInput');
     const lang10Checkbox = document.getElementById('lang10');
     if (otherLanguagesInput && lang10Checkbox) {
         otherLanguagesInput.style.display = lang10Checkbox.checked ? 'block' : 'none';
+        if (!lang10Checkbox.checked) {
+            document.getElementById('otherLanguages').value = ''; // Limpiar campo al ocultar
+        }
     }
 }
+window.toggleOtherLanguages = toggleOtherLanguages;
+
 
 // Funciones para acciones futuras (se definen globalmente para los onclick en HTML)
 window.viewTalentProfile = function(talentId) {
@@ -183,13 +189,3 @@ window.addToFavorites = function(talentId) {
 window.applyToJob = function(jobId) {
     alert(`Postular al trabajo ${jobId}. Funcionalidad pendiente.`);
 };
-
-// Se asume que showMessage está definido globalmente en auth.js o profile.js.
-// Se define aquí por si acaso
-function showMessage(element, message, type) {
-    const el = typeof element === 'string' ? document.getElementById(element) : element;
-    if (el) {
-        el.innerHTML = `<div class=\"${type}\">${message}</div>`;
-    }
-}
-window.showMessage = showMessage;
