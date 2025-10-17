@@ -383,7 +383,7 @@ function setupClientEditForm(client) {
     }, 500);
 }
 
-// Actualizar perfil de talento (FUNCIÓN COMPLETAMENTE FUNCIONAL)
+// CORRECCIÓN CRÍTICA: Actualizar perfil de talento (FUNCIÓN COMPLETAMENTE FUNCIONAL)
 window.updateTalentProfile = async function(e) {
     e.preventDefault();
     const messageDiv = 'editProfileMessage';
@@ -505,8 +505,8 @@ window.updateTalentProfile = async function(e) {
 
         console.log('Actualizando datos del talento:', updateData);
 
-        // Actualizar en Firestore
-        await db.collection('talents').doc(userId).update(updateData);
+        // CORRECCIÓN: Usar set con merge en lugar de update para asegurar que todos los campos se guarden
+        await db.collection('talents').doc(userId).set(updateData, { merge: true });
 
         // Actualizar datos locales
         currentUserData = { ...currentUserData, ...updateData };
@@ -530,7 +530,7 @@ window.updateTalentProfile = async function(e) {
     }
 };
 
-// Actualizar perfil de cliente (FUNCIÓN COMPLETAMENTE FUNCIONAL)
+// CORRECCIÓN CRÍTICA: Actualizar perfil de cliente (FUNCIÓN COMPLETAMENTE FUNCIONAL)
 window.updateClientProfile = async function(e) {
     e.preventDefault();
     const messageDiv = 'editProfileMessage';
@@ -599,8 +599,8 @@ window.updateClientProfile = async function(e) {
 
         console.log('Actualizando datos del cliente:', updateData);
 
-        // Actualizar en Firestore
-        await db.collection('clients').doc(userId).update(updateData);
+        // CORRECCIÓN: Usar set con merge en lugar de update para asegurar que todos los campos se guarden
+        await db.collection('clients').doc(userId).set(updateData, { merge: true });
 
         // Actualizar datos locales
         currentUserData = { ...currentUserData, ...updateData };
