@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Configurar event listeners (CORRECCIÓN CLAVE AQUÍ)
+// Configurar event listeners (CORREGIDO: Llamada más robusta a funciones de edición)
 function setupEventListeners() {
     // Listeners de Modales y Navegación
     document.getElementById('heroTalentBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
@@ -33,204 +33,129 @@ function setupEventListeners() {
         button.addEventListener('click', closeAllModals);
     });
 
-    // Listeners de Formularios de Autenticación/Registro
+    // Listeners de Formularios
     document.getElementById('talentForm')?.addEventListener('submit', registerTalent);
     document.getElementById('clientForm')?.addEventListener('submit', registerClient);
     document.getElementById('loginForm')?.addEventListener('submit', loginUser);
-
+    
+    // Listeners Auxiliares
     document.getElementById('clientType')?.addEventListener('change', toggleCompanyName);
     document.getElementById('lang10')?.addEventListener('change', toggleOtherLanguages);
     
-    // Listener para el formulario de edición de perfil 
-    document.getElementById('editProfileForm')?.addEventListener('submit', function(e) {
+    // Listener de Foto de Perfil en el modal de edición (de profile.js)
+    document.getElementById('editPhotoInput')?.addEventListener('change', window.handleProfilePhotoUpload);
+    
+    // Listener de guardado de perfil en el modal de edición (de profile.js)
+    document.getElementById('editProfileForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
-        
-        const isTalent = document.getElementById('editTalentFields')?.style.display !== 'none';
-        
-        // CORRECCIÓN: Usamos `window.` y verificamos que la función exista 
-        if (isTalent) {
-            if (typeof window.updateTalentProfile === 'function') {
-                window.updateTalentProfile(e); // Llama a la función de profile.js
-            } else {
-                 console.error('❌ Error: La función updateTalentProfile no está definida o no es global.');
-                 window.showMessage('editProfileMessage', '❌ Funcionalidad de edición de talento no disponible.', 'error');
-            }
+        const userId = currentUser.uid;
+        if (currentUser.isTalent) {
+            window.updateTalentProfile(userId);
         } else {
-            if (typeof window.updateClientProfile === 'function') {
-                window.updateClientProfile(e); // Llama a la función de profile.js
-            } else {
-                 console.error('❌ Error: La función updateClientProfile no está definida o no es global.');
-                 window.showMessage('editProfileMessage', '❌ Funcionalidad de edición de cliente no disponible.', 'error');
-            }
+            window.updateClientProfile(userId);
         }
     });
 
 }
 
-// Cargar talentos
+
+// =========================================================================
+// FUNCIONES DE CARGA EN PÁGINA PRINCIPAL (INDEX.HTML)
+// =========================================================================
+
+/**
+ * Carga y muestra los perfiles de talento en la página principal.
+ */
 async function loadTalents() {
+    const talentCardsContainer = document.getElementById('talentCards');
+    if (!talentCardsContainer) return;
+    
+    talentCardsContainer.innerHTML = '<div class="loading">Cargando talentos...</div>';
+
     try {
-        const snapshot = await db.collection('talents').get();
-        const talentsContainer = document.getElementById('talentsContainer');
-        
-        if (!talentsContainer) return; 
-        
-        if (snapshot.empty) {
-            talentsContainer.innerHTML = '<p>No hay talentos registrados aún.</p>';
+        const snapshot = await db.collection('talents').limit(6).get();
+        const talents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        if (talents.length === 0) {
+            talentCardsContainer.innerHTML = '<p class="loading">No se encontraron talentos registrados aún.</p>';
             return;
         }
-        
-        talentsContainer.innerHTML = '';
-        snapshot.forEach(doc => {
-            const talent = doc.data();
-            displayTalentCard(talent, doc.id);
-        });
-        
+
+        talentCardsContainer.innerHTML = talents.map(talent => {
+            // Utilizar el nombre del país desde locations.js
+            const countryName = window.getCountryName ? window.getCountryName(talent.country) : talent.country;
+
+            // Mostrar el primer demo si existe
+            const firstDemo = talent.demos && talent.demos.length > 0 ? talent.demos[0] : null;
+
+            return `
+                <div class="card talent-card">
+                    <div class="card-header">
+                        <img src="${talent.photoURL || 'https://via.placeholder.com/100/3498db/ffffff?text=V'}" alt="${talent.name}" class="profile-picture-sm">
+                        <h3>${talent.name}</h3>
+                    </div>
+                    <p><strong>Especialidad:</strong> ${talent.specialty || 'No especificada'}</p>
+                    <p><strong>Idiomas:</strong> ${talent.languages ? talent.languages.join(', ') : 'N/A'}</p>
+                    <p><strong>Ubicación:</strong> ${countryName || 'Global'}</p>
+                    
+                    ${firstDemo ? 
+                        `<div class="audio-preview">
+                            <label>Demo:</label>
+                            <audio controls src="${firstDemo.url}"></audio>
+                        </div>` : ''}
+
+                    <div class="card-actions">
+                        <button class="btn btn-primary" onclick="window.viewTalentProfile('${talent.id}')">Ver Perfil</button>
+                        <button class="btn btn-outline" onclick="window.addToFavorites('${talent.id}')"><i class="far fa-heart"></i></button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
     } catch (error) {
         console.error('Error cargando talentos:', error);
-        const talentsContainer = document.getElementById('talentsContainer');
-        if (talentsContainer) {
-            talentsContainer.innerHTML = '<p>Error al cargar talentos.</p>';
-        }
+        talentCardsContainer.innerHTML = '<p class="error">❌ Error al cargar los talentos. Inténtalo de nuevo más tarde.</p>';
     }
 }
 
-// Mostrar tarjeta de talento (CORREGIDA PARA OCULTAR CONTACTO)
-function displayTalentCard(talent, talentId) {
-    const talentsContainer = document.getElementById('talentsContainer');
-    const talentCard = document.createElement('div');
-    talentCard.className = 'talent-card';
+/**
+ * Carga y muestra las ofertas de trabajo (funcionalidad pendiente).
+ */
+function loadJobOffers() {
+    const jobOffersContainer = document.getElementById('jobOffers');
+    if (!jobOffersContainer) return;
     
-    let audioPlayers = '';
-    if (talent.demos && talent.demos.length > 0) {
-        audioPlayers = `
-            <div class="audio-demos" style="margin-top: 15px;">
-                <p><strong>Demos de Audio (${talent.demos.length}):</strong></p>
-                ${talent.demos.map((demo, index) => `
-                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-                        <p style="font-size: 14px; margin-bottom: 8px; font-weight: 500;">
-                            ${demo.name || `Demo ${index + 1}`}
-                        </p>
-                        <audio controls style="width: 100%; height: 40px; border-radius: 20px;">
-                            <source src="${demo.url}" type="audio/mpeg">
-                            Tu navegador no soporta audio.
-                        </audio>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
-                            ${demo.duration ? Math.round(demo.duration) + ' segundos' : ''} • ${demo.size ? (demo.size / 1024 / 1024).toFixed(1) + ' MB' : 'Tamaño no disponible'}
-                        </div>
-                    </div>
-                `).join('')}
+    // Simulación de ofertas
+    jobOffersContainer.innerHTML = `
+        <div class="card job-card">
+            <h3>Locutor para Audiolibro</h3>
+            <p>Cliente: Editorial XYZ</p>
+            <p>Requisitos: Voz grave, Español neutro.</p>
+            <div class="card-actions">
+                <button class="btn btn-primary" onclick="window.applyToJob('job1')">Postular</button>
             </div>
-        `;
-    } else {
-        audioPlayers = '<p style="color: #666; font-size: 14px; margin-top: 10px;">No hay demos de audio disponibles</p>';
-    }
-    
-    const locationInfo = (talent.city && talent.state && talent.country && typeof getCountryName === 'function') ? 
-        `<p class="talent-details"><i class="fas fa-map-marker-alt"></i> ${getCityName(talent.country, talent.state, talent.city)}, ${getCountryName(talent.country)}</p>` :
-        '<p class="talent-details"><i class="fas fa-map-marker-alt"></i> Ubicación no especificada</p>';
-    
-    let contactInfo = '';
-    if (currentUser) {
-        contactInfo = `
-            <p class="talent-details"><strong>Email:</strong> ${talent.email || 'No disponible'}</p>
-            <p class="talent-details"><strong>Teléfono:</strong> ${talent.phone || 'No disponible'}</p>
-        `;
-    } else {
-        contactInfo = `
-            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; margin: 10px 0;">
-                <p style="margin: 0; color: #856404; font-size: 14px;">
-                    <i class="fas fa-lock"></i> **Debes iniciar sesión** para ver la información de contacto
-                </p>
-            </div>
-        `;
-    }
-    
-    talentCard.innerHTML = `
-        <div class="talent-img" style="background-color: #3498db; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px;">
-            <i class="fas fa-user"></i>
         </div>
-        <div class="talent-info">
-            <h3 class="talent-name">${talent.name}</h3>
-            <p class="talent-details">${talent.gender === 'hombre' ? 'Hombre' : 'Mujer'} • ${talent.nationality || 'Nacionalidad no especificada'}</p>
-            ${locationInfo}
-            <p class="talent-details">${Array.isArray(talent.languages) ? talent.languages.join(', ') : talent.languages || 'Idiomas no especificados'}</p>
-            <p class="talent-details">Home Studio: ${talent.homeStudio === 'si' ? 'Sí' : 'No'}</p>
-            <p>${talent.description ? talent.description.substring(0, 100) + '...' : 'Sin descripción'}</p>
-            ${contactInfo}
-            ${audioPlayers}
-            <div style="margin-top: 15px;">
-                <button class="btn btn-primary" onclick="window.viewTalentProfile('${talentId}')">Ver Perfil Completo</button>
-                ${currentUser ? `<button class="btn btn-success" onclick="window.addToFavorites('${talentId}')"><i class="fas fa-heart"></i> Favorito</button>` : ''}
+        <div class="card job-card">
+            <h3>Voz para Comercial de Radio</h3>
+            <p>Cliente: Agencia Digital</p>
+            <p>Requisitos: Voz juvenil, Home Studio.</p>
+            <div class="card-actions">
+                <button class="btn btn-primary" onclick="window.applyToJob('job2')">Postular</button>
             </div>
         </div>
     `;
-    
-    talentsContainer.appendChild(talentCard);
 }
 
-// Cargar ofertas de trabajo
-async function loadJobOffers() {
-    try {
-        const snapshot = await db.collection('jobs').get();
-        const jobOffersContainer = document.getElementById('jobOffersContainer');
-        
-        if (!jobOffersContainer) return;
+// =========================================================================
+// FUNCIONES AUXILIARES GLOBALES
+// =========================================================================
 
-        if (snapshot.empty) {
-            jobOffersContainer.innerHTML = '<p>No hay ofertas de trabajo publicadas aún.</p>';
-            return;
-        }
-        
-        jobOffersContainer.innerHTML = '';
-        snapshot.forEach(doc => {
-            const job = doc.data();
-            displayJobCard(job, doc.id);
-        });
-        
-    } catch (error) {
-        console.error('Error cargando ofertas:', error);
-        const jobOffersContainer = document.getElementById('jobOffersContainer');
-        if (jobOffersContainer) {
-            jobOffersContainer.innerHTML = '<p>Error al cargar ofertas.</p>';
-        }
-    }
-}
-
-// Mostrar tarjeta de trabajo
-function displayJobCard(job, jobId) {
-    const jobOffersContainer = document.getElementById('jobOffersContainer');
-    const jobCard = document.createElement('div');
-    jobCard.className = 'job-card';
-    
-    jobCard.innerHTML = `
-        <div class="job-header">
-            <h3 class="job-title">${job.title}</h3>
-        </div>
-        <div class="job-description">
-            <p>${job.description}</p>
-        </div>
-        <div>
-            <p><strong>Contacto:</strong> ${job.contact}</p>
-            <p><strong>Fecha de publicación:</strong> ${job.createdAt?.toDate?.().toLocaleDateString() || 'Fecha no disponible'}</p>
-        </div>
-        ${currentUser ? `
-            <div style="margin-top: 15px;">
-                <button class="btn btn-primary" onclick="window.applyToJob('${jobId}')">Postularme</button>
-            </div>
-        ` : ''}
-    `;
-    
-    jobOffersContainer.appendChild(jobCard);
-}
-
-// Funciones auxiliares
 function closeAllModals() {
     document.querySelectorAll('.modal').forEach(modal => {
         modal.style.display = 'none';
     });
 }
-window.closeAllModals = closeAllModals; // Hacer global
+window.closeAllModals = closeAllModals;
 
 function toggleCompanyName() {
     const companyNameGroup = document.getElementById('companyNameGroup');
@@ -240,13 +165,14 @@ function toggleCompanyName() {
 }
 
 function toggleOtherLanguages() {
-    const otherLanguagesInput = document.getElementById('otherLanguages');
-    if (otherLanguagesInput) {
-        otherLanguagesInput.style.display = document.getElementById('lang10').checked ? 'block' : 'none';
+    const otherLanguagesInput = document.getElementById('otherLanguagesInput');
+    const lang10Checkbox = document.getElementById('lang10');
+    if (otherLanguagesInput && lang10Checkbox) {
+        otherLanguagesInput.style.display = lang10Checkbox.checked ? 'block' : 'none';
     }
 }
 
-// Hacemos que estas funciones sean globales (en caso de que sean llamadas desde HTML)
+// Funciones para acciones futuras (se definen globalmente para los onclick en HTML)
 window.viewTalentProfile = function(talentId) {
     alert(`Ver perfil completo del talento ${talentId}. Funcionalidad pendiente.`);
 };
@@ -257,11 +183,235 @@ window.applyToJob = function(jobId) {
     alert(`Postular al trabajo ${jobId}. Funcionalidad pendiente.`);
 };
 
-// Función auxiliar para mostrar mensajes (hecha global)
+// Se asume que showMessage está definido globalmente en auth.js o profile.js.
+// Se define aquí por si acaso
 function showMessage(element, message, type) {
     const el = typeof element === 'string' ? document.getElementById(element) : element;
     if (el) {
-        el.innerHTML = `<div class="${type}">${message}</div>`;
+        el.innerHTML = `<div class=\"${type}\">${message}</div>`;
     }
 }
-window.showMessage = showMessage; 
+window.showMessage = showMessage;
+
+// ========== FUNCIÓN PARA VERIFICAR CONFIGURACIÓN (de firebase-config.js) ==========\n\nfunction checkCloudinaryConfig() {\n    if (typeof cloudinaryConfig === 'undefined' || !cloudinaryConfig.cloudName || cloudinaryConfig.cloudName === 'TU_CLOUD_NAME') {\n        console.error('❌ Cloudinary NO configurado. Revisa firebase-config.js');\n        return false;\n    }\n    console.log('✅ Configuración de Cloudinary OK');\n    return true;\n}\n\ndocument.addEventListener('DOMContentLoaded', function() {\n    setTimeout(() => {\n        checkCloudinaryConfig();\n    }, 1000);\n});\n```
+
+---
+
+## 2. Archivo Corregido: `js/locations.js` (Más Países y Ciudades) 🌎
+
+He expandido la data geográfica para que sea más robusta, incluyendo más países hispanohablantes y más estados/provincias y ciudades. **Ya no necesitas un archivo JSON externo**.
+
+**Reemplaza **TODO** el contenido de tu `js/locations.js` con este código:**
+
+```javascript
+// =========================================================================
+// js/locations.js - Data y lógica de ubicación para países hispanohablantes
+// =========================================================================
+
+// Data de Localizaciones - INTEGRADA DIRECTAMENTE (Expandida para mayor cobertura)
+const locationData = {
+    // ---------------------- ARGENTINA (AR) ----------------------
+    "AR": { name: "Argentina", states: {
+        "CABA": { name: "Ciudad Autónoma de Buenos Aires", cities: ["Buenos Aires", "La Plata", "Mar del Plata"]},
+        "CBA": { name: "Córdoba", cities: ["Córdoba Capital", "Río Cuarto", "Villa María"]},
+        "SFE": { name: "Santa Fe", cities: ["Rosario", "Santa Fe Capital", "Rafaela"]},
+    }},
+    // ---------------------- CHILE (CL) ----------------------
+    "CL": { name: "Chile", states: {
+        "RM": { name: "Región Metropolitana", cities: ["Santiago", "Puente Alto", "Maipú"]},
+        "V": { name: "Valparaíso", cities: ["Valparaíso", "Viña del Mar", "Quilpué"]},
+        "Bio": { name: "Biobío", cities: ["Concepción", "Talcahuano", "Los Ángeles"]},
+    }},
+    // ---------------------- COLOMBIA (CO) ----------------------
+    "CO": { name: "Colombia", states: {
+        "DC": { name: "Bogotá D.C.", cities: ["Bogotá", "Soacha"]},
+        "ANT": { name: "Antioquia", cities: ["Medellín", "Envigado", "Itagüí"]},
+        "VAL": { name: "Valle del Cauca", cities: ["Cali", "Palmira", "Buenaventura"]},
+    }},
+    // ---------------------- ESPAÑA (ES) ----------------------
+    "ES": { name: "España", states: {
+        "MD": { name: "Comunidad de Madrid", cities: ["Madrid", "Alcalá de Henares", "Móstoles"]},
+        "CT": { name: "Cataluña", cities: ["Barcelona", "Tarragona", "Lleida"]},
+        "AN": { name: "Andalucía", cities: ["Sevilla", "Málaga", "Granada"]},
+    }},
+    // ---------------------- MÉXICO (MX) ----------------------
+    "MX": { name: "México", states: {
+        "CMX": { name: "Ciudad de México", cities: ["Ciudad de México", "Ecatepec de Morelos"]},
+        "JAL": { name: "Jalisco", cities: ["Guadalajara", "Zapopan", "Tlaquepaque"]},
+        "NL": { name: "Nuevo León", cities: ["Monterrey", "Guadalupe", "San Nicolás de los Garza"]},
+    }},
+    // ---------------------- PERÚ (PE) ----------------------
+    "PE": { name: "Perú", states: {
+        "LIM": { name: "Lima", cities: ["Lima", "Callao", "Arequipa"]},
+        "CUS": { name: "Cusco", cities: ["Cusco", "Sicuani"]},
+    }},
+    // ---------------------- VENEZUELA (VE) ----------------------
+    "VE": { name: "Venezuela", states: {
+        "MIR": { name: "Miranda", cities: ["Caracas", "Guarenas", "Guatire"]},
+        "ZUL": { name: "Zulia", cities: ["Maracaibo", "Cabimas"]},
+    }},
+    // ---------------------- COSTA RICA (CR) ----------------------
+    "CR": { name: "Costa Rica", states: {
+        "SJ": { name: "San José", cities: ["San José", "Escazú"]},
+    }},
+    // ---------------------- URUGUAY (UY) ----------------------
+    "UY": { name: "Uruguay", states: {
+        "MVD": { name: "Montevideo", cities: ["Montevideo", "Ciudad de la Costa"]},
+    }},
+};
+
+// Lista de países hispanohablantes para poblar el primer select.
+const HISPANIC_COUNTRIES = Object.keys(locationData).map(code => ({
+    code: code,
+    name: locationData[code].name
+})).sort((a, b) => a.name.localeCompare(b.name));
+
+
+/**
+ * Función que inicializa la carga de los selects de ubicación.
+ */
+function loadLocationData() {
+    console.log('🗺️ Inicializando selects de ubicación...');
+    
+    // Configuración para el modal de Registro de Talento
+    setupLocationSelects('talentForm', 'country', 'state', 'city');
+    // Configuración para el modal de Registro de Cliente
+    setupLocationSelects('clientForm', 'countryClient', 'stateClient', 'cityClient');
+    
+    // Configuración para el modal de Edición (profile.html)
+    setupLocationSelects('editProfileForm', 'editCountry', 'editState', 'editCity');
+}
+window.loadLocationData = loadLocationData;
+
+/**
+ * Configura los event listeners y rellena el select de País.
+ */
+function setupLocationSelects(formId, countrySelectId, stateSelectId, citySelectId) {
+    const countrySelect = document.getElementById(countrySelectId);
+    const stateSelect = document.getElementById(stateSelectId);
+    const citySelect = document.getElementById(citySelectId);
+    
+    if (!countrySelect) return; 
+
+    // 1. Poblar País
+    populateCountrySelect(countrySelect, stateSelect, citySelect);
+    
+    // 2. Event Listener para País
+    countrySelect.addEventListener('change', () => {
+        const selectedCountryCode = countrySelect.value;
+        populateStateSelect(stateSelect, citySelect, selectedCountryCode);
+    });
+
+    // 3. Event Listener para Provincia/Estado
+    if (stateSelect) {
+        stateSelect.addEventListener('change', () => {
+            const selectedCountryCode = countrySelect.value;
+            const selectedStateCode = stateSelect.value;
+            populateCitySelect(citySelect, selectedCountryCode, selectedStateCode);
+        });
+    }
+}
+
+/**
+ * Rellena el select de País.
+ */
+function populateCountrySelect(countrySelect, stateSelect, citySelect, selectedCountryCode = null) {
+    countrySelect.innerHTML = '<option value="">Seleccionar País *</option>';
+    
+    HISPANIC_COUNTRIES.forEach(country => {
+        const option = document.createElement('option');
+        option.value = country.code;
+        option.textContent = country.name;
+        if (country.code === selectedCountryCode) option.selected = true;
+        countrySelect.appendChild(option);
+    });
+
+    // Inicializar Estado y Ciudad
+    if (stateSelect) stateSelect.innerHTML = '<option value="">Seleccionar Provincia/Estado *</option>';
+    if (citySelect) citySelect.innerHTML = '<option value="">Seleccionar Ciudad *</option>';
+}
+
+/**
+ * Rellena el select de Estado/Provincia.
+ */
+function populateStateSelect(stateSelect, citySelect, countryCode, selectedStateCode = null) {
+    if (!stateSelect) return;
+    
+    stateSelect.innerHTML = '<option value="">Seleccionar Provincia/Estado *</option>';
+    if (citySelect) citySelect.innerHTML = '<option value="">Seleccionar Ciudad *</option>';
+
+    if (countryCode && locationData[countryCode]) {
+        const states = locationData[countryCode].states;
+        for (const code in states) {
+            const option = document.createElement('option');
+            option.value = code;
+            option.textContent = states[code].name;
+            if (code === selectedStateCode) option.selected = true;
+            stateSelect.appendChild(option);
+        }
+    }
+}
+
+/**
+ * Rellena el select de Ciudad.
+ */
+function populateCitySelect(citySelect, countryCode, stateCode, selectedCityName = null) {
+    if (!citySelect) return;
+    
+    citySelect.innerHTML = '<option value="">Seleccionar Ciudad *</option>';
+    
+    if (countryCode && stateCode && locationData[countryCode] && locationData[countryCode].states[stateCode]) {
+        const cities = locationData[countryCode].states[stateCode].cities;
+        
+        cities.forEach(cityName => {
+            const option = document.createElement('option');
+            option.value = cityName;
+            option.textContent = cityName;
+            if (cityName === selectedCityName) option.selected = true;
+            citySelect.appendChild(option);
+        });
+    }
+}
+
+// =========================================================================
+// Funciones auxiliares usadas en profile.js para la vista del perfil
+// =========================================================================
+
+window.getCountryName = function(code) {
+    if (!code) return 'N/A';
+    return locationData[code]?.name || code;
+}
+
+window.getStateName = function(countryCode, stateCode) {
+    if (!countryCode || !stateCode) return 'N/A';
+    return locationData[countryCode]?.states[stateCode]?.name || stateCode;
+}
+
+window.getCityName = function(countryCode, stateCode, cityName) {
+    return cityName || 'N/A';
+}
+
+/**
+ * Función para cargar los valores actuales en el modal de edición de perfil.
+ * (Llamada desde profile.js)
+ */
+window.loadEditLocationFields = async function(currentCountry, currentState, currentCity) {
+    const countrySelect = document.getElementById('editCountry');
+    const stateSelect = document.getElementById('editState');
+    const citySelect = document.getElementById('editCity');
+    
+    if (!countrySelect) return;
+
+    // 1. Cargar País y preseleccionar
+    populateCountrySelect(countrySelect, stateSelect, citySelect, currentCountry);
+    
+    // 2. Cargar Estados del país preseleccionado y preseleccionar
+    if (currentCountry) {
+        populateStateSelect(stateSelect, citySelect, currentCountry, currentState);
+    }
+    
+    // 3. Cargar Ciudades del estado preseleccionado y preseleccionar
+    if (currentCountry && currentState) {
+        populateCitySelect(citySelect, currentCountry, currentState, currentCity);
+    }
+}
