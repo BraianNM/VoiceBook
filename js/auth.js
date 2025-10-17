@@ -1,13 +1,13 @@
 // Funciones de Autenticación
 
-// Verificar estado de autenticación
+// Verificar estado de autenticación (CORREGIDO: Eliminamos la llamada a loadUserProfile aquí)
 function checkAuthState() {
     auth.onAuthStateChanged((user) => {
         if (user) {
             currentUser = user;
             updateUIAfterLogin();
-            // En profile.html, loadUserProfile se llama en el script final
-            // En index.html, solo se actualiza la UI
+            // Eliminado: loadUserProfile(user.uid);
+            // Ahora loadUserProfile solo se llama en profile.html o al abrir el modal de edición.
         } else {
             currentUser = null;
             updateUIAfterLogout();
@@ -186,7 +186,7 @@ async function loginUser(e) {
         await auth.signInWithEmailAndPassword(email, password);
         showMessage(messageDiv, '¡Inicio de sesión exitoso!', 'success');
         
-        // Redirección después del login
+        // Redirección forzada a profile.html después del login (para el nuevo flujo)
         setTimeout(() => {
             closeAllModals();
             window.location.href = 'profile.html';
@@ -223,8 +223,28 @@ function updateUIAfterLogout() {
     document.getElementById('dashboardLink')?.style.display = 'none';
 }
 
+// Funciones auxiliares para compatibilidad y globalidad
+function showMessage(element, message, type) {
+    const el = typeof element === 'string' ? document.getElementById(element) : element;
+    if (el) {
+        el.innerHTML = `<div class="${type}">${message}</div>`;
+    }
+}
+function getSelectedLanguages() {
+    const languages = [];
+    for (let i = 1; i <= 10; i++) {
+        const checkbox = document.getElementById('lang' + i);
+        if (checkbox && checkbox.checked) {
+            languages.push(checkbox.value === 'otros' ? document.getElementById('otherLanguages').value : checkbox.value);
+        }
+    }
+    return languages.filter(lang => lang);
+}
+
+
 // Exportar funciones para uso global
 window.loginUser = loginUser;
 window.registerTalent = registerTalent;
 window.registerClient = registerClient;
 window.logoutUser = logoutUser;
+window.checkAuthState = checkAuthState;
