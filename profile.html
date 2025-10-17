@@ -27,80 +27,75 @@
                     </ul>
                 </nav>
                 <div id="userMenu" class="profile-logo-right" style="display:none;">
-                    <span id="userName" style="color:white; margin-right:15px;"></span>
-                    <button class="btn btn-outline" id="logoutBtn">Cerrar Sesión</button>
+                    <span id="userName">Usuario</span>
+                    <button class="btn btn-outline-light btn-sm" id="logoutBtn">Cerrar Sesión</button>
                 </div>
             </div>
         </div>
     </header>
 
-    <main class="profile-main">
-        <div class="container large-container">
-            
-            <div class="profile-section">
-                <h2>Mi Panel de Control</h2>
+    <main>
+        <div class="container profile-dashboard-container">
+            <div class="profile-main-content">
+                <div class="profile-header">
+                    <div class="profile-avatar-container">
+                        <img id="profilePhoto" src="https://via.placeholder.com/120?text=V" alt="Foto de Perfil" class="profile-avatar">
+                    </div>
+                    <div class="profile-info-intro">
+                        <h1 id="profileName">Cargando Nombre...</h1>
+                        <p id="profileType" class="profile-type"></p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="window.openEditProfileModal()">
+                        <i class="fas fa-edit"></i> Editar Perfil
+                    </button>
+                </div>
 
-                <div class="dashboard">
-                    <div class="dashboard-tabs" id="dashboardTabs">
-                        <div class="tab active" data-tab="profile">Mi Perfil</div>
-                        <div class="tab" data-tab="favorites">Favoritos</div>
-                        <div class="tab talent-only" data-tab="applications">Mis Postulaciones</div>
-                        <div class="tab client-only" data-tab="client-notifications" style="display:none;">Postulaciones Recibidas</div>
-                        <div class="tab" data-tab="jobs">Mis Ofertas</div>
+                <div class="dashboard-tabs">
+                    <button class="tab active" data-tab="profile">Mi Perfil</button>
+                    <button class="tab" data-tab="favorites" id="favoritesTabBtn" style="display:none;">Favoritos</button>
+                    <button class="tab" data-tab="applications" id="applicationsTabBtn" style="display:none;">Mis Postulaciones</button>
+                    <button class="tab" data-tab="jobs" id="jobsTabBtn" style="display:none;">Mis Ofertas</button>
+                    <button class="tab" data-tab="client-notifications" id="clientNotificationsTabBtn" style="display:none;">Aplicaciones Recibidas</button>
+                </div>
+
+                <div class="tab-content-container">
+                    <div id="profileTab" class="tab-content active">
+                        <div id="userProfileContent">
+                            <p>Cargando información...</p>
+                        </div>
+                    </div>
+                    
+                    <div id="favoritesTabContent" class="tab-content">
+                        <h2>Mis Talentos Favoritos</h2>
+                        <div id="favoritesContent">No hay favoritos guardados.</div>
                     </div>
 
-                    <div class="dashboard-content">
-                        <div class="tab-content active" id="profileTab">
-                            <div class="profile-info-section">
-                                <div class="profile-picture-container" id="profilePictureContainer">
-                                    <img src="img/default-avatar.png" alt="Foto de Perfil" class="profile-picture" id="userProfilePicture">
-                                </div>
-                                <div class="profile-name-info">
-                                    <h1 id="userProfileName">Cargando Nombre...</h1>
-                                    <p id="userProfileType" class="text-muted"></p>
-                                </div>
-                            </div>
-                            
-                            <div id="userProfileContent" class="profile-details-grid">
-                                <p>Cargando información del perfil...</p>
-                            </div>
-                        </div>
+                    <div id="applicationsTabContent" class="tab-content">
+                        <h2>Mis Postulaciones Enviadas</h2>
+                        <div id="applicationsContent">No te has postulado a ninguna oferta.</div>
+                    </div>
+                    
+                    <div id="jobsTabContent" class="tab-content">
+                        <h2>Mis Ofertas de Trabajo Publicadas</h2>
+                        <div id="clientJobsContent">No has publicado ninguna oferta.</div>
+                    </div>
 
-                        <div class="tab-content" id="favoritesTabContent">
-                            <h3>Mis Talentos Favoritos</h3>
-                            <div id="favoritesList">
-                                <p>Lista de favoritos pendiente de implementación completa.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="tab-content talent-only" id="applicationsTabContent">
-                            <h3>Mis Postulaciones Realizadas</h3>
-                            <div id="talentApplicationsList">
-                                <p>Cargando lista de trabajos a los que te has postulado...</p>
-                            </div>
-                        </div>
-                        
-                        <div class="tab-content client-only" id="client-notificationsTabContent" style="display:none;">
-                            <h3>Postulaciones a tus Ofertas</h3>
-                            <div id="clientNotificationsList" class="notification-list">
-                                <p>Cargando postulaciones recibidas...</p>
-                            </div>
-                        </div>
-                        
-                        <div class="tab-content" id="jobsTabContent">
-                            <h3>Mis Ofertas Publicadas</h3>
-                            <div id="myJobsList">
-                                <p>Cargando ofertas de trabajo...</p>
-                            </div>
-                        </div>
+                    <div id="client-notificationsTabContent" class="tab-content">
+                        <h2>Aplicaciones Recibidas</h2>
+                        <div id="clientApplicationsContent">Ningún talento se ha postulado a tus ofertas.</div>
                     </div>
                 </div>
 
             </div>
-            
-        </div>
+            </div>
     </main>
-    
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 VoiceBook. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
     <script src="js/firebase-config.js"></script>
     <script src="js/locations.js"></script>
     <script src="js/auth.js"></script>
@@ -108,47 +103,42 @@
     <script src="js/app.js"></script>
 
     <script>
+        // Lógica para que las pestañas funcionen en profile.html
         document.addEventListener('DOMContentLoaded', function() {
-            // Asegurar que la función de logout esté disponible
-            document.getElementById('logoutBtn')?.addEventListener('click', window.logoutUser);
-
-            // Lógica para que las pestañas funcionen en esta página
-            const tabs = document.querySelectorAll('.dashboard-tabs .tab');
-            const tabContents = document.querySelectorAll('.tab-content');
-
-            tabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    // Desactivar pestaña y contenido activo actual
-                    tabs.forEach(t => t.classList.remove('active'));
-                    tabContents.forEach(content => content.classList.remove('active'));
-                    
-                    // Activar nueva pestaña y contenido
-                    this.classList.add('active');
-                    const tabId = this.getAttribute('data-tab');
-                    const contentId = tabId + 'TabContent'; // Solo profileTab no tiene Content
-                    
-                    const contentElement = document.getElementById(tabId === 'profile' ? tabId + 'Tab' : contentId);
-                    if (contentElement) {
-                        contentElement.classList.add('active');
-                    }
-                    
-                    // Cargar contenido específico al hacer click
-                    if (window.currentUser && window.currentUserData) {
-                        if (tabId === 'profile') {
-                            window.loadUserProfile(window.currentUser.uid); 
-                        } else if (tabId === 'jobs' && typeof window.loadClientJobOffers === 'function') {
-                             window.loadClientJobOffers(window.currentUser.uid);
-                        } else if (tabId === 'client-notifications' && typeof window.loadClientApplications === 'function') {
-                             // NUEVO: Cargar notificaciones
-                             window.loadClientApplications(window.currentUser.uid);
-                        } else if (tabId === 'applications' && typeof window.loadTalentApplications === 'function') {
-                             // Placeholder para la carga de postulaciones de talento (si la tienes)
-                             window.loadTalentApplications(window.currentUser.uid);
+            if (document.querySelector('.dashboard-tabs')) {
+                document.querySelectorAll('.dashboard-tabs .tab').forEach(tab => {
+                    tab.addEventListener('click', function() {
+                        document.querySelectorAll('.dashboard-tabs .tab').forEach(t => t.classList.remove('active'));
+                        document.querySelectorAll('.tab-content.active').forEach(content => content.classList.remove('active'));
+                        
+                        this.classList.add('active');
+                        const tabId = this.getAttribute('data-tab');
+                        
+                        let contentId = tabId + 'Tab';
+                        if (tabId !== 'profile') {
+                            contentId = tabId + 'TabContent'; 
                         }
-                    }
+                        const contentElement = document.getElementById(contentId);
+                        if (contentElement) {
+                            contentElement.classList.add('active');
+                        }
+                        
+                        // Cargar contenido específico al hacer click (si tienes estas funciones definidas)
+                        if (window.currentUser && window.currentUserData) {
+                            if (tabId === 'profile' && typeof window.loadUserProfile === 'function') {
+                                // Volver a cargar el perfil para asegurar que la vista sea la más reciente
+                                window.loadUserProfile(window.currentUser.uid); 
+                            } else if (tabId === 'jobs' && typeof window.loadClientJobOffers === 'function') {
+                                 window.loadClientJobOffers(window.currentUser.uid);
+                            } else if (tabId === 'client-notifications' && typeof window.loadClientApplications === 'function') {
+                                 window.loadClientApplications(window.currentUser.uid);
+                            } else if (tabId === 'applications' && typeof window.loadTalentApplications === 'function') {
+                                 window.loadTalentApplications(window.currentUser.uid);
+                            }
+                        }
+                    });
                 });
-            });
-            // La carga inicial del perfil y la visibilidad de las pestañas se maneja en profile.js
+            }
         });
     </script>
 </body>
