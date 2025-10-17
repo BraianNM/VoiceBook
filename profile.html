@@ -160,7 +160,7 @@
                 if (!user) {
                     window.location.href = 'index.html';
                 } else {
-                    // Inicializar si el usuario está logueado
+                    // Carga el perfil solo si estamos logueados en esta página
                     setupEventListeners();
                     loadLocationData(); // Carga de la data para el modal de edición
                     loadUserProfile(user.uid); // Carga el perfil
