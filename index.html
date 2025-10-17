@@ -24,7 +24,7 @@
                         <li><a href="#home">Inicio</a></li>
                         <li><a href="#talentos">Talentos</a></li>
                         <li><a href="#ofertas">Ofertas</a></li>
-                        <li><a href="profile.html" id="dashboardLink" style="display:none;">Mi Perfil</a></li>
+                        <li><a href="#dashboard" id="dashboardLink" style="display:none;">Mi Panel</a></li>
                         <li><a href="#contacto">Contacto</a></li>
                     </ul>
                 </nav>
@@ -95,10 +95,10 @@
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i class="fas fa-comments"></i>
+                        <i class="fas fa-bell"></i>
                     </div>
-                    <h3>Contacto Directo</h3>
-                    <p>Comunícate directamente con el talento o el cliente para negociar el proyecto.</p>
+                    <h3>Notificaciones</h3>
+                    <p>Recibe notificaciones cuando alguien se postule a tu oferta de trabajo.</p>
                 </div>
             </div>
         </div>
@@ -107,268 +107,364 @@
     <section class="talents" id="talentos">
         <div class="container">
             <div class="section-title">
-                <h2>Explora Nuestros Talentos de Voz</h2>
-                <p>Encuentra al locutor, imitador o actor de voz ideal para tu próximo proyecto.</p>
+                <h2>Explora Nuestros Talentos</h2>
+                <p>Encuentra la voz perfecta para tu proyecto entre nuestros talentos registrados</p>
             </div>
-            <div class="filters">
-                <div class="filter-grid">
-                    <select id="filterGender">
-                        <option value="">Género</option>
-                        <option value="hombre">Hombre</option>
-                        <option value="mujer">Mujer</option>
-                    </select>
-                    <select id="filterLanguage">
-                        <option value="">Idioma</option>
-                        <option value="español">Español</option>
-                        <option value="inglés">Inglés</option>
-                        <option value="francés">Francés</option>
-                    </select>
-                    <select id="filterAgeRange">
-                        <option value="">Rango de Edad</option>
-                        <option value="niño">Niño (5-12)</option>
-                        <option value="adolescente">Adolescente (13-17)</option>
-                        <option value="adulto_joven">Adulto Joven (18-35)</option>
-                        <option value="adulto_maduro">Adulto Maduro (36+)</option>
-                    </select>
-                    <select id="filterHomeStudio">
-                        <option value="">Home Studio</option>
-                        <option value="si">Sí</option>
-                        <option value="no">No</option>
-                    </select>
-                </div>
-                <button class="btn btn-primary" onclick="applyTalentFilters()">Aplicar Filtros</button>
-                <button class="btn btn-outline" onclick="resetTalentFilters()">Limpiar Filtros</button>
-            </div>
-            <div class="talents-container" id="talentsContainer">
+            
+            <div class="talents-grid" id="talentsContainer">
                 <div class="loading">Cargando talentos...</div>
-                </div>
+            </div>
         </div>
     </section>
 
     <section class="job-offers" id="ofertas">
         <div class="container">
             <div class="section-title">
-                <h2>Ofertas de Trabajo Recientes</h2>
-                <p>Encuentra proyectos de locución y doblaje que se ajusten a tu perfil.</p>
-                <button class="btn btn-success" id="postJobBtn" style="display:none;">Publicar Oferta</button>
+                <h2>Ofertas de Trabajo</h2>
+                <p>Encuentra oportunidades laborales publicadas por quienes buscan talentos</p>
             </div>
-            <div class="job-offers-container" id="jobOffersContainer">
-                </div>
+            
+            <div id="jobOffersContainer">
+                <div class="loading">Cargando ofertas de trabajo...</div>
+            </div>
         </div>
     </section>
 
-    <section class="contact" id="contacto">
+    <footer id="contacto">
         <div class="container">
-            <div class="section-title">
-                <h2>Contáctanos</h2>
-                <p>¿Tienes alguna duda o sugerencia? ¡Estamos aquí para ayudarte!</p>
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h4>VoiceBook</h4>
+                    <ul>
+                        <li><a href="#about">Sobre Nosotros</a></li>
+                        <li><a href="#features">Características</a></li>
+                        <li><a href="#pricing">Precios</a></li>
+                        <li><a href="#blog">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Para Talentos</h4>
+                    <ul>
+                        <li><a href="#create-profile">Crear Perfil</a></li>
+                        <li><a href="#find-jobs">Encontrar Trabajos</a></li>
+                        <li><a href="#resources">Recursos</a></li>
+                        <li><a href="#faq">Preguntas Frecuentes</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Para Clientes</h4>
+                    <ul>
+                        <li><a href="#find-talents">Encontrar Talentos</a></li>
+                        <li><a href="#post-job">Publicar Trabajo</a></li>
+                        <li><a href="#pricing-clients">Precios para Clientes</a></li>
+                        <li><a href="#success-stories">Casos de Éxito</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Contacto</h4>
+                    <ul>
+                        <li><a href="mailto:info@voicebook.com">info@voicebook.com</a></li>
+                        <li><a href="tel:+1234567890">+1 (234) 567-890</a></li>
+                        <li><a href="#support">Soporte</a></li>
+                    </ul>
+                </div>
             </div>
-            <form class="contact-form">
-                <div class="form-group">
-                    <label for="contactName">Nombre:</label>
-                    <input type="text" id="contactName" required>
-                </div>
-                <div class="form-group">
-                    <label for="contactEmail">Email:</label>
-                    <input type="email" id="contactEmail" required>
-                </div>
-                <div class="form-group">
-                    <label for="contactSubject">Asunto:</label>
-                    <input type="text" id="contactSubject" required>
-                </div>
-                <div class="form-group">
-                    <label for="contactMessage">Mensaje:</label>
-                    <textarea id="contactMessage" rows="5" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">Enviar Mensaje</button>
-            </form>
-        </div>
-    </section>
-
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 VoiceBook. Todos los derechos reservados.</p>
+            <div class="disclaimer">
+                <p><strong>Disclaimer:</strong> VoiceBook es solo un intermediario, no tenemos nada que ver con las propuestas ni los talentos. No nos hacemos responsables por los acuerdos realizados entre usuarios.</p>
+            </div>
+            <div class="copyright">
+                <p>&copy; 2023 VoiceBook. Todos los derechos reservados.</p>
+            </div>
         </div>
     </footer>
 
-    <div class="modal" id="loginModal">
-        <div class="modal-content small">
-            <span class="close-modal">&times;</span>
-            <h2>Iniciar Sesión</h2>
-            <form id="loginForm">
-                <div id="loginFormMessage"></div>
-                <div class="form-group">
-                    <label for="loginEmail">Email:</label>
-                    <input type="email" id="loginEmail" required>
-                </div>
-                <div class="form-group">
-                    <label for="loginPassword">Contraseña:</label>
-                    <input type="password" id="loginPassword" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Entrar</button>
-            </form>
-        </div>
-    </div>
-
     <div class="modal" id="talentModal">
-        <div class="modal-content large">
+        <div class="modal-content">
             <span class="close-modal">&times;</span>
-            <h2>Registro de Talento</h2>
+            <h2>Registro - Soy un Talento</h2>
             <form id="talentForm">
-                <div id="talentFormMessage"></div>
                 <div class="form-group">
-                    <label for="talentName">Nombre Artístico/Completo:</label>
-                    <input type="text" id="talentName" required>
+                    <label for="talentGender">Género *</label>
+                    <select id="talentGender" class="form-control" required>
+                        <option value="">Selecciona tu género</option>
+                        <option value="hombre">Hombre</option>
+                        <option value="mujer">Mujer</option>
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label for="talentEmail">Email:</label>
-                    <input type="email" id="talentEmail" required>
+                    <label for="talentName">Nombre Completo *</label>
+                    <input type="text" id="talentName" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label for="talentPassword">Contraseña:</label>
-                    <input type="password" id="talentPassword" required minlength="6">
+                    <label for="talentEmail">Email *</label>
+                    <input type="email" id="talentEmail" class="form-control" required>
                 </div>
-                
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="talentGender">Género:</label>
-                        <select id="talentGender" required>
-                            <option value="">Selecciona</option>
-                            <option value="hombre">Hombre</option>
-                            <option value="mujer">Mujer</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="talentNationality">Nacionalidad:</label>
-                        <input type="text" id="talentNationality">
-                    </div>
+                <div class="form-group">
+                    <label for="talentPassword">Contraseña *</label>
+                    <input type="password" id="talentPassword" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="talentPhone">Teléfono con código internacional *</label>
+                    <input type="tel" id="talentPhone" class="form-control" required>
                 </div>
                 
                 <div class="form-group">
-                    <label>Idiomas de Locución (Máx 4):</label>
+                    <label for="talentCountry">País *</label>
+                    <select id="talentCountry" class="form-control" required>
+                        <option value="">Selecciona tu país</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="talentState">Provincia/Estado *</label>
+                    <select id="talentState" class="form-control" required>
+                        <option value="">Selecciona tu provincia/estado</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="talentCity">Ciudad *</label>
+                    <select id="talentCity" class="form-control" required>
+                        <option value="">Selecciona tu ciudad</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="talentDemos">Demos de Audio (MP3, WAV, OGG - máximo 10MB)</label>
+                    <input type="file" id="talentDemos" class="form-control" accept="audio/*" multiple>
+                    <small class="text-muted">Puedes seleccionar múltiples archivos. Formatos: MP3, WAV, OGG. Máximo 10MB por archivo.</small>
+                </div>
+                <div class="form-group">
+                    <label for="talentDescription">Descripción (máx. 1000 caracteres)</label>
+                    <textarea id="talentDescription" class="form-control" maxlength="1000" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Idiomas que manejas *</label>
                     <div class="checkbox-group">
-                        <label><input type="checkbox" name="lang" value="español"> Español</label>
-                        <label><input type="checkbox" name="lang" value="inglés"> Inglés</label>
-                        <label><input type="checkbox" name="lang" value="francés"> Francés</label>
-                        <label><input type="checkbox" name="lang" value="portugués"> Portugués</label>
-                        <label><input type="checkbox" name="lang" value="otro" id="lang10"> Otro</label>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="lang1" value="es-latino">
+                            <label for="lang1">Español Latino</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="lang2" value="es-rioplatense">
+                            <label for="lang2">Español Rioplatense</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="lang3" value="es-españa">
+                            <label for="lang3">Español de España</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="lang4" value="italiano">
+                            <label for="lang4">Italiano</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="lang5" value="en-britanico">
+                            <label for="lang5">Inglés Británico</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="lang6" value="en-estadounidense">
+                            <label for="lang6">Inglés Estadounidense</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="lang7" value="portugues">
+                            <label for="lang7">Portugués</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="lang8" value="aleman">
+                            <label for="lang8">Alemán</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="lang9" value="arabe">
+                            <label for="lang9">Árabe</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="lang10" value="otros">
+                            <label for="lang10">Otros</label>
+                        </div>
                     </div>
-                    <div id="otherLanguages" style="display:none; margin-top: 10px;">
-                        <input type="text" placeholder="Otros idiomas, separados por coma">
-                    </div>
+                    <input type="text" id="otherLanguages" class="form-control" placeholder="Especifica otros idiomas" style="display: none; margin-top: 10px;">
                 </div>
-                
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="talentRealAge">Edad Real (Años):</label>
-                        <input type="number" id="talentRealAge" min="15" max="99">
-                    </div>
-                    <div class="form-group">
-                        <label for="talentAgeRange">Rango de Edad que interpretas:</label>
-                        <select id="talentAgeRange">
-                            <option value="cualquiera">Cualquiera</option>
-                            <option value="niño">Niño (5-12)</option>
-                            <option value="adolescente">Adolescente (13-17)</option>
-                            <option value="adulto_joven">Adulto Joven (18-35)</option>
-                            <option value="adulto_maduro">Adulto Maduro (36+)</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="talentHomeStudio">¿Tienes Home Studio?</label>
-                        <select id="talentHomeStudio" required>
-                            <option value="no">No</option>
-                            <option value="si">Sí</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="talentPhone">Teléfono (opcional):</label>
-                        <input type="tel" id="talentPhone">
-                    </div>
-                </div>
-                
                 <div class="form-group">
-                    <label for="talentDescription">Descripción/Bio (Máx 500 caracteres):</label>
-                    <textarea id="talentDescription" maxlength="500"></textarea>
+                    <label for="talentHomeStudio">Home Studio</label>
+                    <select id="talentHomeStudio" class="form-control">
+                        <option value="">Selecciona una opción</option>
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                    </select>
                 </div>
-                
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="talentCountry">País:</label>
-                        <select id="talentCountry" onchange="loadStates(this.value, 'talentState')" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label for="talentState">Estado/Provincia:</label>
-                        <select id="talentState" onchange="loadCities(document.getElementById('talentCountry').value, this.value, 'talentCity')" required disabled></select>
-                    </div>
-                    <div class="form-group">
-                        <label for="talentCity">Ciudad:</label>
-                        <select id="talentCity" required disabled></select>
-                    </div>
-                </div>
-
                 <div class="form-group">
-                    <label for="audioDemos">Demos de Audio (Máx 3 archivos, MP3/WAV, < 10MB c/u):</label>
-                    <input type="file" id="audioDemos" accept="audio/*" multiple>
-                    <div id="demoUploadMessage"></div>
+                    <label for="talentAgeRange">Rango de edades que puede interpretar (opcional)</label>
+                    <input type="text" id="talentAgeRange" class="form-control">
                 </div>
-
-                <button type="submit" class="btn btn-primary">Registrarme como Talento</button>
+                <div class="form-group">
+                    <label for="talentNationality">Nacionalidad (opcional)</label>
+                    <input type="text" id="talentNationality" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="talentRealAge">Edad real (opcional)</label>
+                    <input type="number" id="talentRealAge" class="form-control" min="1">
+                </div>
+                <div id="talentFormMessage"></div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Registrarse</button>
             </form>
         </div>
     </div>
 
     <div class="modal" id="clientModal">
-        <div class="modal-content large">
+        <div class="modal-content">
             <span class="close-modal">&times;</span>
-            <h2>Registro de Cliente</h2>
+            <h2>Registro - Busco un Talento</h2>
             <form id="clientForm">
-                <div id="clientFormMessage"></div>
-                
                 <div class="form-group">
-                    <label for="clientType">Tipo de Cliente:</label>
-                    <select id="clientType" required>
-                        <option value="particular">Particular</option>
+                    <label for="clientType">Tipo de cuenta *</label>
+                    <select id="clientType" class="form-control" required>
+                        <option value="">Selecciona tu tipo</option>
                         <option value="empresa">Empresa</option>
+                        <option value="particular">Particular</option>
                     </select>
                 </div>
-                
-                <div class="form-group" id="companyNameGroup" style="display:none;">
-                    <label for="clientCompanyName">Nombre de la Empresa:</label>
-                    <input type="text" id="clientCompanyName">
-                </div>
-                
                 <div class="form-group">
-                    <label for="clientName">Nombre/Representante:</label>
-                    <input type="text" id="clientName" required>
+                    <label for="clientName">Nombre Completo *</label>
+                    <input type="text" id="clientName" class="form-control" required>
+                </div>
+                <div class="form-group" id="companyNameGroup" style="display: none;">
+                    <label for="companyName">Nombre de la Empresa *</label>
+                    <input type="text" id="companyName" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label for="clientEmail">Email:</label>
-                    <input type="email" id="clientEmail" required>
+                    <label for="clientEmail">Email *</label>
+                    <input type="email" id="clientEmail" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label for="clientPassword">Contraseña:</label>
-                    <input type="password" id="clientPassword" required minlength="6">
+                    <label for="clientPassword">Contraseña *</label>
+                    <input type="password" id="clientPassword" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label for="clientPhone">Teléfono (opcional):</label>
-                    <input type="tel" id="clientPhone">
+                    <label for="clientPhone">Teléfono (opcional)</label>
+                    <input type="tel" id="clientPhone" class="form-control">
                 </div>
-                
-                <button type="submit" class="btn btn-primary">Registrarme como Cliente</button>
+                <div id="clientFormMessage"></div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Registrarse</button>
             </form>
         </div>
     </div>
 
-    <script src="js/firebase-config.js"></script>
-    <script src="js/locations.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/profile.js"></script>
-    <script src="js/app.js"></script>
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Iniciar Sesión</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <input type="password" id="loginPassword" class="form-control" required>
+                </div>
+                <div id="loginFormMessage"></div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Iniciar Sesión</button>
+            </form>
+        </div>
+    </div>
 
-    <script src="js/debug.js"></script>    
+    <div class="modal" id="editProfileModal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeEditProfileModal()">&times;</span>
+            <h2>Editar Perfil</h2>
+            
+            <div id="editProfileMessage"></div>
+
+            <form id="editProfileForm">
+                <div class="form-group">
+                    <label for="editName">Nombre Completo:</label>
+                    <input type="text" id="editName" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editPhone">Teléfono:</label>
+                    <input type="tel" id="editPhone" class="form-control">
+                </div>
+
+                <div id="editClientFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="editCompanyName">Nombre de la Empresa (Opcional):</label>
+                        <input type="text" id="editCompanyName" class="form-control">
+                    </div>
+                </div>
+
+                <div id="editTalentFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="editDescription">Descripción:</label>
+                        <textarea id="editDescription" class="form-control" rows="4"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editNationality">Nacionalidad:</label>
+                        <input type="text" id="editNationality" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="editRealAge">Edad real:</label>
+                        <input type="number" id="editRealAge" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="editAgeRange">Rango de edades que puede interpretar:</label>
+                        <input type="text" id="editAgeRange" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeEditProfileModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<div class="modal" id="dashboardModal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Mi Panel de Control</h2>
+        
+        <div class="dashboard">
+            <div class="dashboard-tabs">
+                <div class="tab active" data-tab="profile">Mi Perfil</div>
+                <div class="tab" data-tab="favorites">Favoritos</div>
+                <div class="tab" data-tab="jobs" id="jobsTab" style="display:none;">Mis Ofertas</div>
+                <div class="tab" data-tab="applications" id="applicationsTab" style="display:none;">Mis Postulaciones</div>
+            </div>
+            
+            <div class="tab-content active" id="profileTab">
+                <div id="userProfileContent">
+                    <div class="loading">Cargando perfil...</div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="favoritesTab">
+                <div id="favoritesContent">
+                    <p>Funcionalidad de favoritos - Próximamente</p>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="jobsTabContent">
+                <div id="jobsContent">
+                    <p>Mis ofertas de trabajo - Próximamente</p>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="applicationsTabContent">
+                <div id="applicationsContent">
+                    <p>Mis postulaciones - Próximamente</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/locations.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/app.js"></script>
+
+<script src="js/debug.js"></script>    
     
 </body>
 </html>
