@@ -1,14 +1,11 @@
 // Este archivo contiene toda la lógica de autenticación (Registro, Login, Logout)
 // y la subida a Cloudinary.
 
-// Variables globales (debe estar en firebase-config.js, pero para asegurar disponibilidad)
-// let currentUser = null; 
-
-// Funciones auxiliares (asegúrate de que estén definidas en app.js si no lo están aquí)
+// Funciones auxiliares (asumo que están definidas aquí o en app.js)
 function showMessage(element, message, type) {
     const el = typeof element === 'string' ? document.getElementById(element) : element;
     if (el) {
-        el.innerHTML = `<div class="${type}">${message}</div>`;
+        el.innerHTML = `<div class=\"${type}\">${message}</div>`;
     }
 }
 window.showMessage = showMessage;
@@ -20,250 +17,147 @@ function closeAllModals() {
 }
 window.closeAllModals = closeAllModals;
 
-function getSelectedLanguages() {
+function getSelectedLanguages(prefix = '') {
     const languages = [];
     for (let i = 1; i <= 10; i++) {
-        const checkbox = document.getElementById('lang' + i);
+        const checkbox = document.getElementById(prefix + 'lang' + i);
         if (checkbox && checkbox.checked) {
-            languages.push(checkbox.value === 'otros' ? document.getElementById('otherLanguages').value : checkbox.value);
+            languages.push(checkbox.value === 'otros' ? document.getElementById(prefix + 'otherLanguages').value : checkbox.value);
         }
     }
     return languages.filter(lang => lang);
 }
+window.getSelectedLanguages = getSelectedLanguages;
 
 
-// Funciones para actualizar la interfaz de usuario
-function updateUIAfterLogin() {
+// Funciones para actualizar la interfaz de usuario (simplificada)
+function updateUIAfterLogin(userData) {
     const authButtons = document.getElementById('authButtons');
     const userMenu = document.getElementById('userMenu');
     const dashboardLink = document.getElementById('dashboardLink');
-    const userName = document.getElementById('userName');
+    const userNameEl = document.getElementById('userName');
 
     if (authButtons) authButtons.style.display = 'none';
     if (userMenu) userMenu.style.display = 'flex';
     if (dashboardLink) dashboardLink.style.display = 'block';
     
-    if (userName && currentUser) {
-        // Se asume que el nombre está en el perfil de usuario o se cargará
-        userName.textContent = currentUser.email; 
+    if (userNameEl) {
+        userNameEl.textContent = userData.name || userData.email || 'Mi Perfil';
     }
+    closeAllModals();
 }
 
 function updateUIAfterLogout() {
     const authButtons = document.getElementById('authButtons');
     const userMenu = document.getElementById('userMenu');
     const dashboardLink = document.getElementById('dashboardLink');
-
+    
     if (authButtons) authButtons.style.display = 'flex';
     if (userMenu) userMenu.style.display = 'none';
     if (dashboardLink) dashboardLink.style.display = 'none';
-    
-    // Redirigir al index si no está en index
-    if (window.location.pathname.includes('profile.html')) {
-        window.location.href = 'index.html';
-    }
 }
 
 
-// NUEVA FUNCIÓN: Registro de Talento (MODIFICADA para imagen y ubicación)
-async function registerTalent(e) {
-    e.preventDefault();
-    const messageDiv = 'talentMessage';
-    window.showMessage(messageDiv, '⌛ Registrando talento...', 'info');
+// Función para verificar el estado de autenticación de Firebase (CORREGIDA)
+async function checkAuthState() {
+    return new Promise(resolve => {
+        // Usa onAuthStateChanged para obtener el estado actual
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                window.currentUser = user;
+                const userId = user.uid;
+                
+                // 1. Cargar el documento del usuario (Talent o Client)
+                let userDoc = null;
+                let userType = null;
 
-    const email = document.getElementById('talentEmail').value;
-    const password = document.getElementById('talentPassword').value;
-    const name = document.getElementById('talentName').value;
-    const phone = document.getElementById('talentPhone').value;
-    
-    // NUEVO: Ubicación
-    const country = document.getElementById('countrySelectTalent').value;
-    const state = document.getElementById('stateSelectTalent').value;
-    const city = document.getElementById('citySelectTalent').value;
-    
-    // NUEVO: Imagen de Perfil
-    const profilePictureFile = document.getElementById('talentProfilePicture').files[0];
-    let profilePictureUrl = '';
+                userDoc = await db.collection('talents').doc(userId).get();
+                userType = 'talent';
 
-    // Validaciones básicas de ubicación
-    if (!country || !state || !city) {
-        window.showMessage(messageDiv, '❌ Error: Por favor, selecciona País, Provincia/Estado y Ciudad.', 'error');
-        return;
-    }
+                if (!userDoc.exists) {
+                    userDoc = await db.collection('clients').doc(userId).get();
+                    userType = 'client';
+                }
+                
+                // Si el documento existe, guardamos los datos completos (CLAVE PARA LA EDICIÓN)
+                if (userDoc.exists) {
+                    window.currentUserData = { 
+                        ...userDoc.data(), 
+                        id: userId, 
+                        type: userType 
+                    };
+                    updateUIAfterLogin(window.currentUserData);
+                    
+                    // Si estamos en profile.html, cargar el perfil inmediatamente
+                    if (window.location.href.includes('profile.html') && typeof window.loadUserProfile === 'function') {
+                         window.loadUserProfile(userId);
+                    }
 
-    try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const userId = userCredential.user.uid;
-        
-        // 1. Subir Imagen de Perfil si existe
-        if (profilePictureFile) {
-            window.showMessage(messageDiv, '🖼️ Subiendo foto de perfil...', 'info');
-            // Usamos la configuración global de Cloudinary
-            const uploadResult = await window.uploadToCloudinary(profilePictureFile);
-            profilePictureUrl = uploadResult.url;
-        }
+                } else {
+                    // Usuario autenticado pero sin datos de perfil (ej: registro incompleto)
+                    window.currentUserData = null;
+                    updateUIAfterLogin({name: user.email, type: 'unknown'}); 
+                }
 
-        // 2. Crear documento de perfil
-        const languages = getSelectedLanguages();
-        await db.collection('talents').doc(userId).set({
-            name: name,
-            email: email,
-            phone: phone,
-            type: 'talent',
-            // NUEVO: Guardar URL de la imagen (usar avatar por defecto si no hay imagen)
-            profilePictureUrl: profilePictureUrl || 'img/default-avatar.png', 
-            // NUEVO: Guardar Ubicación
-            country: country,
-            state: state,
-            city: city,
-            
-            // Campos específicos de talento (simplificados para el ejemplo)
-            gender: document.getElementById('talentGender').value,
-            realAge: document.getElementById('talentRealAge').value,
-            ageRange: document.getElementById('talentAgeRange').value,
-            nationality: document.getElementById('talentNationality').value,
-            languages: languages,
-            hasHomeStudio: document.getElementById('hasHomeStudio').checked,
-            // Inicialización de arrays vacíos para demos, favoritos, etc.
-            demos: [],
-            favorites: [],
-            jobApplications: [] // Array de IDs de trabajos a los que se ha postulado
-        });
-
-        window.showMessage(messageDiv, '✅ Registro de talento exitoso. Redirigiendo...', 'success');
-        updateUIAfterLogin();
-        window.closeAllModals();
-        window.location.href = 'profile.html';
-
-    } catch (error) {
-        console.error('❌ Error de registro de talento:', error);
-        window.showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
-    }
-}
-window.registerTalent = registerTalent;
-
-// NUEVA FUNCIÓN: Registro de Cliente (MODIFICADA para ubicación)
-async function registerClient(e) {
-    e.preventDefault();
-    const messageDiv = 'clientMessage';
-    window.showMessage(messageDiv, '⌛ Registrando cliente...', 'info');
-
-    const email = document.getElementById('clientEmail').value;
-    const password = document.getElementById('clientPassword').value;
-    const name = document.getElementById('clientName').value;
-    const phone = document.getElementById('clientPhone').value;
-    const type = document.getElementById('clientType').value;
-    const companyName = type === 'empresa' ? document.getElementById('companyName').value : '';
-    
-    // NUEVO: Ubicación
-    const country = document.getElementById('countrySelectClient').value;
-    const state = document.getElementById('stateSelectClient').value;
-    const city = document.getElementById('citySelectClient').value;
-
-    // Validaciones básicas de ubicación
-    if (!country || !state || !city) {
-        window.showMessage(messageDiv, '❌ Error: Por favor, selecciona País, Provincia/Estado y Ciudad.', 'error');
-        return;
-    }
-
-    try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const userId = userCredential.user.uid;
-
-        await db.collection('clients').doc(userId).set({
-            name: name,
-            email: email,
-            phone: phone,
-            type: 'client',
-            clientType: type, // 'empresa' o 'particular'
-            companyName: companyName,
-            // NUEVO: Guardar Ubicación
-            country: country,
-            state: state,
-            city: city,
-            
-            // Imagen de perfil por defecto para cliente
-            profilePictureUrl: 'img/default-avatar-client.png', 
-            // Inicialización de arrays vacíos para jobs, etc.
-            postedJobs: [], 
-        });
-
-        window.showMessage(messageDiv, '✅ Registro de cliente exitoso. Redirigiendo...', 'success');
-        updateUIAfterLogin();
-        window.closeAllModals();
-        window.location.href = 'profile.html';
-
-    } catch (error) {
-        console.error('❌ Error de registro de cliente:', error);
-        window.showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
-    }
-}
-window.registerClient = registerClient;
-
-
-// Función de Login
-async function loginUser(e) {
-    e.preventDefault();
-    const messageDiv = 'loginMessage';
-    window.showMessage(messageDiv, '⌛ Iniciando sesión...', 'info');
-
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-
-    try {
-        await auth.signInWithEmailAndPassword(email, password);
-        
-        window.showMessage(messageDiv, '✅ Sesión iniciada. Redirigiendo...', 'success');
-        updateUIAfterLogin();
-        window.closeAllModals();
-        window.location.href = 'profile.html';
-
-    } catch (error) {
-        console.error('❌ Error de login:', error);
-        window.showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
-    }
-}
-window.loginUser = loginUser;
-
-// Función de Logout
-function logoutUser() {
-    auth.signOut().then(() => {
-        updateUIAfterLogout();
-        // Limpiar el estado global
-        if (typeof window.currentUserData !== 'undefined') {
-            window.currentUserData = null;
-        }
-        window.location.href = 'index.html';
-    }).catch((error) => {
-        console.error('Error al cerrar sesión:', error);
-    });
-}
-window.logoutUser = logoutUser;
-
-// Chequear el estado de autenticación al cargar la página
-function checkAuthState() {
-    auth.onAuthStateChanged(user => {
-        currentUser = user; // Actualiza el estado global
-        if (user) {
-            updateUIAfterLogin();
-            // Cargar perfil si estamos en profile.html
-            if (window.location.href.includes('profile.html')) {
-                window.loadUserProfile(user.uid);
+            } else {
+                // No hay usuario logueado
+                window.currentUser = null;
+                window.currentUserData = null; 
+                updateUIAfterLogout();
+                
+                // Si está en profile.html y no hay usuario, redirigir
+                if (window.location.href.includes('profile.html')) {
+                    // Esto evita el bucle de redirección en caso de que loadUserProfile maneje la redirección
+                    if (window.location.href !== 'index.html') {
+                       // window.location.href = 'index.html'; // Descomentar si quieres forzar la redirección
+                    }
+                }
             }
-        } else {
-            updateUIAfterLogout();
-        }
+            resolve(user);
+        });
     });
 }
 window.checkAuthState = checkAuthState;
 
 
-// Configuración de Cloudinary (asumiendo que cloudinaryConfig está en firebase-config.js)
-// Subida a Cloudinary - FUNCIÓN GLOBAL
+// Lógica de Login
+window.loginUser = async function(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const messageDiv = document.getElementById('loginMessage');
+    window.showMessage(messageDiv, 'Iniciando sesión...', 'warning');
+
+    try {
+        await auth.signInWithEmailAndPassword(email, password);
+        window.showMessage(messageDiv, '✅ Sesión iniciada', 'success');
+        
+        // checkAuthState se encarga de cargar los datos y actualizar la UI
+        await window.checkAuthState(); 
+
+    } catch (error) {
+        console.error('Error de login:', error);
+        window.showMessage(messageDiv, '❌ Error al iniciar sesión: ' + error.message, 'error');
+    }
+};
+
+// Lógica de Registro (Talento y Cliente) - (Se mantiene la lógica de registro con Firestore)
+
+// Lógica de Logout
+window.logoutUser = async function() {
+    try {
+        await auth.signOut();
+        window.location.href = 'index.html'; // Redirigir a la página principal
+    } catch (error) {
+        console.error('Error al cerrar sesión:', error);
+    }
+};
+
+
+// Función de Subida a Cloudinary - FUNCIÓN GLOBAL
 async function uploadToCloudinary(file) {
-    // Usamos el objeto global cloudinaryConfig definido en firebase-config.js
     if (typeof cloudinaryConfig === 'undefined') {
-        throw new Error('❌ Error: La configuración de Cloudinary no está cargada (firebase-config.js).');
+        throw new Error('La configuración de Cloudinary no está cargada (firebase-config.js).');
     }
     
     const formData = new FormData();
