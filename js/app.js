@@ -43,12 +43,15 @@ function setupEventListeners() {
     document.getElementById('editProfileForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
         
+        // CORRECCIÓN: Llamar a las funciones de forma global (usando window.)
         const isTalent = document.getElementById('editTalentFields').style.display !== 'none';
 
-        if (isTalent) {
-            updateTalentProfile();
+        if (isTalent && typeof window.updateTalentProfile === 'function') {
+            window.updateTalentProfile();
+        } else if (typeof window.updateClientProfile === 'function') {
+            window.updateClientProfile();
         } else {
-            updateClientProfile();
+             console.error('Funciones de actualización de perfil no definidas.');
         }
     });
 
@@ -82,7 +85,7 @@ async function loadTalents() {
     }
 }
 
-// Mostrar tarjeta de talento 
+// Mostrar tarjeta de talento (CORREGIDA PARA OCULTAR CONTACTO)
 function displayTalentCard(talent, talentId) {
     const talentsContainer = document.getElementById('talentsContainer');
     const talentCard = document.createElement('div');
@@ -118,17 +121,22 @@ function displayTalentCard(talent, talentId) {
         `<p class="talent-details"><i class="fas fa-map-marker-alt"></i> ${getCityName(talent.country, talent.state, talent.city)}, ${getCountryName(talent.country)}</p>` :
         '<p class="talent-details"><i class="fas fa-map-marker-alt"></i> Ubicación no especificada</p>';
     
-    // Información de contacto solo para usuarios logueados
-    const contactInfo = currentUser ? `
-        <p class="talent-details"><strong>Email:</strong> ${talent.email || 'No disponible'}</p>
-        <p class="talent-details"><strong>Teléfono:</strong> ${talent.phone || 'No disponible'}</p>
-    ` : `
-        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; margin: 10px 0;">
-            <p style="margin: 0; color: #856404; font-size: 14px;">
-                <i class="fas fa-lock"></i> Inicia sesión para ver información de contacto
-            </p>
-        </div>
-    `;
+    // CORRECCIÓN: Definir contactInfo y solo mostrar los datos sensibles si currentUser existe
+    let contactInfo = '';
+    if (currentUser) {
+        contactInfo = `
+            <p class="talent-details"><strong>Email:</strong> ${talent.email || 'No disponible'}</p>
+            <p class="talent-details"><strong>Teléfono:</strong> ${talent.phone || 'No disponible'}</p>
+        `;
+    } else {
+        contactInfo = `
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; margin: 10px 0;">
+                <p style="margin: 0; color: #856404; font-size: 14px;">
+                    <i class="fas fa-lock"></i> **Debes iniciar sesión** para ver la información de contacto
+                </p>
+            </div>
+        `;
+    }
     
     talentCard.innerHTML = `
         <div class="talent-img" style="background-color: #3498db; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px;">
@@ -238,3 +246,48 @@ window.addToFavorites = function(talentId) {
 window.applyToJob = function(jobId) {
     alert(`Postular al trabajo ${jobId}. Funcionalidad pendiente.`);
 };
+
+// Funciones que deben estar en app.js para evitar errores de referencia en otros scripts
+// Aunque deberían estar en auth.js, las mantengo aquí por el flujo de trabajo previo:
+// window.closeAllModals = closeAllModals; // Ya están en el ámbito global si no usas 'let' o 'const'
+
+// ========== FUNCIÓN PARA VERIFICAR CONFIGURACIÓN (del snippet anterior) ==========
+function checkCloudinaryConfig() {
+    console.log('🔍 Verificando configuración de Cloudinary:');
+    console.log('☁️  Cloud Name:', typeof cloudinaryConfig !== 'undefined' ? cloudinaryConfig.cloudName : 'No definido');
+    console.log('📝 Upload Preset:', typeof cloudinaryConfig !== 'undefined' ? cloudinaryConfig.uploadPreset : 'No definido');
+    
+    if (typeof cloudinaryConfig === 'undefined') {
+        console.warn('⚠️  cloudinaryConfig no está definido');
+        return false;
+    }
+    
+    if (!cloudinaryConfig.cloudName || cloudinaryConfig.cloudName === 'TU_CLOUD_NAME') {
+        console.error('❌ Cloud Name no configurado');
+        return false;
+    }
+    
+    if (!cloudinaryConfig.uploadPreset || cloudinaryConfig.uploadPreset === 'TU_UPLOAD_PRESET') {
+        console.error('❌ Upload Preset no configurado');
+        return false;
+    }
+    
+    console.log('✅ Configuración de Cloudinary OK');
+    return true;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    setupEventListeners();
+    checkAuthState();
+    
+    // CORRECCIÓN: Asegurar que la carga de talentos solo corra en index.html
+    if (!window.location.href.includes('profile.html')) {
+        loadTalents();
+        loadJobOffers();
+        loadLocationData(); // Cargar la data de ubicación para el modal de registro
+    }
+    
+    setTimeout(() => {
+        checkCloudinaryConfig();
+    }, 1000);
+});
