@@ -25,8 +25,7 @@
                         <li><a href="#talentos">Talentos</a></li>
                         <li><a href="#ofertas">Ofertas</a></li>
                         <li><a href="profile.html" id="dashboardLink" style="display:none;">Mi Perfil</a></li>
-                        <li><a href="#contacto">Contacto</a></li>
-                    </ul>
+                        </ul>
                 </nav>
                 <div id="authButtons">
                     <button class="btn btn-outline" id="loginBtn">Iniciar Sesión</button>
@@ -60,13 +59,13 @@
                     <input type="text" placeholder="Buscar por nombre o habilidad..." class="form-control">
                     <select class="form-control">
                         <option>Idioma</option>
-                        </select>
+                    </select>
                     <select class="form-control">
                         <option>Género</option>
-                        </select>
+                    </select>
                     <select class="form-control">
                         <option>Home Studio</option>
-                        </select>
+                    </select>
                 </div>
             </div>
 
@@ -83,24 +82,6 @@
             <div id="jobOffers" class="card-grid">
                 <div class="loading">Cargando ofertas...</div>
             </div>
-        </div>
-    </section>
-
-    <section id="contacto" class="section">
-        <div class="container">
-            <h2>Contáctanos</h2>
-            <form class="contact-form">
-                <div class="form-group">
-                    <input type="text" placeholder="Tu Nombre" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <input type="email" placeholder="Tu Email" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <textarea placeholder="Tu Mensaje" class="form-control" rows="5" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">Enviar Mensaje</button>
-            </form>
         </div>
     </section>
 
@@ -134,12 +115,12 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <select id="state" name="state" class="form-control" required>
+                    <select id="state" name="state" class="form-control" required disabled>
                         <option value="">Seleccionar Provincia/Estado *</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <select id="city" name="city" class="form-control" required>
+                    <select id="city" name="city" class="form-control" required disabled>
                         <option value="">Seleccionar Ciudad *</option>
                     </select>
                 </div>
@@ -152,7 +133,7 @@
                         <label><input type="checkbox" id="lang10" value="otros"> Otros</label>
                     </div>
                 </div>
-                <div class="form-group" style="display:none;" id="otherLanguagesInput">
+                <div class="form-group" id="otherLanguagesInput" style="display:none;">
                     <input type="text" placeholder="Especifica otros idiomas (ej: Alemán, Italiano)" id="otherLanguages" class="form-control">
                 </div>
                 
@@ -195,12 +176,12 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <select id="clientState" name="state" class="form-control" required>
+                    <select id="clientState" name="state" class="form-control" required disabled>
                         <option value="">Seleccionar Provincia/Estado *</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <select id="clientCity" name="city" class="form-control" required>
+                    <select id="clientCity" name="city" class="form-control" required disabled>
                         <option value="">Seleccionar Ciudad *</option>
                     </select>
                 </div>
