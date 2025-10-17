@@ -2,68 +2,85 @@
 // js/locations.js - Data y lógica de ubicación para países hispanohablantes
 // =========================================================================
 
-// Data de Localizaciones - INTEGRADA DIRECTAMENTE (Simplificada y funcional)
+// Data de Localizaciones - INTEGRADA DIRECTAMENTE (Expandida para mayor cobertura)
 const locationData = {
-    // ---------------------- ARGENTINA ----------------------
+    // ---------------------- ARGENTINA (AR) ----------------------
     "AR": { name: "Argentina", states: {
         "CABA": { name: "Ciudad Autónoma de Buenos Aires", cities: ["Buenos Aires", "La Plata", "Mar del Plata"]},
         "CBA": { name: "Córdoba", cities: ["Córdoba Capital", "Río Cuarto", "Villa María"]},
         "SFE": { name: "Santa Fe", cities: ["Rosario", "Santa Fe Capital", "Rafaela"]},
     }},
-    // ---------------------- CHILE ----------------------
+    // ---------------------- CHILE (CL) ----------------------
     "CL": { name: "Chile", states: {
         "RM": { name: "Región Metropolitana", cities: ["Santiago", "Puente Alto", "Maipú"]},
         "V": { name: "Valparaíso", cities: ["Valparaíso", "Viña del Mar", "Quilpué"]},
+        "Bio": { name: "Biobío", cities: ["Concepción", "Talcahuano", "Los Ángeles"]},
     }},
-    // ---------------------- COLOMBIA ----------------------
+    // ---------------------- COLOMBIA (CO) ----------------------
     "CO": { name: "Colombia", states: {
         "DC": { name: "Bogotá D.C.", cities: ["Bogotá", "Soacha"]},
         "ANT": { name: "Antioquia", cities: ["Medellín", "Envigado", "Itagüí"]},
         "VAL": { name: "Valle del Cauca", cities: ["Cali", "Palmira", "Buenaventura"]},
     }},
-    // ---------------------- ESPAÑA ----------------------
+    // ---------------------- ESPAÑA (ES) ----------------------
     "ES": { name: "España", states: {
-        "MD": { name: "Madrid", cities: ["Madrid", "Alcalá de Henares", "Móstoles"]},
+        "MD": { name: "Comunidad de Madrid", cities: ["Madrid", "Alcalá de Henares", "Móstoles"]},
         "CT": { name: "Cataluña", cities: ["Barcelona", "Tarragona", "Lleida"]},
         "AN": { name: "Andalucía", cities: ["Sevilla", "Málaga", "Granada"]},
     }},
-    // ---------------------- MÉXICO ----------------------
+    // ---------------------- MÉXICO (MX) ----------------------
     "MX": { name: "México", states: {
         "CMX": { name: "Ciudad de México", cities: ["Ciudad de México", "Ecatepec de Morelos"]},
         "JAL": { name: "Jalisco", cities: ["Guadalajara", "Zapopan", "Tlaquepaque"]},
         "NL": { name: "Nuevo León", cities: ["Monterrey", "Guadalupe", "San Nicolás de los Garza"]},
-    }}
-    // Puedes añadir más países hispanos aquí siguiendo el mismo formato.
+    }},
+    // ---------------------- PERÚ (PE) ----------------------
+    "PE": { name: "Perú", states: {
+        "LIM": { name: "Lima", cities: ["Lima", "Callao", "Arequipa"]},
+        "CUS": { name: "Cusco", cities: ["Cusco", "Sicuani"]},
+    }},
+    // ---------------------- VENEZUELA (VE) ----------------------
+    "VE": { name: "Venezuela", states: {
+        "MIR": { name: "Miranda", cities: ["Caracas", "Guarenas", "Guatire"]},
+        "ZUL": { name: "Zulia", cities: ["Maracaibo", "Cabimas"]},
+    }},
+    // ---------------------- COSTA RICA (CR) ----------------------
+    "CR": { name: "Costa Rica", states: {
+        "SJ": { name: "San José", cities: ["San José", "Escazú"]},
+    }},
+    // ---------------------- URUGUAY (UY) ----------------------
+    "UY": { name: "Uruguay", states: {
+        "MVD": { name: "Montevideo", cities: ["Montevideo", "Ciudad de la Costa"]},
+    }},
 };
 
 // Lista de países hispanohablantes para poblar el primer select.
 const HISPANIC_COUNTRIES = Object.keys(locationData).map(code => ({
     code: code,
     name: locationData[code].name
-}));
+})).sort((a, b) => a.name.localeCompare(b.name));
+
 
 /**
  * Función que inicializa la carga de los selects de ubicación.
- * Se llama desde app.js (para registro) y profile.html (para edición).
  */
 function loadLocationData() {
     console.log('🗺️ Inicializando selects de ubicación...');
     
-    // Configuración para el modal de Registro (index.html)
-    setupLocationSelects('country', 'state', 'city');
+    // Configuración para el modal de Registro de Talento (IDs: country, state, city)
+    setupLocationSelects('talentForm', 'country', 'state', 'city');
+    // Configuración para el modal de Registro de Cliente (IDs: clientCountry, clientState, clientCity)
+    setupLocationSelects('clientForm', 'clientCountry', 'clientState', 'clientCity');
     
     // Configuración para el modal de Edición (profile.html)
-    setupLocationSelects('editCountry', 'editState', 'editCity');
+    setupLocationSelects('editProfileForm', 'editCountry', 'editState', 'editCity');
 }
 window.loadLocationData = loadLocationData;
 
 /**
  * Configura los event listeners y rellena el select de País.
- * @param {string} countrySelectId - ID del select de País.
- * @param {string} stateSelectId - ID del select de Provincia/Estado.
- * @param {string} citySelectId - ID del select de Ciudad.
  */
-function setupLocationSelects(countrySelectId, stateSelectId, citySelectId) {
+function setupLocationSelects(formId, countrySelectId, stateSelectId, citySelectId) {
     const countrySelect = document.getElementById(countrySelectId);
     const stateSelect = document.getElementById(stateSelectId);
     const citySelect = document.getElementById(citySelectId);
@@ -76,8 +93,6 @@ function setupLocationSelects(countrySelectId, stateSelectId, citySelectId) {
     // 2. Event Listener para País
     countrySelect.addEventListener('change', () => {
         const selectedCountryCode = countrySelect.value;
-        
-        // Limpiar y poblar Estados/Provincias
         populateStateSelect(stateSelect, citySelect, selectedCountryCode);
     });
 
@@ -86,8 +101,6 @@ function setupLocationSelects(countrySelectId, stateSelectId, citySelectId) {
         stateSelect.addEventListener('change', () => {
             const selectedCountryCode = countrySelect.value;
             const selectedStateCode = stateSelect.value;
-            
-            // Limpiar y poblar Ciudades
             populateCitySelect(citySelect, selectedCountryCode, selectedStateCode);
         });
     }
@@ -107,7 +120,7 @@ function populateCountrySelect(countrySelect, stateSelect, citySelect, selectedC
         countrySelect.appendChild(option);
     });
 
-    // Inicializar deshabilitado
+    // Inicializar Estado y Ciudad
     if (stateSelect) stateSelect.innerHTML = '<option value="">Seleccionar Provincia/Estado *</option>';
     if (citySelect) citySelect.innerHTML = '<option value="">Seleccionar Ciudad *</option>';
 }
@@ -169,7 +182,6 @@ window.getStateName = function(countryCode, stateCode) {
 }
 
 window.getCityName = function(countryCode, stateCode, cityName) {
-    // Para la ciudad, simplemente retornamos el nombre que se guardó.
     return cityName || 'N/A';
 }
 
