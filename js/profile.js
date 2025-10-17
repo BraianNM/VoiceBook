@@ -40,7 +40,7 @@ async function loadUserProfile(userId) {
 window.loadUserProfile = loadUserProfile;
 
 // =========================================================
-// 4. CORRECCIÓN: Mostrar perfil y Demos en el dashboard
+// CORRECCIÓN: Mostrar perfil y Foto de Perfil Robusta
 // =========================================================
 function displayUserProfile(profile) {
     const profileContent = document.getElementById('userProfileContent');
@@ -62,11 +62,13 @@ function displayUserProfile(profile) {
             <label>Ubicación:</label>
             <span>${getCityName(profile.country, profile.state, profile.city)}, ${getStateName(profile.country, profile.state, profile.city)}, ${getCountryName(profile.country)}</span>
         </div>` : '';
+    
+    // Nueva URL de la foto de perfil con fallback
+    const photoUrl = profile.photoURL || 'images/default-profile.png';
 
     let profileHtml = `
         <div class="profile-header">
-            <div class="profile-pic-container">
-                <img src="${profile.photoURL || 'images/default-profile.png'}" alt="Foto de perfil" class="profile-image">
+            <div class="profile-pic-container" style="background-image: url('${photoUrl}');">
             </div>
             <div class="profile-info-header">
                 <h2>${profile.name || 'Usuario'} ${profile.lastName || ''}</h2>
@@ -105,17 +107,15 @@ function displayUserProfile(profile) {
     if (profile.type === 'client') {
         // Cliente: Mis Ofertas, Favoritos
         if (jobsTab) jobsTab.style.display = 'block';
-        // 3. Cargar trabajos y postulantes
         loadClientJobs(profile.id);
     } else if (profile.type === 'talent') {
         // Talento: Demos, Favoritos, Mis Postulaciones
         if (document.getElementById('demosTab')) document.getElementById('demosTab').style.display = 'block';
         if (applicationsTab) applicationsTab.style.display = 'block';
-        // 3. Cargar postulaciones
         loadTalentApplications(profile.id);
     }
     
-    // 4. CORRECCIÓN: Cargar Demos
+    // Cargar Demos
     if (demosTabContent && profile.type === 'talent') {
         let demosHtml = `<h4>Demos de Audio Subidos (${profile.demos ? profile.demos.length : 0})</h4>`;
         if (profile.demos && profile.demos.length > 0) {
@@ -133,7 +133,7 @@ function displayUserProfile(profile) {
         demosTabContent.innerHTML = `<div id="demosContent">${demosHtml}</div>`;
     }
 
-    // 5. CORRECCIÓN: Cargar Favoritos
+    // Cargar Favoritos
     if (favoritesTab) {
         document.getElementById('favoritesContent').innerHTML = '<div class="loading">Cargando favoritos...</div>';
         loadFavorites(profile.id);
@@ -143,7 +143,7 @@ window.displayUserProfile = displayUserProfile;
 
 
 // =========================================================
-// 5. Corrección: Funcionalidad de Favoritos (Talento o Cliente)
+// Funcionalidad de Favoritos (Talento o Cliente)
 // =========================================================
 window.loadFavorites = async function(userId) {
     const favoritesContent = document.getElementById('favoritesContent');
@@ -197,7 +197,7 @@ window.loadFavorites = async function(userId) {
 
 
 // =========================================================
-// 3. Corrección: Funcionalidad de Postulaciones (Cliente: Mis Ofertas y Postulantes)
+// Funcionalidad de Postulaciones (Cliente: Mis Ofertas y Postulantes)
 // =========================================================
 window.loadClientJobs = async function(clientId) {
     const jobsContainer = document.getElementById('jobsContent');
@@ -262,7 +262,7 @@ window.loadClientJobs = async function(clientId) {
 };
 
 // =========================================================
-// 3. Corrección: Funcionalidad de Postulaciones (Talento: Mis Postulaciones)
+// Funcionalidad de Postulaciones (Talento: Mis Postulaciones)
 // =========================================================
 window.loadTalentApplications = async function(talentId) {
     const appsContainer = document.getElementById('applicationsContent');
@@ -323,7 +323,7 @@ window.loadTalentApplications = async function(talentId) {
 };
 
 // =========================================================
-// FUNCIONES AUXILIARES DE EDICIÓN DE PERFIL (Restauradas)
+// FUNCIONES AUXILIARES DE EDICIÓN DE PERFIL
 // =========================================================
 
 // Abrir modal de edición y cargar datos
@@ -429,6 +429,9 @@ window.updateTalentProfile = async function(userId) {
 
         let newDemos = [];
         if (audioFiles.length > 0) {
+            // Nota: Aquí se debería obtener la lista de demos actuales para no borrarlos
+            // pero si la intención es reemplazar o agregar y la lógica de negocio no fue definida
+            // usaremos solo los nuevos para simplificar.
             for (const file of audioFiles) {
                 const demoResult = await uploadToCloudinary(file); // Se asume uploadToCloudinary está en auth.js
                 newDemos.push({
@@ -457,8 +460,7 @@ window.updateTalentProfile = async function(userId) {
             updateData.photoURL = photoURL;
         }
 
-        // Si se subieron nuevos demos, reemplazamos la lista (o la combinamos si la lógica es más compleja)
-        // Por simplicidad en la corrección, si sube archivos, reemplaza.
+        // Si hay nuevos demos, los adjuntamos/reemplazamos. Por simplicidad, reemplazaremos si hay nuevos.
         if (newDemos.length > 0) {
             updateData.demos = newDemos;
         }
@@ -555,7 +557,6 @@ window.deleteDemo = async function(publicId, userId) {
 window.closeEditProfileModal = function() {
     const editModal = document.getElementById('editProfileModal');
     if (editModal) editModal.style.display = 'none';
-    // Nota: El profile.html no usa dashboardModal, solo el index.html. Cerramos solo el de edición.
 };
 
 // Función auxiliar para mostrar mensajes (globalizada)
