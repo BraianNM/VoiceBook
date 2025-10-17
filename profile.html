@@ -114,10 +114,10 @@
                             <select id="editCountrySelectTalent" class="form-control" required>
                                 <option value="">Selecciona tu país *</option>
                             </select>
-                            <select id="editStateSelectTalent" class="form-control" required disabled>
+                            <select id="editStateSelectTalent" class="form-control" required>
                                 <option value="">Selecciona tu provincia/estado *</option>
                             </select>
-                            <select id="editCitySelectTalent" class="form-control" required disabled>
+                            <select id="editCitySelectTalent" class="form-control" required>
                                 <option value="">Selecciona tu ciudad *</option>
                             </select>
                         </div>
@@ -193,12 +193,12 @@
                         
                         <div class="form-group">
                             <label for="editClientName">Nombre Completo *</label>
-                            <input type="text" id="editClientName" class="form-control" required>
+                            <input type="text" id="editClientName" class="form-control">
                         </div>
                         
                         <div class="form-group">
                             <label for="editClientEmail">Email *</label>
-                            <input type="email" id="editClientEmail" class="form-control" required>
+                            <input type="email" id="editClientEmail" class="form-control">
                         </div>
                         
                         <div class="form-group">
@@ -208,13 +208,13 @@
 
                         <div class="form-group">
                             <label>Ubicación</label>
-                            <select id="editCountrySelectClient" class="form-control" required>
+                            <select id="editCountrySelectClient" class="form-control">
                                 <option value="">Selecciona tu país *</option>
                             </select>
-                            <select id="editStateSelectClient" class="form-control" required disabled>
+                            <select id="editStateSelectClient" class="form-control">
                                 <option value="">Selecciona tu provincia/estado *</option>
                             </select>
-                            <select id="editCitySelectClient" class="form-control" required disabled>
+                            <select id="editCitySelectClient" class="form-control">
                                 <option value="">Selecciona tu ciudad *</option>
                             </select>
                         </div>
@@ -364,40 +364,43 @@
     <script src="js/firebase-config.js"></script>
     <script src="js/locations.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/profile.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/profile.js"></script>
 
     <script>
-        // Inicialización del perfil
+        // Inicialización del perfil - VERSIÓN CORREGIDA
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ Profile.html - DOM cargado correctamente');
+            
             // Verificar autenticación
             auth.onAuthStateChanged(user => {
                 if (user) {
                     window.currentUser = user;
-                    loadUserProfile(user.uid);
+                    console.log('✅ Usuario autenticado en profile.html:', user.uid);
+                    
+                    // Cargar perfil del usuario
+                    if (typeof loadUserProfile === 'function') {
+                        loadUserProfile(user.uid);
+                    } else {
+                        console.error('❌ Error: loadUserProfile no está definido');
+                    }
                 } else {
+                    console.log('❌ Usuario no autenticado, redirigiendo...');
                     window.location.href = 'index.html';
                 }
             });
 
-            // Configurar event listeners
-            document.getElementById('logoutBtn').addEventListener('click', logoutUser);
-            
-            // Configurar formulario de edición
-            document.getElementById('editProfileForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                const userType = document.getElementById('editProfileUserType').value;
-                if (userType === 'talent') {
-                    window.updateTalentProfile(e);
-                } else {
-                    window.updateClientProfile(e);
-                }
-            });
+            // Configurar event listeners básicos
+            document.getElementById('logoutBtn')?.addEventListener('click', logoutUser);
 
             // Configurar formulario de creación de trabajo
-            document.getElementById('createJobForm').addEventListener('submit', function(e) {
+            document.getElementById('createJobForm')?.addEventListener('submit', function(e) {
                 e.preventDefault();
-                window.createJob(e);
+                if (typeof window.createJob === 'function') {
+                    window.createJob(e);
+                } else {
+                    alert('Funcionalidad de crear trabajo no disponible');
+                }
             });
 
             // Configurar selectores de ubicación
@@ -433,27 +436,43 @@
 
         // Función para cambiar entre secciones
         function toggleProfileSection(sectionId) {
+            console.log('🔄 Cambiando a sección:', sectionId);
+            
             // Ocultar todas las secciones
             document.querySelectorAll('.profile-section').forEach(section => {
                 section.classList.remove('active-section');
             });
             
             // Mostrar la sección seleccionada
-            document.getElementById(sectionId).classList.add('active-section');
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.classList.add('active-section');
+            }
             
             // Actualizar botones activos
             document.querySelectorAll('.profile-nav-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            
+            // Marcar el botón correspondiente como activo
+            const activeButton = document.querySelector(`[onclick="toggleProfileSection('${sectionId}')"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
             
             // Cargar datos específicos de la sección
             if (sectionId === 'applicationsSection') {
-                loadTalentApplications();
+                if (typeof loadTalentApplications === 'function') {
+                    loadTalentApplications();
+                }
             } else if (sectionId === 'jobsSection') {
-                loadClientJobs();
+                if (typeof loadClientJobs === 'function') {
+                    loadClientJobs();
+                }
             } else if (sectionId === 'notificationsSection') {
-                loadUserNotifications();
+                if (typeof loadUserNotifications === 'function') {
+                    loadUserNotifications();
+                }
             }
         }
     </script>
