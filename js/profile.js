@@ -1,5 +1,8 @@
 // profile.js - Gestión completa del perfil de usuario (CORREGIDO Y MEJORADO)
 
+// Variable para controlar si ya se inicializó
+let profileInitialized = false;
+
 // Cargar perfil del usuario (FUNCIÓN CORREGIDA)
 async function loadUserProfile(userId) {
     console.log('Cargando perfil para usuario:', userId);
@@ -793,31 +796,33 @@ function showUploadDemoModal() {
     alert('Para subir demos, ve a la sección "Editar Perfil" y utiliza el campo "Subir Demos".');
 }
 
-// Inicialización del perfil cuando se carga la página
+// Inicialización del perfil cuando se carga la página - VERSIÓN SIMPLIFICADA
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Profile.js cargado - DOM completamente cargado');
     
-    // Verificar autenticación
+    // Solo inicializar una vez
+    if (profileInitialized) {
+        console.log('✅ Profile.js ya estaba inicializado');
+        return;
+    }
+    
+    profileInitialized = true;
+
+    // Verificar autenticación - SOLO UNA VEZ
     auth.onAuthStateChanged(user => {
         if (user) {
-            console.log('✅ Usuario autenticado:', user.uid);
+            console.log('✅ Usuario autenticado en profile.js:', user.uid);
             currentUser = user;
-            // El perfil se cargará cuando checkAuthState se ejecute
             
-            // Configurar event listener del formulario después de que el usuario esté autenticado
-            setTimeout(() => {
-                setupEditProfileFormListener();
-            }, 1000);
+            // Cargar perfil del usuario
+            if (typeof loadUserProfile === 'function') {
+                loadUserProfile(user.uid);
+            }
         } else {
             console.log('❌ Usuario no autenticado, redirigiendo...');
             window.location.href = 'index.html';
         }
     });
-
-    // También configurar el event listener inmediatamente por si acaso
-    setTimeout(() => {
-        setupEditProfileFormListener();
-    }, 500);
 
     console.log('✅ Profile.js inicializado correctamente');
 });
