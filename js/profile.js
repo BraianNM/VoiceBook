@@ -27,6 +27,8 @@ async function loadUserProfile(userId) {
         
         if (userProfile) {
             displayUserProfile(userProfile);
+            // Actualizar datos globales (fundamental para la edición)
+            window.currentUserData = userProfile; 
             // Cargar datos para el modal de edición al cargar el perfil
             window.populateEditProfileModal(userProfile); 
         } else {
@@ -40,259 +42,310 @@ async function loadUserProfile(userId) {
 }
 window.loadUserProfile = loadUserProfile; // Hacer global
 
-// Mostrar perfil en el dashboard
+// Mostrar perfil en el dashboard (CORREGIDO: Muestra la foto de perfil)
 function displayUserProfile(profile) {
     const profileContent = document.getElementById('userProfileContent');
+    const profileNameEl = document.getElementById('profileName');
+    const profileTypeEl = document.getElementById('profileType');
+    const profilePhotoEl = document.getElementById('profilePhoto'); // Nuevo elemento
+
     if (!profileContent) return; 
     
-    // Información de ubicación (si está disponible)
-    const locationInfo = profile.country && profile.state && profile.city && typeof getCountryName !== 'undefined' ? 
-        `<div class="info-item">
-            <label>Ubicación:</label>
-            <span>${getCityName(profile.country, profile.state, profile.city)}, ${getStateName(profile.country, profile.state)}, ${getCountryName(profile.country)}</span>
-        </div>` : '';
+    // CORRECCIÓN: Asignar nombre, tipo y foto
+    profileNameEl.textContent = profile.name || 'Usuario';
+    // Usar profilePhotoUrl, si no existe, usar un placeholder
+    profilePhotoEl.src = profile.profilePhotoUrl || 'https://via.placeholder.com/120?text=V';
     
+    // Información de ubicación
+    const countryName = typeof window.getCountryName === 'function' ? window.getCountryName(profile.country) : profile.country;
+    const stateName = typeof window.getStateName === 'function' ? window.getStateName(profile.country, profile.state) : profile.state;
+    const locationDisplay = countryName && stateName ? `${profile.city}, ${stateName}, ${countryName}` : 'Ubicación no especificada';
+    
+    let contentHtml = `<div class="info-section"><h2>Información General</h2>
+        <div class="info-grid">
+            <div class="info-item"><label>Email:</label><span>${profile.email || 'N/A'}</span></div>
+            <div class="info-item"><label>Teléfono:</label><span>${profile.phone || 'N/A'}</span></div>
+            <div class="info-item"><label>Ubicación:</label><span>${locationDisplay}</span></div>
+        </div>
+    </div>`;
+
     if (profile.type === 'talent') {
-        let demosHtml = '';
-        if (profile.demos && profile.demos.length > 0) {
-            demosHtml = profile.demos.map(demo => `
-                <div class="demo-item">
-                    <span>${demo.name} (${demo.duration ? Math.round(demo.duration) + 's' : ''})</span>
-                    <audio controls src="${demo.url}"></audio>
-                    <button class="btn btn-danger btn-sm" onclick="window.deleteDemo('${demo.publicId}', '${profile.id}')">Eliminar</button>
+        profileTypeEl.textContent = 'Talento de Voz';
+        
+        contentHtml += `
+            <div class="info-section"><h2>Características de la Voz</h2>
+                <div class="info-grid">
+                    <div class="info-item"><label>Edad Real:</label><span>${profile.realAge || 'N/A'}</span></div>
+                    <div class="info-item"><label>Rango de Edad:</label><span>${profile.ageRange || 'N/A'}</span></div>
+                    <div class="info-item"><label>Género de Voz:</label><span>${profile.gender || 'N/A'}</span></div>
                 </div>
-            `).join('');
-        } else {
-            demosHtml = '<p>No has subido demos aún.</p>';
+            </div>
+            <div class="info-section"><h2>Idiomas</h2>
+                <p>${profile.languages ? profile.languages.join(', ') : 'No especificado'}</p>
+            </div>
+            <div class="info-section"><h2>Demos de Audio (${profile.demos?.length || 0})</h2>
+                <div class="demos-section">
+                    ${profile.demos && profile.demos.length > 0 ? 
+                        profile.demos.map(demo => `
+                            <div class="demo-item">
+                                <audio controls src="${demo.url}"></audio>
+                                <span>${demo.name || 'Demo de audio'}</span>
+                                <button class="btn btn-danger btn-sm" onclick="window.deleteDemo('${demo.publicId}', '${profile.id}')"><i class="fas fa-trash"></i></button>
+                            </div>
+                        `).join('')
+                        : '<p>Aún no has subido demos de audio. Sube hasta 2 en el modal de edición.</p>'
+                    }
+                </div>
+            </div>
+        `;
+        // Mostrar pestañas específicas de Talento
+        document.getElementById('favoritesTabBtn').style.display = 'block';
+        document.getElementById('applicationsTabBtn').style.display = 'block';
+        document.getElementById('jobsTabBtn').style.display = 'none';
+        document.getElementById('clientNotificationsTabBtn').style.display = 'none';
+        
+    } else { // Client
+        profileTypeEl.textContent = profile.clientType === 'empresa' ? 'Cliente Empresa' : 'Cliente Particular';
+        if (profile.clientType === 'empresa') {
+            contentHtml += `<div class="info-section"><h2>Datos de la Empresa</h2>
+                <div class="info-grid">
+                    <div class="info-item"><label>Nombre Empresa:</label><span>${profile.companyName || 'N/A'}</span></div>
+                    <div class="info-item"><label>Tipo de Cliente:</label><span>Empresa</span></div>
+                </div>
+            </div>`;
         }
-
-        profileContent.innerHTML = `
-            <div class="profile-header">
-                <h2>Perfil de Talento</h2>
-                <button class="btn btn-secondary" onclick="window.openEditProfileModal('${profile.id}', 'talent')">
-                    <i class="fas fa-edit"></i> Editar Perfil
-                </button>
-            </div>
-            <div class="info-grid">
-                <div class="info-item"><label>Nombre:</label><span>${profile.name}</span></div>
-                <div class="info-item"><label>Email:</label><span>${profile.email}</span></div>
-                <div class="info-item"><label>Teléfono:</label><span>${profile.phone || 'N/A'}</span></div>
-                <div class="info-item"><label>Género:</label><span>${profile.gender || 'N/A'}</span></div>
-                <div class="info-item"><label>Edad (Real):</label><span>${profile.realAge || 'N/A'}</span></div>
-                <div class="info-item"><label>Rango de edad (Roles):</label><span>${profile.ageRange || 'N/A'}</span></div>
-                <div class="info-item"><label>Nacionalidad:</label><span>${profile.nationality || 'N/A'}</span></div>
-                <div class="info-item"><label>Home Studio:</label><span>${profile.homeStudio === 'si' ? 'Sí' : 'No'}</span></div>
-            </div>
-            ${locationInfo}
-            <p style="margin-top: 15px;"><strong>Biografía:</strong> ${profile.bio || 'Sin biografía.'}</p>
-            <p><strong>Idiomas de Trabajo:</strong> ${profile.languages ? profile.languages.join(', ') : 'N/A'}</p>
-
-            <h3 style="margin-top: 20px;">Demos de Voz</h3>
-            <div class="demos-section">
-                ${demosHtml}
-            </div>
-        `;
-    } else if (profile.type === 'client') {
-        profileContent.innerHTML = `
-            <div class="profile-header">
-                <h2>Perfil de Cliente</h2>
-                <button class="btn btn-secondary" onclick="window.openEditProfileModal('${profile.id}', 'client')">
-                    <i class="fas fa-edit"></i> Editar Perfil
-                </button>
-            </div>
-            <div class="info-grid">
-                <div class="info-item"><label>Nombre de Contacto:</label><span>${profile.name}</span></div>
-                <div class="info-item"><label>Email:</label><span>${profile.email}</span></div>
-                <div class="info-item"><label>Teléfono:</label><span>${profile.phone || 'N/A'}</span></div>
-                <div class="info-item"><label>Tipo de Cliente:</label><span>${profile.clientType === 'empresa' ? 'Empresa / Agencia' : 'Particular'}</span></div>
-                ${profile.clientType === 'empresa' && profile.companyName ? `<div class="info-item"><label>Empresa:</label><span>${profile.companyName}</span></div>` : ''}
-            </div>
-        `;
+        // Mostrar pestañas específicas de Cliente
+        document.getElementById('favoritesTabBtn').style.display = 'block';
+        document.getElementById('applicationsTabBtn').style.display = 'none';
+        document.getElementById('jobsTabBtn').style.display = 'block';
+        document.getElementById('clientNotificationsTabBtn').style.display = 'block';
     }
+    
+    profileContent.innerHTML = contentHtml;
 }
-window.displayUserProfile = displayUserProfile;
 
-// Abrir modal de edición y poblarlo
-window.openEditProfileModal = function(userId, userType) {
+
+// Abre el modal y precarga los datos 
+window.openEditProfileModal = function() {
+     if (window.currentUserData) {
+        // Asegurar que la función de populate se haya ejecutado al cargar el perfil
+        // Si no se ejecutó, la volvemos a llamar
+        window.populateEditProfileModal(window.currentUserData); 
+        document.getElementById('editProfileModal').style.display = 'flex';
+     } else {
+        alert('Por favor, espera a que se carguen tus datos de perfil antes de editar.');
+     }
+}
+
+// Llenar el modal de edición con los datos actuales (CORREGIDO: Carga de Ubicación)
+window.populateEditProfileModal = async function(profile) {
     const editModal = document.getElementById('editProfileModal');
     if (!editModal) return;
-
-    // Asegurarse de que el perfil está cargado y los datos están disponibles
-    loadUserProfile(userId); // Esto también poblará el modal si es exitoso
     
-    editModal.style.display = 'flex';
-};
-
-// Poblar modal de edición con los datos del perfil
-window.populateEditProfileModal = function(profile) {
     document.getElementById('editProfileUserId').value = profile.id;
-    document.getElementById('editProfileUserType').value = profile.type;
+    
+    // Asignar campos comunes
     document.getElementById('editName').value = profile.name || '';
-    document.getElementById('editEmail').value = profile.email || '';
+    document.getElementById('editEmail').value = profile.email || ''; 
     document.getElementById('editPhone').value = profile.phone || '';
     
-    // Ocultar/Mostrar campos específicos
-    const talentFields = document.getElementById('editTalentFields');
-    const clientFields = document.getElementById('editClientFields');
-    talentFields.style.display = profile.type === 'talent' ? 'block' : 'none';
-    clientFields.style.display = profile.type === 'client' ? 'block' : 'none';
+    // CORRECCIÓN CLAVE: Carga de Ubicación para Edición
+    // Llama a la función de locations.js para llenar los selects y preseleccionar
+    if (typeof window.loadLocationData === 'function') {
+        window.loadLocationData('editCountry', 'editState', 'editCity', profile.country, profile.state, profile.city);
+    } 
+
+    // Manejar campos de Talento vs Cliente
+    const editTalentFields = document.getElementById('editTalentFields');
+    const editClientFields = document.getElementById('editClientFields');
+    
+    // Limpiar inputs de archivo al abrir el modal para evitar subidas accidentales
+    document.getElementById('editProfilePhoto')?.value = '';
+    document.getElementById('editProfilePhotoClient')?.value = ''; 
+    document.getElementById('editAudioFiles')?.value = ''; 
+
 
     if (profile.type === 'talent') {
-        document.getElementById('editBio').value = profile.bio || '';
+        editTalentFields.style.display = 'block';
+        editClientFields.style.display = 'none';
+        
         document.getElementById('editGender').value = profile.gender || '';
         document.getElementById('editRealAge').value = profile.realAge || '';
         document.getElementById('editAgeRange').value = profile.ageRange || '';
+
+        // Precargar idiomas (asumo que se usa un prefijo 'edit' para los checkboxes)
+        document.querySelectorAll('[name="editLanguages"]').forEach(cb => {
+            cb.checked = profile.languages && profile.languages.includes(cb.value);
+            if (cb.value === 'otros') {
+                document.getElementById('editOtherLanguages').value = profile.languages.find(lang => !document.getElementById(cb.id).value.includes(lang)) || '';
+                document.getElementById('editOtherLanguages').style.display = cb.checked ? 'block' : 'none';
+            }
+        });
         
-        // Cargar demos actuales
+        // Mostrar demos actuales
         const currentDemosEdit = document.getElementById('currentDemosEdit');
         if (currentDemosEdit) {
-             currentDemosEdit.innerHTML = profile.demos && profile.demos.length > 0 ? 
-                `<h4>Demos Actuales (Serán reemplazados si subes nuevos):</h4>
-                 ${profile.demos.map(demo => 
-                    `<div class="demo-item"><span>${demo.name}</span><audio controls src="${demo.url}"></audio></div>`
-                ).join('')}` : 
-                '<p>No hay demos subidos. Sube hasta 2 archivos de audio.</p>';
+            currentDemosEdit.innerHTML = profile.demos && profile.demos.length > 0 ? 
+                `<h4>Demos Actuales:</h4>` + profile.demos.map(demo => `
+                    <div class="demo-item">
+                        <audio controls src="${demo.url}"></audio>
+                        <span>${demo.name || 'Demo de audio'}</span>
+                    </div>
+                `).join('')
+                : '<p>No hay demos subidos aún.</p>';
         }
+
+    } else { // Client
+        editTalentFields.style.display = 'none';
+        editClientFields.style.display = 'block';
         
-        // Cargar ubicación (Requiere locations.js y loadLocationData en app.js)
-        const countrySelect = document.getElementById('editCountry');
-        const stateSelect = document.getElementById('editState');
-        const citySelect = document.getElementById('editCity');
-        
-        countrySelect.value = profile.country || '';
-        window.loadStates(countrySelect.value, stateSelect.id); // Función de locations.js
-        
-        setTimeout(() => {
-            stateSelect.value = profile.state || '';
-            window.loadCities(countrySelect.value, stateSelect.value, citySelect.id); // Función de locations.js
-        }, 500); // Pequeño delay para asegurar la carga de estados
-        
-        setTimeout(() => {
-            citySelect.value = profile.city || '';
-        }, 1000);
-        
-    } else if (profile.type === 'client') {
         document.getElementById('editClientType').value = profile.clientType || 'particular';
-        // Activar el listener de app.js para toggleCompanyNameEdit
-        const companyNameGroup = document.getElementById('editCompanyNameGroup');
-        if (companyNameGroup) {
-             companyNameGroup.style.display = profile.clientType === 'empresa' ? 'block' : 'none';
-        }
         document.getElementById('editCompanyName').value = profile.companyName || '';
+        
+        // Función auxiliar para mostrar/ocultar el campo de empresa
+        const toggleCompanyNameEdit = () => {
+             document.getElementById('editCompanyNameGroup').style.display = (document.getElementById('editClientType').value === 'empresa') ? 'block' : 'none';
+        };
+        // Inicializar
+        toggleCompanyNameEdit();
+        // Añadir listener si no existe (se añade en app.js para la inicialización)
     }
 };
-window.populateEditProfileModal = populateEditProfileModal;
 
 
-// 1. Guardar/Actualizar Perfil de Talento
+// Delegar el submit al handler correcto
+window.handleEditProfileSubmit = function(e) {
+    e.preventDefault();
+    if (!window.currentUserData) {
+        alert('Error: Datos de usuario no cargados. Intenta recargar la página.');
+        return;
+    }
+    
+    if (window.currentUserData.type === 'talent') {
+        window.updateTalentProfile(e);
+    } else if (window.currentUserData.type === 'client') {
+        window.updateClientProfile(e);
+    }
+};
+
+
+// Actualizar perfil de Talento (CORREGIDO: Maneja subida de Foto de Perfil)
 window.updateTalentProfile = async function(e) {
     e.preventDefault();
     const userId = document.getElementById('editProfileUserId').value;
-    const messageDiv = 'editProfileMessage';
-    
-    window.showMessage(messageDiv, '⏳ Guardando cambios...', 'warning');
-
-    const name = document.getElementById('editName').value;
-    const phone = document.getElementById('editPhone').value;
-    const bio = document.getElementById('editBio').value;
-    const gender = document.getElementById('editGender').value;
-    const realAge = document.getElementById('editRealAge').value;
-    const ageRange = document.getElementById('editAgeRange').value;
-    const country = document.getElementById('editCountry').value;
-    const state = document.getElementById('editState').value;
-    const city = document.getElementById('editCity').value;
-    const newAudioFiles = document.getElementById('editAudioFiles').files;
-    
-    if (newAudioFiles.length > 2) {
-        window.showMessage(messageDiv, '❌ Error: Solo puedes subir un máximo de 2 demos.', 'error');
-        return;
-    }
+    const messageDiv = document.getElementById('editProfileMessage');
+    window.showMessage(messageDiv, 'Actualizando perfil...', 'warning');
 
     try {
-        let demos = [];
+        // 1. Obtener campos comunes
+        const newName = document.getElementById('editName').value;
+        const newPhone = document.getElementById('editPhone').value;
+        const newCountry = document.getElementById('editCountry').value;
+        const newState = document.getElementById('editState').value;
+        const newCity = document.getElementById('editCity').value;
         
-        if (newAudioFiles.length > 0) {
-            // Subir nuevos demos y reemplazar los existentes
-            window.showMessage(messageDiv, `📤 Subiendo ${newAudioFiles.length} demo(s) a Cloudinary...`, 'warning');
-            
-            const uploadPromises = Array.from(newAudioFiles).map(file => {
-                return window.uploadToCloudinary(file).then(result => ({
-                    url: result.url,
-                    publicId: result.publicId,
-                    duration: result.duration || 0,
-                    name: file.name
-                }));
-            });
-            
-            demos = await Promise.all(uploadPromises);
-            window.showMessage(messageDiv, '✅ Demos subidos correctamente.', 'success');
-        } else {
-             // Si no hay nuevos archivos, mantener los demos existentes (opcional: el usuario puede querer borrarlos manualmente si se implementa esa lógica)
-             // Por simplicidad, si no sube nuevos, mantengo los existentes al volver a cargar el perfil
-             const currentDoc = await db.collection('talents').doc(userId).get();
-             demos = currentDoc.data().demos || [];
+        // 2. Obtener la nueva foto de perfil (NUEVO)
+        const photoFile = document.getElementById('editProfilePhoto').files[0];
+        let newProfilePhotoUrl = null;
+        
+        if (photoFile) {
+             window.showMessage(messageDiv, 'Subiendo nueva foto de perfil...', 'warning');
+             // Usar la función global de auth.js
+             const uploadResult = await window.uploadToCloudinary(photoFile);
+             newProfilePhotoUrl = uploadResult.url;
+             window.showMessage(messageDiv, 'Foto subida. Guardando datos...', 'warning');
         }
 
-
-        const updateData = {
-            name: name,
-            phone: phone,
-            bio: bio,
-            gender: gender,
-            realAge: realAge,
-            ageRange: ageRange,
-            country: country,
-            state: state,
-            city: city,
-            demos: demos, // Actualizar demos
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        // 3. Crear el objeto de actualización 
+        let updateData = {
+            name: newName,
+            phone: newPhone,
+            country: newCountry,
+            state: newState,
+            city: newCity,
+            gender: document.getElementById('editGender').value,
+            realAge: document.getElementById('editRealAge').value,
+            ageRange: document.getElementById('editAgeRange').value,
+            languages: window.getSelectedLanguages('edit'), 
+            lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
         };
         
+        // Agregar la URL de la foto si se subió una nueva
+        if (newProfilePhotoUrl) {
+            updateData.profilePhotoUrl = newProfilePhotoUrl;
+        }
+        
+        // 4. Actualizar Firestore
         await db.collection('talents').doc(userId).update(updateData);
+        
+        // Actualizar datos globales y recargar
+        window.currentUserData = { ...window.currentUserData, ...updateData };
         
         window.showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
         
-        // Recargar perfil después de un breve delay
         setTimeout(() => {
             window.closeEditProfileModal();
             window.loadUserProfile(userId);
-            // Recargar la lista de talentos si estamos en index.html (opcional, pero útil)
-            if (typeof window.loadTalents === 'function') window.loadTalents();
-        }, 1500);
+        }, 1500); 
         
     } catch (error) {
-        console.error('❌ Error actualizando perfil de talento:', error);
+        console.error('❌ Error actualizando perfil:', error);
         window.showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
 };
 
-// 2. Guardar/Actualizar Perfil de Cliente
+// Actualizar perfil de Cliente (CORREGIDO: Maneja subida de Foto de Perfil)
 window.updateClientProfile = async function(e) {
     e.preventDefault();
     const userId = document.getElementById('editProfileUserId').value;
-    const messageDiv = 'editProfileMessage';
-    
-    window.showMessage(messageDiv, '⏳ Guardando cambios...', 'warning');
-
-    const name = document.getElementById('editName').value;
-    const phone = document.getElementById('editPhone').value;
-    const clientType = document.getElementById('editClientType').value;
-    const companyName = clientType === 'empresa' ? document.getElementById('editCompanyName').value : '';
+    const messageDiv = document.getElementById('editProfileMessage');
+    window.showMessage(messageDiv, 'Actualizando perfil de cliente...', 'warning');
 
     try {
-        const updateData = {
-            name: name,
-            phone: phone,
+        // 1. Obtener campos comunes
+        const newName = document.getElementById('editName').value;
+        const newPhone = document.getElementById('editPhone').value;
+        const newCountry = document.getElementById('editCountry').value;
+        const newState = document.getElementById('editState').value;
+        const newCity = document.getElementById('editCity').value;
+        
+        // 2. Obtener la nueva foto de perfil (NUEVO)
+        const photoFile = document.getElementById('editProfilePhotoClient').files[0]; 
+        let newProfilePhotoUrl = null;
+        
+        if (photoFile) {
+             window.showMessage(messageDiv, 'Subiendo nueva foto de perfil...', 'warning');
+             const uploadResult = await window.uploadToCloudinary(photoFile);
+             newProfilePhotoUrl = uploadResult.url;
+             window.showMessage(messageDiv, 'Foto subida. Guardando datos...', 'warning');
+        }
+
+        // 3. Crear el objeto de actualización 
+        const clientType = document.getElementById('editClientType').value;
+        let updateData = {
+            name: newName,
+            phone: newPhone,
+            country: newCountry,
+            state: newState,
+            city: newCity,
             clientType: clientType,
-            companyName: companyName,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            companyName: clientType === 'empresa' ? document.getElementById('editCompanyName').value : null,
+            lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
         };
         
+        // Agregar la URL de la foto si se subió una nueva
+        if (newProfilePhotoUrl) {
+            updateData.profilePhotoUrl = newProfilePhotoUrl;
+        }
+
+        // 4. Actualizar Firestore
         await db.collection('clients').doc(userId).update(updateData);
+        
+        // Actualizar datos globales y recargar
+        window.currentUserData = { ...window.currentUserData, ...updateData };
         
         window.showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
         
-        // Recargar perfil después de un breve delay
         setTimeout(() => {
             window.closeEditProfileModal();
             window.loadUserProfile(userId);
@@ -305,9 +358,9 @@ window.updateClientProfile = async function(e) {
 };
 
 
-// Eliminar demo de audio
+// Eliminar demo de audio... (se mantiene)
 window.deleteDemo = async function(publicId, userId) {
-    if (!confirm('¿Estás seguro de que quieres eliminar este demo?')) {
+     if (!confirm('¿Estás seguro de que quieres eliminar este demo?')) {
         return;
     }
     
@@ -328,9 +381,27 @@ window.deleteDemo = async function(publicId, userId) {
     }
 };
 
-// Cerrar modal de edición
+// Cerrar modal de edición (Corregido para limpiar inputs de archivo)
 window.closeEditProfileModal = function() {
     const editModal = document.getElementById('editProfileModal');
+    // Limpiar mensaje
+    const messageDiv = document.getElementById('editProfileMessage');
+    if (messageDiv) messageDiv.innerHTML = '';
+    
+    // Limpiar inputs de archivo
+    document.getElementById('editProfilePhoto')?.value = '';
+    document.getElementById('editProfilePhotoClient')?.value = '';
+    document.getElementById('editAudioFiles')?.value = '';
     
     if (editModal) editModal.style.display = 'none';
 };
+
+// Función auxiliar para el cambio de tipo de cliente en edición
+function toggleCompanyNameEdit() {
+    const companyNameGroup = document.getElementById('editCompanyNameGroup');
+    const clientTypeSelect = document.getElementById('editClientType');
+    if (companyNameGroup && clientTypeSelect) {
+        companyNameGroup.style.display = clientTypeSelect.value === 'empresa' ? 'block' : 'none';
+    }
+}
+window.toggleCompanyNameEdit = toggleCompanyNameEdit;
