@@ -496,3 +496,462 @@ function updateDemosList() {
 }
 
 // Eliminar demo
+window.deleteDemo = async function(demoId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta demo?')) return;
+
+    try {
+        const talentRef = db.collection('talents').doc(window.currentUser.uid);
+        const talentDoc = await talentRef.get();
+        const demos = talentDoc.data().demos || [];
+        
+        // Filtrar la demo a eliminar
+        const updatedDemos = demos.filter(demo => demo.id !== demoId);
+        
+        // Actualizar en Firestore
+        await talentRef.update({ demos: updatedDemos });
+        
+        // Actualizar datos locales
+        window.currentUserData.demos = updatedDemos;
+        
+        // Actualizar UI
+        updateDemosList();
+        
+        window.showMessage('profileMessage', '✅ Demo eliminada correctamente.', 'success');
+        
+    } catch (error) {
+        console.error('Error eliminando demo:', error);
+        window.showMessage('profileMessage', '❌ Error al eliminar la demo.', 'error');
+    }
+};
+
+// Crear trabajo (para clientes)
+async function createJob(e) {
+    e.preventDefault();
+    const messageDiv = 'createJobMessage';
+    window.showMessage(messageDiv, '⌛ Creando oferta de trabajo...', 'info');
+
+    if (window.currentUserData.type !== 'client') {
+        window.showMessage(messageDiv, '❌ Solo los clientes pueden crear ofertas de trabajo.', 'error');
+        return;
+    }
+
+    const title = document.getElementById('jobTitle').value;
+    const description = document.getElementById('jobDescription').value;
+    const gender = document.getElementById('jobGender').value;
+    const ageRange = document.getElementById('jobAgeRange').value;
+    const budget = document.getElementById('jobBudget').value;
+    const deadline = document.getElementById('jobDeadline').value;
+    
+    // NUEVO: Obtener ubicación del trabajo
+    const country = document.getElementById('jobCountrySelect').value;
+    const state = document.getElementById('jobStateSelect').value;
+    const city = document.getElementById('jobCitySelect').value;
+
+    // Obtener idiomas requeridos
+    const languages = [];
+    for (let i = 1; i <= 10; i++) {
+        const checkbox = document.getElementById('jobLang' + i);
+        if (checkbox && checkbox.checked) {
+            languages.push(checkbox.value === 'otros' ? document.getElementById('jobOtherLanguages').value : checkbox.value);
+        }
+    }
+
+    try {
+        await db.collection('jobs').add({
+            title: title,
+            description: description,
+            gender: gender,
+            ageRange: ageRange,
+            budget: budget,
+            deadline: deadline,
+            languages: languages,
+            // NUEVO: Guardar ubicación del trabajo
+            country: country,
+            state: state,
+            city: city,
+            clientId: window.currentUser.uid,
+            clientName: window.currentUserData.name,
+            clientEmail: window.currentUserData.email,
+            status: 'active',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            applications: 0
+        });
+
+        window.showMessage(messageDiv, '✅ Oferta de trabajo creada correctamente.', 'success');
+        
+        // Limpiar formulario y cerrar modal
+        document.getElementById('createJobForm').reset();
+        document.getElementById('createJobModal').style.display = 'none';
+        
+        // Recargar trabajos del cliente
+        loadClientJobs();
+
+    } catch (error) {
+        console.error('Error creando trabajo:', error);
+        window.showMessage(messageDiv, '❌ Error al crear la oferta: ' + error.message, 'error');
+    }
+}
+
+// Cargar trabajos del cliente
+async function loadClientJobs() {
+    if (window.currentUserData.type !== 'client') return;
+
+    try {
+        const snapshot = await db.collection('jobs')
+            .where('clientId', '==', window.currentUser.uid)
+            .orderBy('createdAt', 'desc')
+            .get();
+
+        const jobsContainer = document.getElementById('clientJobsList');
+        if (!jobsContainer) return;
+
+        if (snapshot.empty) {
+            jobsContainer.innerHTML = '<p>No has creado ninguna oferta de trabajo aún.</p>';
+            return;
+        }
+
+        let jobsHtml = '';
+        snapshot.docs.forEach(doc => {
+            const job = doc.data();
+            const jobId = doc.id;
+            const countryName = typeof getCountryName !== 'undefined' ? getCountryName(job.country) : job.country;
+            const stateName = typeof getStateName !== 'undefined' ? getStateName(job.country, job.state) : job.state;
+            const locationInfo = (countryName && stateName && job.city) ? `${job.city}, ${stateName}, ${countryName}` : 'N/A';
+            const languages = job.languages ? job.languages.join(', ') : 'N/A';
+            const budget = job.budget ? `$${job.budget}` : 'A convenir';
+            const deadline = job.deadline ? new Date(job.deadline).toLocaleDateString() : 'No especificada';
+
+            jobsHtml += `
+                <div class="job-card">
+                    <div class="job-card-header">
+                        <h3>${job.title}</h3>
+                        <span class="job-status ${job.status}">${job.status === 'active' ? 'Activa' : 'Inactiva'}</span>
+                    </div>
+                    <p><strong>Ubicación:</strong> ${locationInfo}</p>
+                    <p><strong>Idiomas:</strong> ${languages}</p>
+                    <p><strong>Presupuesto:</strong> ${budget}</p>
+                    <p><strong>Fecha límite:</strong> ${deadline}</p>
+                    <p><strong>Descripción:</strong> ${job.description.substring(0, 100)}...</p>
+                    <div class="card-actions">
+                        <button class="btn btn-primary btn-sm" onclick="viewJobApplications('${jobId}')">
+                            <i class="fas fa-users"></i> Ver postulaciones
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="editJob('${jobId}')">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteJob('${jobId}')">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        jobsContainer.innerHTML = jobsHtml;
+
+    } catch (error) {
+        console.error('Error cargando trabajos del cliente:', error);
+        document.getElementById('clientJobsList').innerHTML = '<p class="text-danger">Error al cargar los trabajos.</p>';
+    }
+}
+
+// Cargar postulaciones del talento
+async function loadTalentApplications() {
+    if (window.currentUserData.type !== 'talent') return;
+
+    try {
+        const applicationsSnapshot = await db.collection('jobApplications')
+            .where('talentId', '==', window.currentUser.uid)
+            .orderBy('appliedAt', 'desc')
+            .get();
+
+        const applicationsContainer = document.getElementById('talentApplicationsList');
+        if (!applicationsContainer) return;
+
+        if (applicationsSnapshot.empty) {
+            applicationsContainer.innerHTML = '<p>No te has postulado a ninguna oferta aún.</p>';
+            return;
+        }
+
+        let applicationsHtml = '';
+        
+        for (const doc of applicationsSnapshot.docs) {
+            const application = doc.data();
+            const jobDoc = await db.collection('jobs').doc(application.jobId).get();
+            
+            if (jobDoc.exists) {
+                const job = jobDoc.data();
+                const countryName = typeof getCountryName !== 'undefined' ? getCountryName(job.country) : job.country;
+                const stateName = typeof getStateName !== 'undefined' ? getStateName(job.country, job.state) : job.state;
+                const locationInfo = (countryName && stateName && job.city) ? `${job.city}, ${stateName}, ${countryName}` : 'N/A';
+                const budget = job.budget ? `$${job.budget}` : 'A convenir';
+                const appliedDate = application.appliedAt ? new Date(application.appliedAt.toDate()).toLocaleDateString() : 'Fecha no disponible';
+
+                applicationsHtml += `
+                    <div class="application-card">
+                        <div class="application-header">
+                            <h4>${job.title}</h4>
+                            <span class="application-status ${application.status}">${application.status}</span>
+                        </div>
+                        <p><strong>Cliente:</strong> ${job.clientName}</p>
+                        <p><strong>Ubicación:</strong> ${locationInfo}</p>
+                        <p><strong>Presupuesto:</strong> ${budget}</p>
+                        <p><strong>Fecha de postulación:</strong> ${appliedDate}</p>
+                        <div class="application-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="window.viewJobDetails('${application.jobId}')">
+                                <i class="fas fa-eye"></i> Ver oferta
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        applicationsContainer.innerHTML = applicationsHtml;
+
+    } catch (error) {
+        console.error('Error cargando postulaciones:', error);
+        document.getElementById('talentApplicationsList').innerHTML = '<p class="text-danger">Error al cargar las postulaciones.</p>';
+    }
+}
+
+// Cargar notificaciones (NUEVA función)
+async function loadUserNotifications(userId) {
+    try {
+        let query;
+        if (window.currentUserData.type === 'client') {
+            query = db.collection('notifications')
+                .where('clientId', '==', userId)
+                .orderBy('createdAt', 'desc')
+                .limit(50);
+        } else {
+            // Para talentos podrías agregar notificaciones también
+            return;
+        }
+
+        const snapshot = await query.get();
+        const notificationsContainer = document.getElementById('notificationsList');
+        if (!notificationsContainer) return;
+
+        if (snapshot.empty) {
+            notificationsContainer.innerHTML = '<p>No tienes notificaciones.</p>';
+            return;
+        }
+
+        let notificationsHtml = '';
+        snapshot.docs.forEach(doc => {
+            const notification = doc.data();
+            const notificationDate = notification.createdAt ? 
+                new Date(notification.createdAt.toDate()).toLocaleDateString() : 'Fecha no disponible';
+
+            notificationsHtml += `
+                <div class="notification-item ${notification.read ? 'read' : 'unread'}">
+                    <div class="notification-header">
+                        <img src="${notification.talentProfilePicture || 'img/default-avatar.png'}" 
+                             alt="${notification.talentName}" class="notification-avatar">
+                        <div class="notification-info">
+                            <h4>${notification.talentName}</h4>
+                            <span class="notification-date">${notificationDate}</span>
+                        </div>
+                    </div>
+                    <p class="notification-message">${notification.message}</p>
+                    <div class="notification-actions">
+                        <button class="btn btn-primary btn-sm" onclick="viewTalentProfileFromNotification('${notification.talentId}')">
+                            <i class="fas fa-user"></i> Ver perfil
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="viewJobFromNotification('${notification.jobId}')">
+                            <i class="fas fa-briefcase"></i> Ver oferta
+                        </button>
+                        ${!notification.read ? `
+                            <button class="btn btn-outline btn-sm" onclick="markNotificationAsRead('${doc.id}')">
+                                <i class="fas fa-check"></i> Marcar como leída
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        });
+
+        notificationsContainer.innerHTML = notificationsHtml;
+
+    } catch (error) {
+        console.error('Error cargando notificaciones:', error);
+        const notificationsContainer = document.getElementById('notificationsList');
+        if (notificationsContainer) {
+            notificationsContainer.innerHTML = '<p class="text-danger">Error al cargar las notificaciones.</p>';
+        }
+    }
+}
+window.loadUserNotifications = loadUserNotifications;
+
+// Función para ver perfil del talento desde notificación (NUEVA)
+window.viewTalentProfileFromNotification = function(talentId) {
+    // Usar la función global viewTalentProfile
+    if (typeof window.viewTalentProfile === 'function') {
+        window.viewTalentProfile(talentId);
+    }
+};
+
+// Función para ver oferta desde notificación (NUEVA)
+window.viewJobFromNotification = function(jobId) {
+    // Usar la función global viewJobDetails
+    if (typeof window.viewJobDetails === 'function') {
+        window.viewJobDetails(jobId);
+    }
+};
+
+// Función para marcar notificación como leída (NUEVA)
+window.markNotificationAsRead = async function(notificationId) {
+    try {
+        await db.collection('notifications').doc(notificationId).update({
+            read: true
+        });
+        
+        // Recargar notificaciones
+        loadUserNotifications(window.currentUser.uid);
+        
+    } catch (error) {
+        console.error('Error marcando notificación como leída:', error);
+        window.showMessage('notificationsMessage', '❌ Error al marcar la notificación como leída.', 'error');
+    }
+};
+
+// Función para ver postulaciones a un trabajo (NUEVA)
+window.viewJobApplications = async function(jobId) {
+    const applicationsModal = document.getElementById('jobApplicationsModal');
+    const applicationsContent = document.getElementById('jobApplicationsContent');
+    
+    window.closeAllModals();
+    applicationsModal.style.display = 'flex';
+    applicationsContent.innerHTML = '<div class="loading">Cargando postulaciones...</div>';
+
+    try {
+        const applicationsSnapshot = await db.collection('jobApplications')
+            .where('jobId', '==', jobId)
+            .orderBy('appliedAt', 'desc')
+            .get();
+
+        const jobDoc = await db.collection('jobs').doc(jobId).get();
+        const job = jobDoc.data();
+
+        if (applicationsSnapshot.empty) {
+            applicationsContent.innerHTML = `
+                <div class="applications-header">
+                    <h2>Postulaciones para: ${job.title}</h2>
+                    <p>No hay postulaciones para esta oferta.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let applicationsHtml = `
+            <div class="applications-header">
+                <h2>Postulaciones para: ${job.title}</h2>
+                <p>Total: ${applicationsSnapshot.size} postulaciones</p>
+            </div>
+            <div class="applications-list">
+        `;
+
+        applicationsSnapshot.docs.forEach(doc => {
+            const application = doc.data();
+            const appliedDate = application.appliedAt ? 
+                new Date(application.appliedAt.toDate()).toLocaleDateString() : 'Fecha no disponible';
+
+            applicationsHtml += `
+                <div class="application-item">
+                    <div class="application-item-header">
+                        <img src="${application.talentProfilePicture}" 
+                             alt="${application.talentName}" 
+                             class="application-avatar">
+                        <div class="application-item-info">
+                            <h4>${application.talentName}</h4>
+                            <p class="application-email">${application.talentEmail}</p>
+                            <p class="application-date">Postuló el: ${appliedDate}</p>
+                            <span class="application-status ${application.status}">${application.status}</span>
+                        </div>
+                    </div>
+                    <div class="application-item-actions">
+                        <button class="btn btn-primary btn-sm" onclick="window.viewTalentProfile('${application.talentId}')">
+                            <i class="fas fa-user"></i> Ver perfil completo
+                        </button>
+                        <button class="btn btn-success btn-sm" onclick="updateApplicationStatus('${doc.id}', 'accepted')">
+                            <i class="fas fa-check"></i> Aceptar
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="updateApplicationStatus('${doc.id}', 'rejected')">
+                            <i class="fas fa-times"></i> Rechazar
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        applicationsHtml += '</div>';
+        applicationsContent.innerHTML = applicationsHtml;
+
+    } catch (error) {
+        console.error('Error cargando postulaciones:', error);
+        applicationsContent.innerHTML = '<p class="text-danger">Error al cargar las postulaciones.</p>';
+    }
+};
+
+// Función para actualizar estado de postulación (NUEVA)
+window.updateApplicationStatus = async function(applicationId, newStatus) {
+    try {
+        await db.collection('jobApplications').doc(applicationId).update({
+            status: newStatus,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Recargar las postulaciones
+        const applicationDoc = await db.collection('jobApplications').doc(applicationId).get();
+        const application = applicationDoc.data();
+        window.viewJobApplications(application.jobId);
+
+        window.showMessage('applicationsMessage', `✅ Postulación ${newStatus === 'accepted' ? 'aceptada' : 'rechazada'} correctamente.`, 'success');
+
+    } catch (error) {
+        console.error('Error actualizando estado de postulación:', error);
+        window.showMessage('applicationsMessage', '❌ Error al actualizar el estado de la postulación.', 'error');
+    }
+};
+
+// Cambiar entre secciones del perfil
+function toggleProfileSection(sectionId) {
+    // Ocultar todas las secciones
+    document.querySelectorAll('.profile-section').forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Mostrar la sección seleccionada
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+    
+    // Cargar datos específicos de la sección
+    if (sectionId === 'myJobsSection' && window.currentUserData.type === 'client') {
+        loadClientJobs();
+    } else if (sectionId === 'myApplicationsSection' && window.currentUserData.type === 'talent') {
+        loadTalentApplications();
+    } else if (sectionId === 'notificationsSection' && window.currentUserData.type === 'client') {
+        loadUserNotifications(window.currentUser.uid);
+    }
+    
+    // Actualizar botones activos
+    document.querySelectorAll('.profile-nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[onclick="toggleProfileSection('${sectionId}')"]`)?.classList.add('active');
+}
+
+// Función para editar trabajo (placeholder)
+window.editJob = function(jobId) {
+    alert('Funcionalidad de edición de trabajo en desarrollo...');
+};
+
+// Función para eliminar trabajo (placeholder)
+window.deleteJob = function(jobId) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta oferta de trabajo?')) {
+        alert('Funcionalidad de eliminación de trabajo en desarrollo...');
+    }
+};
