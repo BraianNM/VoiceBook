@@ -24,7 +24,7 @@
                         <li><a href="#home">Inicio</a></li>
                         <li><a href="#talentos">Talentos</a></li>
                         <li><a href="#ofertas">Ofertas</a></li>
-                        <li><a href="#dashboard" id="dashboardLink" style="display:none;">Mi Panel</a></li>
+                        <li><a href="profile.html" id="dashboardLink" style="display:none;">Mi Perfil</a></li>
                         <li><a href="#contacto">Contacto</a></li>
                     </ul>
                 </nav>
@@ -211,25 +211,25 @@
                 <div class="form-group">
                     <label for="talentCountry">País *</label>
                     <select id="talentCountry" class="form-control" required>
-                        <option value="">Selecciona tu país</option>
+                        <option value="">Cargando países...</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="talentState">Provincia/Estado *</label>
-                    <select id="talentState" class="form-control" required>
-                        <option value="">Selecciona tu provincia/estado</option>
+                    <select id="talentState" class="form-control" required disabled>
+                        <option value="">Selecciona tu provincia/estado *</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="talentCity">Ciudad *</label>
-                    <select id="talentCity" class="form-control" required>
-                        <option value="">Selecciona tu ciudad</option>
+                    <select id="talentCity" class="form-control" required disabled>
+                        <option value="">Selecciona tu ciudad *</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="talentDemos">Demos de Audio (MP3, WAV, OGG - máximo 10MB)</label>
-                    <input type="file" id="talentDemos" class="form-control" accept="audio/*" multiple>
-                    <small class="text-muted">Puedes seleccionar múltiples archivos. Formatos: MP3, WAV, OGG. Máximo 10MB por archivo.</small>
+                    <label for="talentDemos">Demos de Audio (Máximo 2 archivos de 10MB c/u)</label>
+                    <input type="file" id="talentDemos" class="form-control" accept="audio/mp3, audio/wav, audio/ogg" multiple>
+                    <small class="text-muted">Selecciona hasta 2 archivos. Formatos: MP3, WAV, OGG.</small>
                 </div>
                 <div class="form-group">
                     <label for="talentDescription">Descripción (máx. 1000 caracteres)</label>
@@ -408,6 +408,16 @@
                         <label for="editAgeRange">Rango de edades que puede interpretar:</label>
                         <input type="text" id="editAgeRange" class="form-control">
                     </div>
+                    
+                    <div class="form-group">
+                        <label for="editAudioFiles">Subir o Reemplazar Demos (Máx 2):</label>
+                        <input type="file" id="editAudioFiles" class="form-control" accept="audio/mp3, audio/wav, audio/ogg" multiple>
+                        <small class="text-muted">Si subes 1 o 2 archivos, reemplazarán los demos existentes.</small>
+                    </div>
+
+                    <div id="currentDemosEdit" class="demos-section" style="margin-top: 15px; background: #fff;">
+                        </div>
+
                 </div>
 
                 <div class="form-actions">
@@ -417,46 +427,6 @@
             </form>
         </div>
     </div>
-
-<div class="modal" id="dashboardModal">
-    <div class="modal-content">
-        <span class="close-modal">&times;</span>
-        <h2>Mi Panel de Control</h2>
-        
-        <div class="dashboard">
-            <div class="dashboard-tabs">
-                <div class="tab active" data-tab="profile">Mi Perfil</div>
-                <div class="tab" data-tab="favorites">Favoritos</div>
-                <div class="tab" data-tab="jobs" id="jobsTab" style="display:none;">Mis Ofertas</div>
-                <div class="tab" data-tab="applications" id="applicationsTab" style="display:none;">Mis Postulaciones</div>
-            </div>
-            
-            <div class="tab-content active" id="profileTab">
-                <div id="userProfileContent">
-                    <div class="loading">Cargando perfil...</div>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="favoritesTab">
-                <div id="favoritesContent">
-                    <p>Funcionalidad de favoritos - Próximamente</p>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="jobsTabContent">
-                <div id="jobsContent">
-                    <p>Mis ofertas de trabajo - Próximamente</p>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="applicationsTabContent">
-                <div id="applicationsContent">
-                    <p>Mis postulaciones - Próximamente</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <script src="js/firebase-config.js"></script>
 <script src="js/locations.js"></script>
