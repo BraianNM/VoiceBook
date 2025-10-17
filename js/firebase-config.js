@@ -17,8 +17,8 @@ const auth = firebase.auth();
 
 // Configuración de Cloudinary para VoiceBook - CORREGIDO
 const cloudinaryConfig = {
-    cloudName: 'dkujz9gj8',
-    uploadPreset: 'voicebook_demos'
+    cloudName: 'dkujz9gj8', // Asegúrate de que este es tu Cloud Name real
+    uploadPreset: 'voicebook_demos' // Asegúrate de que este es tu Upload Preset real
 };
 
 // Estado global de la aplicación
