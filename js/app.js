@@ -1,7 +1,8 @@
-// Funciones principales de la aplicación
+// Funciones principales de la aplicación (CORREGIDAS)
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('App.js inicializando...');
     setupEventListeners();
     window.checkAuthState();
     
@@ -9,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!window.location.href.includes('profile.html')) {
         loadTalents();
         loadJobOffers();
-        // Asegúrate que locations.js está cargado y define window.loadLocationData
+        // Cargar datos de ubicación para los modales
         if (typeof window.loadLocationData === 'function') { 
             window.loadLocationData('countrySelectTalent', 'stateSelectTalent', 'citySelectTalent');
             window.loadLocationData('countrySelectClient', 'stateSelectClient', 'citySelectClient');
@@ -19,14 +20,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Configurar event listeners 
 function setupEventListeners() {
+    console.log('Configurando event listeners...');
+    
     // Listeners de Modales y Navegación
-    document.getElementById('heroTalentBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
-    document.getElementById('heroClientBtn')?.addEventListener('click', () => document.getElementById('clientModal').style.display = 'flex');
-    document.getElementById('ctaTalentBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
-    document.getElementById('ctaClientBtn')?.addEventListener('click', () => document.getElementById('clientModal').style.display = 'flex');
-    document.getElementById('registerBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
-    document.getElementById('loginBtn')?.addEventListener('click', () => document.getElementById('loginModal').style.display = 'flex');
-    document.getElementById('publishJobBtn')?.addEventListener('click', () => document.getElementById('clientModal').style.display = 'flex');
+    document.getElementById('heroTalentBtn')?.addEventListener('click', () => {
+        document.getElementById('talentModal').style.display = 'flex';
+    });
+    document.getElementById('heroClientBtn')?.addEventListener('click', () => {
+        document.getElementById('clientModal').style.display = 'flex';
+    });
+    document.getElementById('ctaTalentBtn')?.addEventListener('click', () => {
+        document.getElementById('talentModal').style.display = 'flex';
+    });
+    document.getElementById('ctaClientBtn')?.addEventListener('click', () => {
+        document.getElementById('clientModal').style.display = 'flex';
+    });
+    document.getElementById('registerBtn')?.addEventListener('click', () => {
+        document.getElementById('talentModal').style.display = 'flex';
+    });
+    document.getElementById('loginBtn')?.addEventListener('click', () => {
+        document.getElementById('loginModal').style.display = 'flex';
+    });
+    document.getElementById('publishJobBtn')?.addEventListener('click', () => {
+        if (!currentUser) {
+            document.getElementById('loginModal').style.display = 'flex';
+        } else if (currentUserData?.type === 'client') {
+            // Aquí iría la lógica para publicar trabajo
+            alert('Funcionalidad de publicar trabajo en desarrollo');
+        } else {
+            alert('Solo los clientes pueden publicar ofertas de trabajo');
+        }
+    });
     
     // Redirección al Dashboard/Profile
     document.getElementById('dashboardLink')?.addEventListener('click', (e) => {
@@ -47,6 +71,11 @@ function setupEventListeners() {
 
     document.getElementById('clientType')?.addEventListener('change', toggleCompanyName);
     document.getElementById('lang10')?.addEventListener('change', toggleOtherLanguages);
+
+    // Listener para filtros de búsqueda
+    document.getElementById('applyFiltersBtn')?.addEventListener('click', loadTalents);
+
+    console.log('Event listeners configurados correctamente');
 }
 
 // Cargar talentos (función corregida)
@@ -122,9 +151,9 @@ async function loadTalents() {
 }
 window.loadTalents = loadTalents;
 
-// CORRECCIÓN: Función para ver perfil de talento (arreglada)
+// CORRECCIÓN: Función para ver perfil de talento (COMPLETAMENTE FUNCIONAL)
 window.viewTalentProfile = async function(talentId) {
-    console.log('Ver perfil del talento:', talentId); // Debug
+    console.log('Ver perfil del talento:', talentId);
     
     const profileModal = document.getElementById('viewTalentProfileModal');
     const profileContent = document.getElementById('profileViewContent');
@@ -146,7 +175,7 @@ window.viewTalentProfile = async function(talentId) {
         }
         
         const talent = doc.data();
-        const isLoggedIn = !!window.currentUser;
+        const isLoggedIn = !!currentUser;
 
         // Información pública
         const countryName = typeof getCountryName !== 'undefined' ? getCountryName(talent.country) : talent.country;
@@ -160,7 +189,7 @@ window.viewTalentProfile = async function(talentId) {
         let demosHtml = talent.demos && talent.demos.length > 0 ? 
             talent.demos.map(demo => `
                 <div class="demo-item-view">
-                    <span>${demo.name}</span>
+                    <span>${demo.name || 'Demo'}</span>
                     <audio controls src="${demo.url}"></audio>
                 </div>
             `).join('') : '<p>No hay demos disponibles.</p>';
@@ -260,7 +289,7 @@ async function loadJobOffers() {
                     <p><strong>Cliente:</strong> ${job.clientName}</p>
                     <p><strong>Ubicación:</strong> ${countryName || 'Remoto'}</p>
                     <p><strong>Presupuesto:</strong> ${budget}</p>
-                    <p><strong>Descripción:</strong> ${job.description.substring(0, 100)}...</p>
+                    <p><strong>Descripción:</strong> ${job.description ? job.description.substring(0, 100) + '...' : 'Sin descripción'}</p>
                     <div class="card-actions">
                         <button class="btn btn-primary btn-sm" onclick="window.applyToJob('${jobId}')">
                             <i class="fas fa-paper-plane"></i> Postularse
@@ -289,13 +318,13 @@ window.loadJobOffers = loadJobOffers;
 
 // Función para aplicar a un trabajo
 window.applyToJob = async function(jobId) {
-    if (!window.currentUser) {
+    if (!currentUser) {
         alert('Debes iniciar sesión para postularte a trabajos.');
         document.getElementById('loginModal').style.display = 'flex';
         return;
     }
 
-    if (window.currentUserData?.type !== 'talent') {
+    if (currentUserData?.type !== 'talent') {
         alert('Solo los talentos pueden postularse a trabajos.');
         return;
     }
@@ -308,7 +337,7 @@ window.applyToJob = async function(jobId) {
         }
 
         const job = jobDoc.data();
-        const talentId = window.currentUser.uid;
+        const talentId = currentUser.uid;
 
         // Verificar si ya se postuló
         const existingApplication = await db.collection('jobApplications')
@@ -326,9 +355,9 @@ window.applyToJob = async function(jobId) {
             jobId: jobId,
             talentId: talentId,
             clientId: job.clientId,
-            talentName: window.currentUserData.name,
-            talentEmail: window.currentUserData.email,
-            talentProfilePicture: window.currentUserData.profilePictureUrl || 'img/default-avatar.png',
+            talentName: currentUserData.name,
+            talentEmail: currentUserData.email,
+            talentProfilePicture: currentUserData.profilePictureUrl || 'img/default-avatar.png',
             jobTitle: job.title,
             status: 'pending',
             appliedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -344,11 +373,11 @@ window.applyToJob = async function(jobId) {
             type: 'new_application',
             clientId: job.clientId,
             talentId: talentId,
-            talentName: window.currentUserData.name,
-            talentProfilePicture: window.currentUserData.profilePictureUrl || 'img/default-avatar.png',
+            talentName: currentUserData.name,
+            talentProfilePicture: currentUserData.profilePictureUrl || 'img/default-avatar.png',
             jobId: jobId,
             jobTitle: job.title,
-            message: `${window.currentUserData.name} se ha postulado a tu oferta "${job.title}"`,
+            message: `${currentUserData.name} se ha postulado a tu oferta "${job.title}"`,
             read: false,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -372,13 +401,13 @@ window.viewJobDetails = async function(jobId) {
     const jobDetailsContent = document.getElementById('jobDetailsContent');
     
     window.closeAllModals();
-    jobModal.style.display = 'flex';
-    jobDetailsContent.innerHTML = '<div class="loading">Cargando detalles del trabajo...</div>';
+    if (jobModal) jobModal.style.display = 'flex';
+    if (jobDetailsContent) jobDetailsContent.innerHTML = '<div class="loading">Cargando detalles del trabajo...</div>';
 
     try {
         const doc = await db.collection('jobs').doc(jobId).get();
         if (!doc.exists) {
-            jobDetailsContent.innerHTML = '<p class="text-danger">La oferta de trabajo no existe.</p>';
+            if (jobDetailsContent) jobDetailsContent.innerHTML = '<p class="text-danger">La oferta de trabajo no existe.</p>';
             return;
         }
 
@@ -387,59 +416,63 @@ window.viewJobDetails = async function(jobId) {
         const budget = job.budget ? `$${job.budget}` : 'A convenir';
         const deadline = job.deadline ? new Date(job.deadline).toLocaleDateString() : 'No especificada';
 
-        jobDetailsContent.innerHTML = `
-            <div class="job-details-header">
-                <h2>${job.title}</h2>
-                <p class="job-client"><strong>Cliente:</strong> ${job.clientName}</p>
-            </div>
-            
-            <div class="job-details-section">
-                <h3>Información del Proyecto</h3>
-                <div class="info-grid">
-                    <div class="info-item"><label>Ubicación:</label><span>${countryName || 'Remoto'}</span></div>
-                    <div class="info-item"><label>Presupuesto:</label><span>${budget}</span></div>
-                    <div class="info-item"><label>Fecha límite:</label><span>${deadline}</span></div>
-                    <div class="info-item"><label>Género de voz:</label><span>${job.gender || 'No especificado'}</span></div>
-                    <div class="info-item"><label>Edad:</label><span>${job.ageRange || 'No especificado'}</span></div>
+        if (jobDetailsContent) {
+            jobDetailsContent.innerHTML = `
+                <div class="job-details-header">
+                    <h2>${job.title}</h2>
+                    <p class="job-client"><strong>Cliente:</strong> ${job.clientName}</p>
                 </div>
-            </div>
-            
-            <div class="job-details-section">
-                <h3>Descripción Detallada</h3>
-                <p class="job-description">${job.description || 'No hay descripción disponible.'}</p>
-            </div>
-            
-            <div class="job-details-actions">
-                ${window.currentUserData?.type === 'talent' ? 
-                    `<button class="btn btn-primary" onclick="window.applyToJob('${jobId}')">
-                        <i class="fas fa-paper-plane"></i> Postularse a este trabajo
-                    </button>` : 
-                    `<p class="text-warning">Inicia sesión como talento para postularte.</p>`
-                }
-            </div>
-        `;
+                
+                <div class="job-details-section">
+                    <h3>Información del Proyecto</h3>
+                    <div class="info-grid">
+                        <div class="info-item"><label>Ubicación:</label><span>${countryName || 'Remoto'}</span></div>
+                        <div class="info-item"><label>Presupuesto:</label><span>${budget}</span></div>
+                        <div class="info-item"><label>Fecha límite:</label><span>${deadline}</span></div>
+                        <div class="info-item"><label>Género de voz:</label><span>${job.gender || 'No especificado'}</span></div>
+                        <div class="info-item"><label>Edad:</label><span>${job.ageRange || 'No especificado'}</span></div>
+                    </div>
+                </div>
+                
+                <div class="job-details-section">
+                    <h3>Descripción Detallada</h3>
+                    <p class="job-description">${job.description || 'No hay descripción disponible.'}</p>
+                </div>
+                
+                <div class="job-details-actions">
+                    ${currentUserData?.type === 'talent' ? 
+                        `<button class="btn btn-primary" onclick="window.applyToJob('${jobId}')">
+                            <i class="fas fa-paper-plane"></i> Postularse a este trabajo
+                        </button>` : 
+                        `<p class="text-warning">Inicia sesión como talento para postularte.</p>`
+                    }
+                </div>
+            `;
+        }
 
     } catch (error) {
         console.error('Error cargando detalles del trabajo:', error);
-        jobDetailsContent.innerHTML = '<p class="text-danger">Error al cargar los detalles del trabajo.</p>';
+        if (jobDetailsContent) {
+            jobDetailsContent.innerHTML = '<p class="text-danger">Error al cargar los detalles del trabajo.</p>';
+        }
     }
 };
 
 // Función para agregar a favoritos
 window.addToFavorites = async function(talentId) {
-    if (!window.currentUser) {
+    if (!currentUser) {
         alert('Debes iniciar sesión para agregar a favoritos.');
         document.getElementById('loginModal').style.display = 'flex';
         return;
     }
 
-    if (window.currentUserData?.type !== 'client') {
+    if (currentUserData?.type !== 'client') {
         alert('Solo los clientes pueden agregar talentos a favoritos.');
         return;
     }
 
     try {
-        await db.collection('clients').doc(window.currentUser.uid).update({
+        await db.collection('clients').doc(currentUser.uid).update({
             favorites: firebase.firestore.FieldValue.arrayUnion(talentId)
         });
 
@@ -484,3 +517,5 @@ function toggleOtherLanguages() {
         otherLanguagesInput.style.display = document.getElementById('lang10').checked ? 'block' : 'none';
     }
 }
+
+console.log('App.js cargado correctamente');
