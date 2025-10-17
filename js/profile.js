@@ -439,7 +439,11 @@ window.updateTalentProfile = async function(e) {
         for (let i = 1; i <= 10; i++) {
             const checkbox = document.getElementById('editLang' + i);
             if (checkbox && checkbox.checked) {
-                languages.push(checkbox.value === 'otros' ? document.getElementById('editOtherLanguages').value : checkbox.value);
+                const langValue = checkbox.value === 'otros' ? 
+                    document.getElementById('editOtherLanguages').value : checkbox.value;
+                if (langValue) { // Solo agregar si no está vacío
+                    languages.push(langValue);
+                }
             }
         }
 
@@ -498,7 +502,7 @@ window.updateTalentProfile = async function(e) {
 
             try {
                 const newDemos = await Promise.all(uploadPromises);
-                demos = newDemos; // Reemplazar demos existentes con los nuevos
+                demos = [...demos, ...newDemos].slice(0, 2); // Combinar y limitar a 2
             } catch (uploadError) {
                 window.showMessage(messageDiv, '❌ Error al subir los demos.', 'error');
                 return;
@@ -509,12 +513,12 @@ window.updateTalentProfile = async function(e) {
         const updateData = {
             name: name,
             email: email,
-            phone: phone,
-            gender: gender,
-            realAge: realAge,
-            ageRange: ageRange,
-            nationality: nationality,
-            bio: bio,
+            phone: phone || '',
+            gender: gender || '',
+            realAge: realAge || '',
+            ageRange: ageRange || '',
+            nationality: nationality || '',
+            bio: bio || '',
             homeStudio: homeStudio,
             languages: languages,
             country: country,
@@ -527,7 +531,7 @@ window.updateTalentProfile = async function(e) {
 
         console.log('Actualizando datos del talento:', updateData);
 
-        // CORRECCIÓN: Usar set con merge en lugar de update para asegurar que todos los campos se guarden
+        // Actualizar en Firestore
         await db.collection('talents').doc(userId).set(updateData, { merge: true });
 
         // Actualizar datos locales
@@ -610,9 +614,9 @@ window.updateClientProfile = async function(e) {
         const updateData = {
             name: name,
             email: email,
-            phone: phone,
+            phone: phone || '',
             clientType: clientType,
-            companyName: companyName,
+            companyName: companyName || '',
             country: country,
             state: state,
             city: city,
@@ -622,7 +626,7 @@ window.updateClientProfile = async function(e) {
 
         console.log('Actualizando datos del cliente:', updateData);
 
-        // CORRECCIÓN: Usar set con merge en lugar de update para asegurar que todos los campos se guarden
+        // Actualizar en Firestore
         await db.collection('clients').doc(userId).set(updateData, { merge: true });
 
         // Actualizar datos locales
