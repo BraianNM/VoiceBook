@@ -698,4 +698,117 @@ footer .container {
         border-bottom-color: #e9ecef; /* Evita que la línea de la pestaña activa choque con el borde inferior general */
         border-bottom-width: 1px;
     }
+
+    /* MODIFICACIÓN PARA style.css (Añadir al final del archivo) */
+
+/* Estilos para el Perfil (profile.html) */
+.profile-main-content .profile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--light);
+}
+
+.profile-info-intro {
+    flex-grow: 1;
+    margin-right: 20px;
+}
+
+.profile-info-intro h1 {
+    font-size: 2em;
+    margin-bottom: 5px;
+}
+
+.profile-type {
+    color: var(--secondary);
+    font-weight: 600;
+}
+
+/* Contenedor y estilo de la imagen de perfil (CLAVE PARA MOSTRAR LA FOTO) */
+.profile-avatar-container {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 25px;
+    border: 4px solid var(--secondary);
+    flex-shrink: 0;
+}
+
+.profile-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Estilos para la vista rápida de perfil (modal de index.html) */
+.profile-header-view {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.profile-avatar-container-view {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 15px;
+    border: 2px solid var(--secondary);
+    flex-shrink: 0;
+}
+
+.profile-avatar-view {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-info-intro-view h1 {
+    font-size: 1.5em;
+    margin-bottom: 5px;
+}
+
+.profile-type-view, .profile-location-view {
+    font-size: 0.9em;
+    color: #6c757d;
+}
+
+/* Estilos para las secciones de info en el perfil */
+.info-section {
+    margin-bottom: 25px;
+    padding: 15px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.info-section h2 {
+    font-size: 1.4em;
+    color: var(--primary);
+    border-bottom: 2px solid var(--light);
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.info-item label {
+    font-weight: 600;
+    color: #555;
+    display: block;
+    margin-bottom: 3px;
+    font-size: 0.9em;
+}
+
+.info-item span {
+    font-size: 1em;
+    color: #333;
+}
 }
