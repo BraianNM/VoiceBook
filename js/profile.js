@@ -1,58 +1,34 @@
 // Funciones de Perfil y Edición
 
-// Variable global para almacenar los datos del perfil (usada por las tabs)
-window.currentUserData = null;
-
-// Cargar perfil del usuario (MODIFICADO para mostrar imagen y ocultar/mostrar tabs)
+// Cargar perfil del usuario
 async function loadUserProfile(userId) {
     try {
         let userProfile = null;
-        let userType = '';
         
-        // 1. Intentar cargar como talento
+        // Intentar cargar como talento
         const talentDoc = await db.collection('talents').doc(userId).get();
         if (talentDoc.exists) {
-            userType = 'talent';
             userProfile = {
-                type: userType,
+                type: 'talent',
                 ...talentDoc.data(),
                 id: talentDoc.id
             };
         } else {
-            // 2. Intentar cargar como cliente
+            // Intentar cargar como cliente
             const clientDoc = await db.collection('clients').doc(userId).get();
             if (clientDoc.exists) {
-                userType = 'client';
                 userProfile = {
-                    type: userType,
+                    type: 'client',
                     ...clientDoc.data(),
                     id: clientDoc.id
                 };
             }
         }
         
-        window.currentUserData = userProfile;
-
         if (userProfile) {
-            // 3. Mostrar tabs correctas (Talento o Cliente)
-            const isTalent = userType === 'talent';
-            document.querySelectorAll('.talent-only').forEach(el => el.style.display = isTalent ? 'block' : 'none');
-            document.querySelectorAll('.client-only').forEach(el => el.style.display = !isTalent ? 'block' : 'none');
-            
-            // 4. Mostrar info de cabecera (Imagen y Nombre)
-            const defaultAvatar = isTalent ? 'img/default-avatar.png' : 'img/default-avatar-client.png';
-            document.getElementById('userProfilePicture').src = userProfile.profilePictureUrl || defaultAvatar;
-            document.getElementById('userProfileName').textContent = userProfile.name || userProfile.email;
-            document.getElementById('userProfileType').textContent = isTalent ? 'Perfil de Talento' : 'Perfil de Cliente';
-            
-            // 5. Mostrar detalles
             displayUserProfile(userProfile);
-            
-            // Si el cliente está en su pestaña de notificaciones, recargarlas
-            if (userType === 'client' && document.getElementById('client-notificationsTabContent')?.classList.contains('active')) {
-                window.loadClientApplications(userId);
-            }
-            
+            // Cargar datos para el modal de edición al cargar el perfil
+            window.populateEditProfileModal(userProfile); 
         } else {
              const profileContent = document.getElementById('userProfileContent');
              if (profileContent) profileContent.innerHTML = '<p>Tu perfil no está completo. Por favor, completa tu registro.</p>';
@@ -64,16 +40,16 @@ async function loadUserProfile(userId) {
 }
 window.loadUserProfile = loadUserProfile; // Hacer global
 
-// Mostrar perfil en el dashboard (MODIFICADO para usar imagen y ubicación)
+// Mostrar perfil en el dashboard
 function displayUserProfile(profile) {
     const profileContent = document.getElementById('userProfileContent');
     if (!profileContent) return; 
     
-    // Información de ubicación (usando helper functions de locations.js)
+    // Información de ubicación (si está disponible)
     const locationInfo = profile.country && profile.state && profile.city && typeof getCountryName !== 'undefined' ? 
         `<div class="info-item">
             <label>Ubicación:</label>
-            <span>${window.getCityName(profile.country, profile.state, profile.city)}, ${window.getStateName(profile.country, profile.state)}, ${window.getCountryName(profile.country)}</span>
+            <span>${getCityName(profile.country, profile.state, profile.city)}, ${getStateName(profile.country, profile.state)}, ${getCountryName(profile.country)}</span>
         </div>` : '';
     
     if (profile.type === 'talent') {
@@ -92,7 +68,7 @@ function displayUserProfile(profile) {
 
         profileContent.innerHTML = `
             <div class="profile-header">
-                <h2>Detalles de Talento</h2>
+                <h2>Perfil de Talento</h2>
                 <button class="btn btn-secondary" onclick="window.openEditProfileModal('${profile.id}', 'talent')">
                     <i class="fas fa-edit"></i> Editar Perfil
                 </button>
@@ -101,262 +77,232 @@ function displayUserProfile(profile) {
                 <div class="info-item"><label>Nombre:</label><span>${profile.name}</span></div>
                 <div class="info-item"><label>Email:</label><span>${profile.email}</span></div>
                 <div class="info-item"><label>Teléfono:</label><span>${profile.phone || 'N/A'}</span></div>
-                ${locationInfo} 
                 <div class="info-item"><label>Género:</label><span>${profile.gender || 'N/A'}</span></div>
                 <div class="info-item"><label>Edad (Real):</label><span>${profile.realAge || 'N/A'}</span></div>
                 <div class="info-item"><label>Rango de edad (Roles):</label><span>${profile.ageRange || 'N/A'}</span></div>
                 <div class="info-item"><label>Nacionalidad:</label><span>${profile.nationality || 'N/A'}</span></div>
-                <div class="info-item"><label>Home Studio:</label><span>${profile.hasHomeStudio ? 'Sí' : 'No'}</span></div>
-                <div class="info-item full-width"><label>Idiomas:</label><span>${profile.languages && profile.languages.length > 0 ? profile.languages.join(', ') : 'N/A'}</span></div>
-                <div class="info-item full-width"><label>Biografía:</label><span>${profile.bio || 'Aún no has agregado una biografía.'}</span></div>
+                <div class="info-item"><label>Home Studio:</label><span>${profile.homeStudio === 'si' ? 'Sí' : 'No'}</span></div>
             </div>
+            ${locationInfo}
+            <p style="margin-top: 15px;"><strong>Biografía:</strong> ${profile.bio || 'Sin biografía.'}</p>
+            <p><strong>Idiomas de Trabajo:</strong> ${profile.languages ? profile.languages.join(', ') : 'N/A'}</p>
+
+            <h3 style="margin-top: 20px;">Demos de Voz</h3>
             <div class="demos-section">
-                <h3>Demos de Audio</h3>
                 ${demosHtml}
             </div>
         `;
     } else if (profile.type === 'client') {
         profileContent.innerHTML = `
             <div class="profile-header">
-                <h2>Detalles de Cliente</h2>
+                <h2>Perfil de Cliente</h2>
                 <button class="btn btn-secondary" onclick="window.openEditProfileModal('${profile.id}', 'client')">
                     <i class="fas fa-edit"></i> Editar Perfil
                 </button>
             </div>
             <div class="info-grid">
-                <div class="info-item"><label>Nombre:</label><span>${profile.name}</span></div>
+                <div class="info-item"><label>Nombre de Contacto:</label><span>${profile.name}</span></div>
                 <div class="info-item"><label>Email:</label><span>${profile.email}</span></div>
                 <div class="info-item"><label>Teléfono:</label><span>${profile.phone || 'N/A'}</span></div>
-                ${locationInfo} 
-                <div class="info-item"><label>Tipo de Cliente:</label><span>${profile.clientType === 'empresa' ? 'Empresa' : 'Particular'}</span></div>
-                ${profile.companyName ? `<div class="info-item"><label>Empresa:</label><span>${profile.companyName}</span></div>` : ''}
+                <div class="info-item"><label>Tipo de Cliente:</label><span>${profile.clientType === 'empresa' ? 'Empresa / Agencia' : 'Particular'}</span></div>
+                ${profile.clientType === 'empresa' && profile.companyName ? `<div class="info-item"><label>Empresa:</label><span>${profile.companyName}</span></div>` : ''}
             </div>
         `;
     }
 }
 window.displayUserProfile = displayUserProfile;
 
-// Abrir modal de edición y poblar campos (MODIFICADO para imagen y ubicación)
-window.openEditProfileModal = async function(userId, userType) {
-    const modal = document.getElementById('editProfileModal');
-    if (!modal) return;
+// Abrir modal de edición y poblarlo
+window.openEditProfileModal = function(userId, userType) {
+    const editModal = document.getElementById('editProfileModal');
+    if (!editModal) return;
 
-    modal.style.display = 'flex';
-    document.getElementById('editUserId').value = userId;
-    document.getElementById('editUserType').value = userType;
-    document.getElementById('editProfileMessage').innerHTML = '';
-
-    // Poblar los campos con datos actuales
-    let docRef = userType === 'talent' ? db.collection('talents').doc(userId) : db.collection('clients').doc(userId);
+    // Asegurarse de que el perfil está cargado y los datos están disponibles
+    loadUserProfile(userId); // Esto también poblará el modal si es exitoso
     
-    try {
-        const doc = await docRef.get();
-        if (doc.exists) {
-            const data = doc.data();
+    editModal.style.display = 'flex';
+};
 
-            document.getElementById('editName').value = data.name || '';
-            document.getElementById('editPhone').value = data.phone || '';
-            
-            // NUEVO: Imagen de perfil
-            const currentPicDiv = document.getElementById('currentProfilePicture');
-            const defaultAvatar = userType === 'talent' ? 'img/default-avatar.png' : 'img/default-avatar-client.png';
-            
-            if (userType === 'talent') {
-                 document.getElementById('editProfilePictureGroup').style.display = 'block';
-                 currentPicDiv.innerHTML = data.profilePictureUrl && data.profilePictureUrl !== defaultAvatar ? 
-                    `<small>Foto actual:</small><img src="${data.profilePictureUrl}" style="width:50px; height:50px; border-radius:50%; object-fit:cover;">` : 
-                    '<small>No hay foto de perfil cargada.</small>';
-            } else {
-                 document.getElementById('editProfilePictureGroup').style.display = 'none';
-            }
+// Poblar modal de edición con los datos del perfil
+window.populateEditProfileModal = function(profile) {
+    document.getElementById('editProfileUserId').value = profile.id;
+    document.getElementById('editProfileUserType').value = profile.type;
+    document.getElementById('editName').value = profile.name || '';
+    document.getElementById('editEmail').value = profile.email || '';
+    document.getElementById('editPhone').value = profile.phone || '';
+    
+    // Ocultar/Mostrar campos específicos
+    const talentFields = document.getElementById('editTalentFields');
+    const clientFields = document.getElementById('editClientFields');
+    talentFields.style.display = profile.type === 'talent' ? 'block' : 'none';
+    clientFields.style.display = profile.type === 'client' ? 'block' : 'none';
 
-
-            // NUEVO: Lógica para poblar ubicaciones.
-            if (typeof window.loadLocationData === 'function') {
-                // Llama a loadLocationData con los datos actuales para preseleccionar
-                window.loadLocationData('editCountrySelect', 'editStateSelect', 'editCitySelect', data.country, data.state, data.city);
-            }
-
-            // Lógica para campos específicos
-            if (userType === 'talent') {
-                document.getElementById('editTalentFields').style.display = 'block';
-                document.getElementById('editClientFields').style.display = 'none';
-
-                // Poblar campos de talento
-                document.getElementById('editGender').value = data.gender || '';
-                document.getElementById('editRealAge').value = data.realAge || '';
-                document.getElementById('editAgeRange').value = data.ageRange || '';
-                document.getElementById('editNationality').value = data.nationality || '';
-                document.getElementById('editBio').value = data.bio || '';
-                document.getElementById('editHasHomeStudio').checked = data.hasHomeStudio || false;
-
-                // Mostrar demos actuales
-                const currentDemosDiv = document.getElementById('currentDemosEdit');
-                if (data.demos && data.demos.length > 0) {
-                    currentDemosDiv.innerHTML = '<h4>Demos Actuales:</h4>' + data.demos.map(demo => `
-                        <div class="demo-item-edit">
-                            <span>${demo.name}</span>
-                            <audio controls src="${demo.url}"></audio>
-                            <button type="button" class="btn btn-danger btn-sm" onclick="window.deleteDemo('${demo.publicId}', '${userId}')">Eliminar</button>
-                        </div>
-                    `).join('');
-                } else {
-                    currentDemosDiv.innerHTML = '<p>No hay demos subidos.</p>';
-                }
-                
-            } else if (userType === 'client') {
-                document.getElementById('editTalentFields').style.display = 'none';
-                document.getElementById('editClientFields').style.display = 'block';
-
-                // Poblar campos de cliente
-                document.getElementById('editClientType').value = data.clientType || 'particular';
-                document.getElementById('editCompanyName').value = data.companyName || '';
-                window.toggleCompanyName(); // Para mostrar/ocultar el campo de empresa
-            }
+    if (profile.type === 'talent') {
+        document.getElementById('editBio').value = profile.bio || '';
+        document.getElementById('editGender').value = profile.gender || '';
+        document.getElementById('editRealAge').value = profile.realAge || '';
+        document.getElementById('editAgeRange').value = profile.ageRange || '';
+        
+        // Cargar demos actuales
+        const currentDemosEdit = document.getElementById('currentDemosEdit');
+        if (currentDemosEdit) {
+             currentDemosEdit.innerHTML = profile.demos && profile.demos.length > 0 ? 
+                `<h4>Demos Actuales (Serán reemplazados si subes nuevos):</h4>
+                 ${profile.demos.map(demo => 
+                    `<div class="demo-item"><span>${demo.name}</span><audio controls src="${demo.url}"></audio></div>`
+                ).join('')}` : 
+                '<p>No hay demos subidos. Sube hasta 2 archivos de audio.</p>';
         }
-    } catch (error) {
-        console.error('Error poblando modal de edición:', error);
-        window.showMessage('editProfileMessage', '❌ Error al cargar datos para edición.', 'error');
+        
+        // Cargar ubicación (Requiere locations.js y loadLocationData en app.js)
+        const countrySelect = document.getElementById('editCountry');
+        const stateSelect = document.getElementById('editState');
+        const citySelect = document.getElementById('editCity');
+        
+        countrySelect.value = profile.country || '';
+        window.loadStates(countrySelect.value, stateSelect.id); // Función de locations.js
+        
+        setTimeout(() => {
+            stateSelect.value = profile.state || '';
+            window.loadCities(countrySelect.value, stateSelect.value, citySelect.id); // Función de locations.js
+        }, 500); // Pequeño delay para asegurar la carga de estados
+        
+        setTimeout(() => {
+            citySelect.value = profile.city || '';
+        }, 1000);
+        
+    } else if (profile.type === 'client') {
+        document.getElementById('editClientType').value = profile.clientType || 'particular';
+        // Activar el listener de app.js para toggleCompanyNameEdit
+        const companyNameGroup = document.getElementById('editCompanyNameGroup');
+        if (companyNameGroup) {
+             companyNameGroup.style.display = profile.clientType === 'empresa' ? 'block' : 'none';
+        }
+        document.getElementById('editCompanyName').value = profile.companyName || '';
     }
-}
-window.openEditProfileModal = openEditProfileModal;
+};
+window.populateEditProfileModal = populateEditProfileModal;
 
-// Actualizar perfil de Talento (MODIFICADO para imagen y ubicación)
+
+// 1. Guardar/Actualizar Perfil de Talento
 window.updateTalentProfile = async function(e) {
     e.preventDefault();
-    const userId = document.getElementById('editUserId').value;
+    const userId = document.getElementById('editProfileUserId').value;
     const messageDiv = 'editProfileMessage';
-    window.showMessage(messageDiv, '⌛ Guardando cambios de talento...', 'info');
+    
+    window.showMessage(messageDiv, '⏳ Guardando cambios...', 'warning');
 
-    const profilePictureFile = document.getElementById('editProfilePicture').files[0];
-    let profilePictureUrl = null;
+    const name = document.getElementById('editName').value;
+    const phone = document.getElementById('editPhone').value;
+    const bio = document.getElementById('editBio').value;
+    const gender = document.getElementById('editGender').value;
+    const realAge = document.getElementById('editRealAge').value;
+    const ageRange = document.getElementById('editAgeRange').value;
+    const country = document.getElementById('editCountry').value;
+    const state = document.getElementById('editState').value;
+    const city = document.getElementById('editCity').value;
+    const newAudioFiles = document.getElementById('editAudioFiles').files;
+    
+    if (newAudioFiles.length > 2) {
+        window.showMessage(messageDiv, '❌ Error: Solo puedes subir un máximo de 2 demos.', 'error');
+        return;
+    }
 
     try {
-        // 1. Subir Imagen de Perfil si existe
-        if (profilePictureFile) {
-            window.showMessage(messageDiv, '🖼️ Subiendo nueva foto de perfil...', 'info');
-            const uploadResult = await window.uploadToCloudinary(profilePictureFile);
-            profilePictureUrl = uploadResult.url;
-        }
-
-        // 2. Preparar datos de ubicación
-        const country = document.getElementById('editCountrySelect').value;
-        const state = document.getElementById('editStateSelect').value;
-        const city = document.getElementById('editCitySelect').value;
+        let demos = [];
         
-        // 3. Validar ubicación
-        if (!country || !state || !city) {
-            window.showMessage(messageDiv, '❌ Error: Por favor, selecciona País, Provincia/Estado y Ciudad.', 'error');
-            return;
+        if (newAudioFiles.length > 0) {
+            // Subir nuevos demos y reemplazar los existentes
+            window.showMessage(messageDiv, `📤 Subiendo ${newAudioFiles.length} demo(s) a Cloudinary...`, 'warning');
+            
+            const uploadPromises = Array.from(newAudioFiles).map(file => {
+                return window.uploadToCloudinary(file).then(result => ({
+                    url: result.url,
+                    publicId: result.publicId,
+                    duration: result.duration || 0,
+                    name: file.name
+                }));
+            });
+            
+            demos = await Promise.all(uploadPromises);
+            window.showMessage(messageDiv, '✅ Demos subidos correctamente.', 'success');
+        } else {
+             // Si no hay nuevos archivos, mantener los demos existentes (opcional: el usuario puede querer borrarlos manualmente si se implementa esa lógica)
+             // Por simplicidad, si no sube nuevos, mantengo los existentes al volver a cargar el perfil
+             const currentDoc = await db.collection('talents').doc(userId).get();
+             demos = currentDoc.data().demos || [];
         }
 
-        // 4. Preparar datos para Firestore
+
         const updateData = {
-            name: document.getElementById('editName').value,
-            phone: document.getElementById('editPhone').value,
-            // NUEVO: Ubicación
+            name: name,
+            phone: phone,
+            bio: bio,
+            gender: gender,
+            realAge: realAge,
+            ageRange: ageRange,
             country: country,
             state: state,
             city: city,
-
-            // Campos de Talento
-            gender: document.getElementById('editGender').value,
-            realAge: document.getElementById('editRealAge').value,
-            ageRange: document.getElementById('editAgeRange').value,
-            nationality: document.getElementById('editNationality').value,
-            bio: document.getElementById('editBio').value,
-            hasHomeStudio: document.getElementById('editHasHomeStudio').checked,
+            demos: demos, // Actualizar demos
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
-
-        // Si se subió una nueva imagen, agregarla a los datos de actualización
-        if (profilePictureUrl) {
-            updateData.profilePictureUrl = profilePictureUrl;
-        }
-
-        // 5. Subir Demos si existen
-        const audioFiles = document.getElementById('editAudioFiles').files;
-        if (audioFiles.length > 0) {
-            window.showMessage(messageDiv, `🎧 Subiendo ${audioFiles.length} demos de audio...`, 'info');
-            let newDemos = [];
-            
-            for (const file of audioFiles) {
-                const uploadResult = await window.uploadToCloudinary(file);
-                newDemos.push({
-                    name: file.name,
-                    url: uploadResult.url,
-                    publicId: uploadResult.publicId,
-                    duration: uploadResult.duration
-                });
-            }
-            updateData.demos = newDemos; // Reemplaza los demos existentes
-        }
-
-
-        // 6. Actualizar Firestore
+        
         await db.collection('talents').doc(userId).update(updateData);
         
         window.showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
         
+        // Recargar perfil después de un breve delay
         setTimeout(() => {
             window.closeEditProfileModal();
             window.loadUserProfile(userId);
-        }, 2000);
+            // Recargar la lista de talentos si estamos en index.html (opcional, pero útil)
+            if (typeof window.loadTalents === 'function') window.loadTalents();
+        }, 1500);
         
     } catch (error) {
-        console.error('❌ Error actualizando perfil:', error);
+        console.error('❌ Error actualizando perfil de talento:', error);
         window.showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
 };
-window.updateTalentProfile = updateTalentProfile;
 
-// Actualizar perfil de Cliente (MODIFICADO para ubicación)
+// 2. Guardar/Actualizar Perfil de Cliente
 window.updateClientProfile = async function(e) {
     e.preventDefault();
-    const userId = document.getElementById('editUserId').value;
+    const userId = document.getElementById('editProfileUserId').value;
     const messageDiv = 'editProfileMessage';
-    window.showMessage(messageDiv, '⌛ Guardando cambios de cliente...', 'info');
+    
+    window.showMessage(messageDiv, '⏳ Guardando cambios...', 'warning');
+
+    const name = document.getElementById('editName').value;
+    const phone = document.getElementById('editPhone').value;
+    const clientType = document.getElementById('editClientType').value;
+    const companyName = clientType === 'empresa' ? document.getElementById('editCompanyName').value : '';
 
     try {
-        // Preparar datos de ubicación
-        const country = document.getElementById('editCountrySelect').value;
-        const state = document.getElementById('editStateSelect').value;
-        const city = document.getElementById('editCitySelect').value;
-        
-        // Validar ubicación
-        if (!country || !state || !city) {
-            window.showMessage(messageDiv, '❌ Error: Por favor, selecciona País, Provincia/Estado y Ciudad.', 'error');
-            return;
-        }
-
-        // Preparar datos para Firestore
-        const clientType = document.getElementById('editClientType').value;
         const updateData = {
-            name: document.getElementById('editName').value,
-            phone: document.getElementById('editPhone').value,
+            name: name,
+            phone: phone,
             clientType: clientType,
-            companyName: clientType === 'empresa' ? document.getElementById('editCompanyName').value : '',
-            // NUEVO: Ubicación
-            country: country,
-            state: state,
-            city: city,
+            companyName: companyName,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        // Actualizar Firestore
         await db.collection('clients').doc(userId).update(updateData);
         
         window.showMessage(messageDiv, '✅ Perfil actualizado correctamente', 'success');
         
+        // Recargar perfil después de un breve delay
         setTimeout(() => {
             window.closeEditProfileModal();
             window.loadUserProfile(userId);
-        }, 2000);
+        }, 1500);
         
     } catch (error) {
-        console.error('❌ Error actualizando perfil:', error);
+        console.error('❌ Error actualizando perfil de cliente:', error);
         window.showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
 };
-window.updateClientProfile = updateClientProfile;
 
 
 // Eliminar demo de audio
@@ -381,111 +327,10 @@ window.deleteDemo = async function(publicId, userId) {
         alert('Error eliminando el demo');
     }
 };
-window.deleteDemo = deleteDemo;
 
 // Cerrar modal de edición
 window.closeEditProfileModal = function() {
     const editModal = document.getElementById('editProfileModal');
     
     if (editModal) editModal.style.display = 'none';
-};
-window.closeEditProfileModal = closeEditProfileModal;
-
-
-// ======================================================
-// NUEVO: Funcionalidad de Postulaciones y Notificaciones
-// ======================================================
-
-// 1. Cliente recibe notificaciones de postulaciones
-window.loadClientApplications = async function(clientId) {
-    const listElement = document.getElementById('clientNotificationsList');
-    if (!listElement) return;
-
-    listElement.innerHTML = '<h3>Cargando Postulaciones...</h3>';
-
-    try {
-        // Buscar todas las postulaciones donde el trabajo pertenezca al cliente.
-        const applicationsSnapshot = await db.collection('applications')
-            .where('clientId', '==', clientId)
-            .get();
-
-        if (applicationsSnapshot.empty) {
-            listElement.innerHTML = '<p>Aún no has recibido postulaciones a tus ofertas de trabajo.</p>';
-            return;
-        }
-
-        let html = '<div class="application-list">';
-        
-        // Obtener IDs de trabajos y talentos para batching (más eficiente)
-        const jobIds = [...new Set(applicationsSnapshot.docs.map(doc => doc.data().jobId))];
-        const talentIds = [...new Set(applicationsSnapshot.docs.map(doc => doc.data().talentId))];
-        
-        // Mapas para almacenar data y evitar múltiples lecturas
-        const jobMap = {};
-        const talentMap = {};
-
-        // Cargar data de trabajos (max 10, si hay más se puede optimizar con arrays)
-        if (jobIds.length > 0) {
-            const jobDocs = await db.collection('jobOffers').where(firebase.firestore.FieldPath.documentId(), 'in', jobIds).get();
-            jobDocs.forEach(doc => jobMap[doc.id] = doc.data());
-        }
-        
-        // Cargar data de talentos
-        if (talentIds.length > 0) {
-            const talentDocs = await db.collection('talents').where(firebase.firestore.FieldPath.documentId(), 'in', talentIds).get();
-            talentDocs.forEach(doc => talentMap[doc.id] = doc.data());
-        }
-
-
-        applicationsSnapshot.docs.forEach(doc => {
-            const app = doc.data();
-            const jobTitle = jobMap[app.jobId] ? jobMap[app.jobId].title : 'Oferta Eliminada';
-            const applicantName = talentMap[app.talentId] ? talentMap[app.talentId].name : 'Talento Eliminado';
-            
-            html += `
-                <div class="application-item">
-                    <div>
-                        <span>El talento 
-                            <a href="#" class="applicant-link" onclick="window.viewTalentProfile('${app.talentId}'); return false;">
-                                ${applicantName}
-                            </a> se ha postulado a tu oferta: 
-                            <strong>${jobTitle}</strong>.
-                        </span>
-                        <small style="display:block; color:#777;">Postulado el: ${app.appliedAt ? new Date(app.appliedAt.seconds * 1000).toLocaleDateString() : 'N/A'}</small>
-                    </div>
-                    <button class="btn btn-success btn-sm" onclick="alert('Funcionalidad de Contactar a ${applicantName} (${app.talentId}) pendiente.');">Contactar</button>
-                </div>
-            `;
-        });
-
-        html += '</div>';
-        listElement.innerHTML = html;
-
-    } catch (error) {
-        console.error('Error cargando postulaciones de cliente:', error);
-        listElement.innerHTML = '<p class="error">❌ Error al cargar las postulaciones. Intenta de nuevo.</p>';
-    }
-};
-window.loadClientApplications = loadClientApplications;
-
-
-// 2. Cliente puede ver el perfil del postulante haciendo click en su nombre
-window.viewTalentProfile = function(talentId) {
-    // Alerta simple para mostrar que la función es clickable.
-    // Aquí podrías implementar la lógica para abrir un modal con la información del talento
-    alert(`Cargando perfil público del talento con ID: ${talentId}. Funcionalidad completa de visualización de perfil pendiente.`);
-};
-window.viewTalentProfile = viewTalentProfile;
-
-
-// Funciones de las otras tabs (Mis Postulaciones, Mis Ofertas)
-// Placeholder para que los event listeners de profile.html no fallen.
-window.loadTalentApplications = function(talentId) {
-    const listElement = document.getElementById('talentApplicationsList');
-    if (listElement) listElement.innerHTML = '<p>Funcionalidad de "Mis Postulaciones Realizadas" pendiente de desarrollo.</p>';
-};
-
-window.loadClientJobOffers = function(clientId) {
-    const listElement = document.getElementById('myJobsList');
-    if (listElement) listElement.innerHTML = '<p>Funcionalidad de "Mis Ofertas Publicadas" pendiente de desarrollo.</p>';
 };
