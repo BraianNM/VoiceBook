@@ -1,4 +1,4 @@
-// profile.js - Gestión completa del perfil de usuario (CORREGIDO)
+// profile.js - Gestión completa del perfil de usuario (CORREGIDO Y MEJORADO)
 
 // Cargar perfil del usuario (FUNCIÓN CORREGIDA)
 async function loadUserProfile(userId) {
@@ -59,11 +59,17 @@ function updateProfileHeader(userData) {
     if (profileUserPicture) {
         profileUserPicture.src = userData.profilePictureUrl || 
             (userData.type === 'talent' ? 'img/default-avatar.png' : 'img/default-avatar-client.png');
+        profileUserPicture.onerror = function() {
+            this.src = userData.type === 'talent' ? 'img/default-avatar.png' : 'img/default-avatar-client.png';
+        };
     }
     
     if (headerUserPicture) {
         headerUserPicture.src = userData.profilePictureUrl || 
             (userData.type === 'talent' ? 'img/default-avatar.png' : 'img/default-avatar-client.png');
+        headerUserPicture.onerror = function() {
+            this.src = userData.type === 'talent' ? 'img/default-avatar.png' : 'img/default-avatar-client.png';
+        };
     }
 }
 
@@ -79,6 +85,10 @@ function showUserSpecificSections(userType) {
         clientSections.forEach(section => {
             section.style.display = 'none';
         });
+        
+        // Agregar clase al body para CSS
+        document.body.classList.add('user-type-talent');
+        document.body.classList.remove('user-type-client');
     } else if (userType === 'client') {
         talentSections.forEach(section => {
             section.style.display = 'none';
@@ -86,6 +96,10 @@ function showUserSpecificSections(userType) {
         clientSections.forEach(section => {
             section.style.display = 'flex';
         });
+        
+        // Agregar clase al body para CSS
+        document.body.classList.add('user-type-client');
+        document.body.classList.remove('user-type-talent');
     }
 }
 
@@ -104,11 +118,11 @@ function displayTalentProfile(talent) {
 
     let demosHtml = '';
     if (talent.demos && talent.demos.length > 0) {
-        demosHtml = talent.demos.map(demo => `
+        demosHtml = talent.demos.map((demo, index) => `
             <div class="demo-item">
-                <span class="demo-name">${demo.name || 'Demo'}</span>
+                <span class="demo-name">${demo.name || 'Demo ' + (index + 1)}</span>
                 <audio controls src="${demo.url}"></audio>
-                <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.id}')">
+                <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.publicId || demo.id || index}')">
                     <i class="fas fa-trash"></i> Eliminar
                 </button>
             </div>
@@ -251,7 +265,7 @@ function displayUserProfile(userData) {
 }
 window.displayUserProfile = displayUserProfile;
 
-// Configurar formulario de edición para talento (FUNCIÓN CORREGIDA)
+// Configurar formulario de edición para talento (FUNCIÓN MEJORADA)
 function setupTalentEditForm(talent) {
     console.log('Configurando formulario de edición para talento:', talent);
     
@@ -275,7 +289,14 @@ function setupTalentEditForm(talent) {
     // Home Studio
     document.getElementById('editHasHomeStudio').checked = talent.homeStudio === 'si';
     
-    // Idiomas
+    // Limpiar y configurar idiomas
+    for (let i = 1; i <= 10; i++) {
+        const checkbox = document.getElementById('editLang' + i);
+        if (checkbox) {
+            checkbox.checked = false;
+        }
+    }
+    
     if (talent.languages) {
         talent.languages.forEach(lang => {
             for (let i = 1; i <= 10; i++) {
@@ -286,7 +307,7 @@ function setupTalentEditForm(talent) {
                 }
             }
             // Manejar "otros"
-            const commonLanguages = ['Español (Latam)', 'Español (España)', 'Inglés', 'Portugués', 'Francés', 'Alemán', 'Italiano', 'Japonés', 'Chino'];
+            const commonLanguages = ['Español rioplatense', 'Español latino neutro', 'Español (España)', 'Inglés', 'Portugués', 'Francés', 'Alemán', 'Italiano', 'Japonés', 'Chino'];
             if (!commonLanguages.includes(lang)) {
                 document.getElementById('editLang10').checked = true;
                 document.getElementById('editOtherLanguages').value = lang;
@@ -295,16 +316,28 @@ function setupTalentEditForm(talent) {
         });
     }
     
+    // Configurar evento para "otros" idiomas
+    const editLang10 = document.getElementById('editLang10');
+    const editOtherLanguages = document.getElementById('editOtherLanguages');
+    if (editLang10 && editOtherLanguages) {
+        editLang10.addEventListener('change', function() {
+            editOtherLanguages.style.display = this.checked ? 'block' : 'none';
+            if (!this.checked) {
+                editOtherLanguages.value = '';
+            }
+        });
+    }
+    
     // Ubicación - Cargar después de un breve delay para asegurar que los selects estén listos
     setTimeout(() => {
-        if (typeof loadLocationData !== 'undefined' && talent.country) {
+        if (typeof loadLocationData !== 'undefined') {
             loadLocationData('editCountrySelectTalent', 'editStateSelectTalent', 'editCitySelectTalent', 
                             talent.country, talent.state, talent.city);
         }
-    }, 100);
+    }, 500);
 }
 
-// Configurar formulario de edición para cliente (FUNCIÓN CORREGIDA)
+// Configurar formulario de edición para cliente (FUNCIÓN MEJORADA)
 function setupClientEditForm(client) {
     console.log('Configurando formulario de edición para cliente:', client);
     
@@ -325,18 +358,32 @@ function setupClientEditForm(client) {
     if (client.clientType === 'empresa' && client.companyName) {
         document.getElementById('editCompanyName').value = client.companyName;
         document.getElementById('editCompanyNameGroup').style.display = 'block';
+    } else {
+        document.getElementById('editCompanyNameGroup').style.display = 'none';
+    }
+    
+    // Configurar evento para tipo de cliente
+    const editClientType = document.getElementById('editClientType');
+    const editCompanyNameGroup = document.getElementById('editCompanyNameGroup');
+    if (editClientType && editCompanyNameGroup) {
+        editClientType.addEventListener('change', function() {
+            editCompanyNameGroup.style.display = this.value === 'empresa' ? 'block' : 'none';
+            if (this.value !== 'empresa') {
+                document.getElementById('editCompanyName').value = '';
+            }
+        });
     }
     
     // Ubicación - Cargar después de un breve delay
     setTimeout(() => {
-        if (typeof loadLocationData !== 'undefined' && client.country) {
+        if (typeof loadLocationData !== 'undefined') {
             loadLocationData('editCountrySelectClient', 'editStateSelectClient', 'editCitySelectClient', 
                             client.country, client.state, client.city);
         }
-    }, 100);
+    }, 500);
 }
 
-// Actualizar perfil de talento (FUNCIÓN CORREGIDA)
+// Actualizar perfil de talento (FUNCIÓN COMPLETAMENTE FUNCIONAL)
 window.updateTalentProfile = async function(e) {
     e.preventDefault();
     const messageDiv = 'editProfileMessage';
@@ -374,6 +421,17 @@ window.updateTalentProfile = async function(e) {
             }
         }
 
+        // Validaciones
+        if (!name || !email) {
+            window.showMessage(messageDiv, '❌ Error: Nombre y email son obligatorios.', 'error');
+            return;
+        }
+
+        if (!country || !state || !city) {
+            window.showMessage(messageDiv, '❌ Error: Debes completar toda la ubicación.', 'error');
+            return;
+        }
+
         // Subir nueva imagen de perfil si se seleccionó
         if (profilePictureFile) {
             window.showMessage(messageDiv, '🖼️ Actualizando foto de perfil...', 'info');
@@ -383,6 +441,45 @@ window.updateTalentProfile = async function(e) {
             } catch (uploadError) {
                 console.error('Error subiendo imagen:', uploadError);
                 window.showMessage(messageDiv, '⚠️ No se pudo actualizar la imagen.', 'warning');
+            }
+        }
+
+        // Manejar demos (si se suben nuevos)
+        const demoFiles = document.getElementById('editAudioFiles').files;
+        let demos = currentUserData.demos || [];
+
+        if (demoFiles.length > 0) {
+            window.showMessage(messageDiv, '🎵 Subiendo demos...', 'info');
+            
+            // Limitar a 2 demos
+            if (demoFiles.length > 2) {
+                window.showMessage(messageDiv, '❌ Error: Solo puedes subir máximo 2 demos.', 'error');
+                return;
+            }
+
+            // Subir nuevos demos
+            const uploadPromises = Array.from(demoFiles).slice(0, 2).map(async (file) => {
+                try {
+                    const uploadResult = await window.uploadToCloudinary(file);
+                    return {
+                        name: file.name,
+                        url: uploadResult.url,
+                        publicId: uploadResult.publicId,
+                        duration: uploadResult.duration || 0,
+                        uploadedAt: new Date().toISOString()
+                    };
+                } catch (error) {
+                    console.error('Error subiendo demo:', error);
+                    throw new Error(`Error al subir el demo: ${file.name}`);
+                }
+            });
+
+            try {
+                const newDemos = await Promise.all(uploadPromises);
+                demos = newDemos; // Reemplazar demos existentes con los nuevos
+            } catch (uploadError) {
+                window.showMessage(messageDiv, '❌ Error al subir los demos.', 'error');
+                return;
             }
         }
 
@@ -402,8 +499,11 @@ window.updateTalentProfile = async function(e) {
             state: state,
             city: city,
             profilePictureUrl: profilePictureUrl,
+            demos: demos,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
+
+        console.log('Actualizando datos del talento:', updateData);
 
         // Actualizar en Firestore
         await db.collection('talents').doc(userId).update(updateData);
@@ -418,6 +518,10 @@ window.updateTalentProfile = async function(e) {
             displayTalentProfile(currentUserData);
             updateProfileHeader(currentUserData);
             toggleProfileSection('viewProfileSection');
+            
+            // Limpiar campos de archivos
+            document.getElementById('editTalentProfilePicture').value = '';
+            document.getElementById('editAudioFiles').value = '';
         }, 1500);
 
     } catch (error) {
@@ -426,7 +530,7 @@ window.updateTalentProfile = async function(e) {
     }
 };
 
-// Actualizar perfil de cliente (FUNCIÓN CORREGIDA)
+// Actualizar perfil de cliente (FUNCIÓN COMPLETAMENTE FUNCIONAL)
 window.updateClientProfile = async function(e) {
     e.preventDefault();
     const messageDiv = 'editProfileMessage';
@@ -450,6 +554,22 @@ window.updateClientProfile = async function(e) {
         // Imagen de perfil
         const profilePictureFile = document.getElementById('editClientProfilePicture').files[0];
         let profilePictureUrl = currentUserData.profilePictureUrl;
+
+        // Validaciones
+        if (!name || !email) {
+            window.showMessage(messageDiv, '❌ Error: Nombre y email son obligatorios.', 'error');
+            return;
+        }
+
+        if (!country || !state || !city) {
+            window.showMessage(messageDiv, '❌ Error: Debes completar toda la ubicación.', 'error');
+            return;
+        }
+
+        if (clientType === 'empresa' && !companyName) {
+            window.showMessage(messageDiv, '❌ Error: El nombre de la empresa es obligatorio para empresas.', 'error');
+            return;
+        }
 
         // Subir nueva imagen de perfil si se seleccionó
         if (profilePictureFile) {
@@ -477,6 +597,8 @@ window.updateClientProfile = async function(e) {
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
+        console.log('Actualizando datos del cliente:', updateData);
+
         // Actualizar en Firestore
         await db.collection('clients').doc(userId).update(updateData);
 
@@ -490,6 +612,9 @@ window.updateClientProfile = async function(e) {
             displayClientProfile(currentUserData);
             updateProfileHeader(currentUserData);
             toggleProfileSection('viewProfileSection');
+            
+            // Limpiar campo de archivo
+            document.getElementById('editClientProfilePicture').value = '';
         }, 1500);
 
     } catch (error) {
@@ -535,7 +660,42 @@ function toggleProfileSection(sectionId) {
 }
 window.toggleProfileSection = toggleProfileSection;
 
-// Funciones placeholder para otras secciones (PARA COMPLETAR MÁS TARDE)
+// Función para eliminar demo
+window.deleteDemo = async function(demoId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar este demo?')) {
+        return;
+    }
+
+    try {
+        const userId = currentUser.uid;
+        const talentDoc = await db.collection('talents').doc(userId).get();
+        const talent = talentDoc.data();
+        
+        // Filtrar el demo a eliminar
+        const updatedDemos = talent.demos.filter(demo => 
+            demo.publicId !== demoId && demo.id !== demoId
+        );
+        
+        // Actualizar en Firestore
+        await db.collection('talents').doc(userId).update({
+            demos: updatedDemos
+        });
+        
+        // Actualizar datos locales
+        currentUserData.demos = updatedDemos;
+        
+        // Recargar la vista
+        displayTalentProfile(currentUserData);
+        
+        window.showMessage('profileMessage', '✅ Demo eliminado correctamente.', 'success');
+        
+    } catch (error) {
+        console.error('Error eliminando demo:', error);
+        window.showMessage('profileMessage', '❌ Error al eliminar el demo.', 'error');
+    }
+};
+
+// Funciones placeholder para otras secciones
 function loadTalentApplications() {
     const applicationsList = document.getElementById('applicationsList');
     if (applicationsList) {
@@ -558,13 +718,7 @@ function loadUserNotifications() {
 }
 
 function showUploadDemoModal() {
-    alert('Funcionalidad de subida de demos en desarrollo.');
-}
-
-function deleteDemo(demoId) {
-    if (confirm('¿Estás seguro de que quieres eliminar este demo?')) {
-        alert('Funcionalidad de eliminación de demos en desarrollo.');
-    }
+    alert('Para subir demos, ve a la sección "Editar Perfil" y utiliza el campo "Subir Demos".');
 }
 
 // Inicialización del perfil cuando se carga la página
@@ -594,24 +748,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 window.updateClientProfile(e);
             }
-        });
-    }
-
-    // Configurar toggle para otros idiomas
-    const editLang10 = document.getElementById('editLang10');
-    const editOtherLanguages = document.getElementById('editOtherLanguages');
-    if (editLang10 && editOtherLanguages) {
-        editLang10.addEventListener('change', function() {
-            editOtherLanguages.style.display = this.checked ? 'block' : 'none';
-        });
-    }
-
-    // Configurar toggle para tipo de cliente
-    const editClientType = document.getElementById('editClientType');
-    const editCompanyNameGroup = document.getElementById('editCompanyNameGroup');
-    if (editClientType && editCompanyNameGroup) {
-        editClientType.addEventListener('change', function() {
-            editCompanyNameGroup.style.display = this.value === 'empresa' ? 'block' : 'none';
         });
     }
 
