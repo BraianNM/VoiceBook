@@ -27,6 +27,10 @@ async function loadUserProfile(userId) {
         
         if (userProfile) {
             displayUserProfile(userProfile);
+        } else {
+             // Si el usuario existe pero no tiene perfil (ej. acaba de registrarse), redirigir o mostrar mensaje
+             const profileContent = document.getElementById('userProfileContent');
+             if (profileContent) profileContent.innerHTML = '<p>Tu perfil no está completo. Por favor, completa tu registro.</p>';
         }
         
     } catch (error) {
@@ -38,9 +42,11 @@ window.loadUserProfile = loadUserProfile; // Hacer global
 // Mostrar perfil en el dashboard
 function displayUserProfile(profile) {
     const profileContent = document.getElementById('userProfileContent');
+    if (!profileContent) return; // Salir si no estamos en la página de perfil
     
     // Información de ubicación (si está disponible)
-    const locationInfo = profile.country && profile.state && profile.city ? 
+    // Asumiendo que getCityName, getStateName y getCountryName están en locations.js
+    const locationInfo = profile.country && profile.state && profile.city && typeof getCountryName !== 'undefined' ? 
         `<div class="info-item">
             <label>Ubicación:</label>
             <span>${getCityName(profile.country, profile.state, profile.city)}, ${getStateName(profile.country, profile.state)}, ${getCountryName(profile.country)}</span>
@@ -72,9 +78,9 @@ function displayUserProfile(profile) {
                 <div class="info-item"><label>Nombre:</label><span>${profile.name}</span></div>
                 <div class="info-item"><label>Email:</label><span>${profile.email}</span></div>
                 <div class="info-item"><label>Teléfono:</label><span>${profile.phone || 'N/A'}</span></div>
-                <div class="info-item"><label>Género:</label><span>${profile.gender}</span></div>
+                <div class="info-item"><label>Género:</label><span>${profile.gender || 'N/A'}</span></div>
                 <div class="info-item"><label>Edad (Real):</label><span>${profile.realAge || 'N/A'}</span></div>
-                <div class="info-item"><label>Rango de edad (Roles):</label><span>${profile.ageRange}</span></div>
+                <div class="info-item"><label>Rango de edad (Roles):</label><span>${profile.ageRange || 'N/A'}</span></div>
                 <div class="info-item"><label>Nacionalidad:</label><span>${profile.nationality || 'N/A'}</span></div>
                 <div class="info-item"><label>Home Studio:</label><span>${profile.homeStudio === 'si' ? 'Sí' : 'No'}</span></div>
                 ${locationInfo}
@@ -88,6 +94,11 @@ function displayUserProfile(profile) {
                 ${demosHtml}
             </div>
         `;
+        
+        // Mostrar pestañas específicas de talento
+        if (document.getElementById('jobsTab')) document.getElementById('jobsTab').style.display = 'block';
+        if (document.getElementById('applicationsTab')) document.getElementById('applicationsTab').style.display = 'block';
+        
     } else if (profile.type === 'client') {
         // Lógica de visualización para Clientes
         profileContent.innerHTML = `
@@ -107,61 +118,86 @@ function displayUserProfile(profile) {
         `;
         
         // Mostrar pestañas específicas de cliente/empresa
-        document.getElementById('jobsTab').style.display = 'block';
-        document.getElementById('applicationsTab').style.display = 'none'; // Clientes no tienen postulaciones
+        if (document.getElementById('jobsTab')) document.getElementById('jobsTab').style.display = 'block';
+        if (document.getElementById('applicationsTab')) document.getElementById('applicationsTab').style.display = 'none';
+        
     } else {
         profileContent.innerHTML = '<p>No se pudo cargar el perfil del usuario.</p>';
     }
     
     // Abrir el modal del dashboard si aún no está visible
-    document.getElementById('dashboardModal').style.display = 'flex';
+    if (document.getElementById('dashboardModal')) document.getElementById('dashboardModal').style.display = 'flex';
 }
 
-// Abrir modal de edición
+// Abrir modal de edición (CORRECCIÓN: VERIFICACIÓN DE ELEMENTOS)
 window.openEditProfileModal = async function(userId, type) {
-    document.getElementById('dashboardModal').style.display = 'none';
+    const dashboardModal = document.getElementById('dashboardModal');
     const editModal = document.getElementById('editProfileModal');
-    editModal.style.display = 'flex';
-    document.getElementById('editProfileMessage').innerHTML = '';
+    const messageDiv = document.getElementById('editProfileMessage');
+
+    // 1. Ocultar Dashboard y Mostrar Modal de Edición
+    if (dashboardModal) dashboardModal.style.display = 'none';
+    if (editModal) editModal.style.display = 'flex';
+    if (messageDiv) messageDiv.innerHTML = '';
+    
+    // Si no encontramos el modal, reportar en la consola y salir
+    if (!editModal) {
+        console.error("❌ ERROR: No se encontró el modal de edición ('editProfileModal'). Asegúrate de que existe en el HTML.");
+        return;
+    }
 
     try {
         let docRef;
+        const talentFields = document.getElementById('editTalentFields');
+        const clientFields = document.getElementById('editClientFields');
+
+        // 2. Mostrar/Ocultar campos según el tipo de usuario
         if (type === 'talent') {
+            if (talentFields) talentFields.style.display = 'block';
+            if (clientFields) clientFields.style.display = 'none';
             docRef = db.collection('talents').doc(userId);
-            document.getElementById('editTalentFields').style.display = 'block';
-            document.getElementById('editClientFields').style.display = 'none';
         } else {
+            if (talentFields) talentFields.style.display = 'none';
+            if (clientFields) clientFields.style.display = 'block';
             docRef = db.collection('clients').doc(userId);
-            document.getElementById('editTalentFields').style.display = 'none';
-            document.getElementById('editClientFields').style.display = 'block';
         }
 
+        // 3. Cargar datos del perfil
         const doc = await docRef.get();
         if (doc.exists) {
             const data = doc.data();
-            document.getElementById('editName').value = data.name || '';
-            document.getElementById('editPhone').value = data.phone || '';
             
+            // 4. Rellenar campos comunes (con verificación de existencia)
+            if (document.getElementById('editName')) document.getElementById('editName').value = data.name || '';
+            if (document.getElementById('editPhone')) document.getElementById('editPhone').value = data.phone || '';
+            
+            // 5. Rellenar campos específicos (con verificación de existencia)
             if (type === 'talent') {
-                document.getElementById('editDescription').value = data.description || '';
-                document.getElementById('editHomeStudio').value = data.homeStudio || '';
-                // Cargar otros campos del talento si existen en el formulario
+                if (document.getElementById('editDescription')) document.getElementById('editDescription').value = data.description || '';
+                if (document.getElementById('editHomeStudio')) document.getElementById('editHomeStudio').value = data.homeStudio || '';
+                // Ejemplo de otros campos de talento:
+                if (document.getElementById('editGender')) document.getElementById('editGender').value = data.gender || '';
             } else {
-                if (data.companyName) {
-                    document.getElementById('editCompanyNameGroup').style.display = 'block';
-                    document.getElementById('editCompanyName').value = data.companyName || '';
-                } else {
-                    document.getElementById('editCompanyNameGroup').style.display = 'none';
+                const companyGroup = document.getElementById('editCompanyNameGroup');
+                const companyInput = document.getElementById('editCompanyName');
+
+                if (data.companyName && companyGroup && companyInput) {
+                    companyGroup.style.display = 'block';
+                    companyInput.value = data.companyName || '';
+                } else if (companyGroup) {
+                    companyGroup.style.display = 'none';
                 }
             }
+        } else {
+            showMessage(messageDiv, '❌ Error: No se encontró el perfil del usuario.', 'error');
         }
     } catch (error) {
-        console.error('Error cargando datos para edición:', error);
-        showMessage(document.getElementById('editProfileMessage'), '❌ Error al cargar datos.', 'error');
+        console.error('❌ Error al cargar datos para edición:', error);
+        showMessage(messageDiv, `❌ Error al cargar datos: ${error.message}`, 'error');
     }
 };
 
-// Actualizar perfil de talento (CORREGIDA: HECHA GLOBAL)
+// Actualizar perfil de talento (HECHA GLOBAL)
 window.updateTalentProfile = async function() {
     const messageDiv = document.getElementById('editProfileMessage');
     
@@ -197,7 +233,7 @@ window.updateTalentProfile = async function() {
     }
 };
 
-// Actualizar perfil de cliente (CORREGIDA: HECHA GLOBAL)
+// Actualizar perfil de cliente (HECHA GLOBAL)
 window.updateClientProfile = async function() {
     const messageDiv = document.getElementById('editProfileMessage');
     
@@ -210,7 +246,7 @@ window.updateClientProfile = async function() {
         };
         
         const companyNameInput = document.getElementById('editCompanyName');
-        if (companyNameInput && document.getElementById('editClientFields').style.display !== 'none') {
+        if (companyNameInput) {
             updateData.companyName = companyNameInput.value;
         }
         
@@ -261,11 +297,14 @@ window.deleteDemo = async function(publicId, userId) {
 
 // Cerrar modal de edición
 window.closeEditProfileModal = function() {
-    document.getElementById('editProfileModal').style.display = 'none';
-    document.getElementById('dashboardModal').style.display = 'flex';
+    const editModal = document.getElementById('editProfileModal');
+    const dashboardModal = document.getElementById('dashboardModal');
+    
+    if (editModal) editModal.style.display = 'none';
+    if (dashboardModal) dashboardModal.style.display = 'flex';
 };
 
-// Función auxiliar para mostrar mensajes (redundante, pero necesaria en profile.js si no se carga app.js después)
+// Función auxiliar para mostrar mensajes
 function showMessage(element, message, type) {
     if (element) {
         element.innerHTML = `<div class="${type}">${message}</div>`;
