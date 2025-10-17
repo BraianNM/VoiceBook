@@ -1,7 +1,6 @@
 // Este archivo contiene toda la lógica de autenticación (Registro, Login, Logout)
-// y la subida a Cloudinary.
 
-// Funciones auxiliares (asegúrate de que estén definidas en app.js si no lo están aquí)
+// Funciones auxiliares
 function showMessage(element, message, type) {
     const el = typeof element === 'string' ? document.getElementById(element) : element;
     if (el) {
@@ -34,14 +33,18 @@ function updateUIAfterLogin() {
     const userMenu = document.getElementById('userMenu');
     const dashboardLink = document.getElementById('dashboardLink');
     const userName = document.getElementById('userName');
+    const headerUserPicture = document.getElementById('headerUserPicture');
 
     if (authButtons) authButtons.style.display = 'none';
     if (userMenu) userMenu.style.display = 'flex';
     if (dashboardLink) dashboardLink.style.display = 'block';
     
-    if (userName && currentUser) {
-        // Se asume que el nombre está en el perfil de usuario o se cargará
-        userName.textContent = currentUser.email; 
+    if (userName && currentUserData) {
+        userName.textContent = currentUserData.name || currentUserData.email;
+    }
+    
+    if (headerUserPicture && currentUserData) {
+        headerUserPicture.src = currentUserData.profilePictureUrl || 'img/default-avatar.png';
     }
 }
 
@@ -54,13 +57,17 @@ function updateUIAfterLogout() {
     if (userMenu) userMenu.style.display = 'none';
     if (dashboardLink) dashboardLink.style.display = 'none';
     
+    // Limpiar datos
+    currentUser = null;
+    currentUserData = null;
+    
     // Redirigir al index si no está en index
     if (window.location.pathname.includes('profile.html')) {
         window.location.href = 'index.html';
     }
 }
 
-// NUEVA FUNCIÓN: Registro de Talento (MODIFICADA para imagen y ubicación)
+// NUEVA FUNCIÓN: Registro de Talento (CORREGIDA)
 async function registerTalent(e) {
     e.preventDefault();
     const messageDiv = 'talentMessage';
@@ -71,14 +78,14 @@ async function registerTalent(e) {
     const name = document.getElementById('talentName').value;
     const phone = document.getElementById('talentPhone').value;
     
-    // NUEVO: Ubicación
+    // Ubicación
     const country = document.getElementById('countrySelectTalent').value;
     const state = document.getElementById('stateSelectTalent').value;
     const city = document.getElementById('citySelectTalent').value;
     
-    // NUEVO: Imagen de Perfil
+    // Imagen de Perfil
     const profilePictureFile = document.getElementById('talentProfilePicture').files[0];
-    let profilePictureUrl = '';
+    let profilePictureUrl = 'img/default-avatar.png';
 
     // Validaciones básicas de ubicación
     if (!country || !state || !city) {
@@ -93,43 +100,52 @@ async function registerTalent(e) {
         // 1. Subir Imagen de Perfil si existe
         if (profilePictureFile) {
             window.showMessage(messageDiv, '🖼️ Subiendo foto de perfil...', 'info');
-            // Usamos la configuración global de Cloudinary
-            const uploadResult = await window.uploadToCloudinary(profilePictureFile);
-            profilePictureUrl = uploadResult.url;
+            try {
+                const uploadResult = await window.uploadToCloudinary(profilePictureFile);
+                profilePictureUrl = uploadResult.url;
+            } catch (uploadError) {
+                console.error('Error subiendo imagen:', uploadError);
+                window.showMessage(messageDiv, '⚠️ No se pudo subir la imagen, usando imagen por defecto.', 'warning');
+            }
         }
 
         // 2. Crear documento de perfil
         const languages = getSelectedLanguages();
-        await db.collection('talents').doc(userId).set({
+        const talentData = {
             name: name,
             email: email,
             phone: phone,
             type: 'talent',
-            // NUEVO: Guardar URL de la imagen (usar avatar por defecto si no hay imagen)
-            profilePictureUrl: profilePictureUrl || 'img/default-avatar.png', 
-            // NUEVO: Guardar Ubicación
+            profilePictureUrl: profilePictureUrl,
             country: country,
             state: state,
             city: city,
-            
-            // Campos específicos de talento (simplificados para el ejemplo)
             gender: document.getElementById('talentGender').value,
             realAge: document.getElementById('talentRealAge').value,
             ageRange: document.getElementById('talentAgeRange').value,
             nationality: document.getElementById('talentNationality').value,
             languages: languages,
-            homeStudio: document.getElementById('hasHomeStudio').checked ? 'si' : 'no',
+            homeStudio: document.querySelector('input[name="homeStudio"]:checked')?.value || 'no',
             bio: document.getElementById('talentBio').value || '',
-            // Inicialización de arrays vacíos para demos, favoritos, etc.
             demos: [],
             favorites: [],
-            jobApplications: [] // Array de IDs de trabajos a los que se ha postulado
-        });
+            jobApplications: [],
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('talents').doc(userId).set(talentData);
+
+        // Actualizar datos globales
+        currentUserData = { type: 'talent', ...talentData, id: userId };
 
         window.showMessage(messageDiv, '✅ Registro de talento exitoso. Redirigiendo...', 'success');
         updateUIAfterLogin();
         window.closeAllModals();
-        window.location.href = 'profile.html';
+        
+        // Redirigir después de un breve delay
+        setTimeout(() => {
+            window.location.href = 'profile.html';
+        }, 1500);
 
     } catch (error) {
         console.error('❌ Error de registro de talento:', error);
@@ -138,7 +154,7 @@ async function registerTalent(e) {
 }
 window.registerTalent = registerTalent;
 
-// NUEVA FUNCIÓN: Registro de Cliente (MODIFICADA para ubicación e imagen)
+// NUEVA FUNCIÓN: Registro de Cliente (CORREGIDA)
 async function registerClient(e) {
     e.preventDefault();
     const messageDiv = 'clientMessage';
@@ -151,14 +167,14 @@ async function registerClient(e) {
     const type = document.getElementById('clientType').value;
     const companyName = type === 'empresa' ? document.getElementById('companyName').value : '';
     
-    // NUEVO: Ubicación
+    // Ubicación
     const country = document.getElementById('countrySelectClient').value;
     const state = document.getElementById('stateSelectClient').value;
     const city = document.getElementById('citySelectClient').value;
     
-    // NUEVO: Imagen de Perfil para cliente
+    // Imagen de Perfil
     const profilePictureFile = document.getElementById('clientProfilePicture').files[0];
-    let profilePictureUrl = '';
+    let profilePictureUrl = 'img/default-avatar-client.png';
 
     // Validaciones básicas de ubicación
     if (!country || !state || !city) {
@@ -173,32 +189,44 @@ async function registerClient(e) {
         // Subir Imagen de Perfil si existe
         if (profilePictureFile) {
             window.showMessage(messageDiv, '🖼️ Subiendo foto de perfil...', 'info');
-            const uploadResult = await window.uploadToCloudinary(profilePictureFile);
-            profilePictureUrl = uploadResult.url;
+            try {
+                const uploadResult = await window.uploadToCloudinary(profilePictureFile);
+                profilePictureUrl = uploadResult.url;
+            } catch (uploadError) {
+                console.error('Error subiendo imagen:', uploadError);
+                window.showMessage(messageDiv, '⚠️ No se pudo subir la imagen, usando imagen por defecto.', 'warning');
+            }
         }
 
-        await db.collection('clients').doc(userId).set({
+        const clientData = {
             name: name,
             email: email,
             phone: phone,
             type: 'client',
-            clientType: type, // 'empresa' o 'particular'
+            clientType: type,
             companyName: companyName,
-            // NUEVO: Guardar Ubicación
             country: country,
             state: state,
             city: city,
-            // NUEVO: Guardar imagen de perfil
-            profilePictureUrl: profilePictureUrl || 'img/default-avatar-client.png', 
-            // Inicialización de arrays vacíos para jobs, etc.
-            postedJobs: [], 
-            notifications: [] // Array para notificaciones de postulaciones
-        });
+            profilePictureUrl: profilePictureUrl,
+            postedJobs: [],
+            notifications: [],
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('clients').doc(userId).set(clientData);
+
+        // Actualizar datos globales
+        currentUserData = { type: 'client', ...clientData, id: userId };
 
         window.showMessage(messageDiv, '✅ Registro de cliente exitoso. Redirigiendo...', 'success');
         updateUIAfterLogin();
         window.closeAllModals();
-        window.location.href = 'profile.html';
+        
+        // Redirigir después de un breve delay
+        setTimeout(() => {
+            window.location.href = 'profile.html';
+        }, 1500);
 
     } catch (error) {
         console.error('❌ Error de registro de cliente:', error);
@@ -220,7 +248,6 @@ async function loginUser(e) {
         await auth.signInWithEmailAndPassword(email, password);
         
         window.showMessage(messageDiv, '✅ Sesión iniciada. Redirigiendo...', 'success');
-        updateUIAfterLogin();
         window.closeAllModals();
         window.location.href = 'profile.html';
 
@@ -235,10 +262,6 @@ window.loginUser = loginUser;
 function logoutUser() {
     auth.signOut().then(() => {
         updateUIAfterLogout();
-        // Limpiar el estado global
-        if (typeof window.currentUserData !== 'undefined') {
-            window.currentUserData = null;
-        }
         window.location.href = 'index.html';
     }).catch((error) => {
         console.error('Error al cerrar sesión:', error);
@@ -248,14 +271,15 @@ window.logoutUser = logoutUser;
 
 // Chequear el estado de autenticación al cargar la página
 function checkAuthState() {
-    auth.onAuthStateChanged(user => {
-        currentUser = user; // Actualiza el estado global
+    auth.onAuthStateChanged(async (user) => {
+        currentUser = user;
         if (user) {
-            updateUIAfterLogin();
             // Cargar datos del usuario
-            window.loadUserData(user.uid);
+            await loadUserData(user.uid);
+            updateUIAfterLogin();
+            
             // Cargar perfil si estamos en profile.html
-            if (window.location.href.includes('profile.html')) {
+            if (window.location.href.includes('profile.html') && typeof window.loadUserProfile === 'function') {
                 window.loadUserProfile(user.uid);
             }
         } else {
@@ -265,34 +289,36 @@ function checkAuthState() {
 }
 window.checkAuthState = checkAuthState;
 
-// Cargar datos del usuario
+// Cargar datos del usuario (FUNCIÓN NUEVA Y CORREGIDA)
 async function loadUserData(userId) {
     try {
+        console.log('Cargando datos del usuario:', userId);
+        
         // Intentar cargar como talento
         const talentDoc = await db.collection('talents').doc(userId).get();
         if (talentDoc.exists) {
-            window.currentUserData = {
+            currentUserData = {
                 type: 'talent',
                 ...talentDoc.data(),
                 id: talentDoc.id
             };
-        } else {
-            // Intentar cargar como cliente
-            const clientDoc = await db.collection('clients').doc(userId).get();
-            if (clientDoc.exists) {
-                window.currentUserData = {
-                    type: 'client',
-                    ...clientDoc.data(),
-                    id: clientDoc.id
-                };
-            }
+            console.log('Usuario cargado como talento:', currentUserData);
+            return;
         }
-        
-        // Actualizar nombre en la UI
-        const userName = document.getElementById('userName');
-        if (userName && window.currentUserData) {
-            userName.textContent = window.currentUserData.name || window.currentUserData.email;
+
+        // Intentar cargar como cliente
+        const clientDoc = await db.collection('clients').doc(userId).get();
+        if (clientDoc.exists) {
+            currentUserData = {
+                type: 'client',
+                ...clientDoc.data(),
+                id: clientDoc.id
+            };
+            console.log('Usuario cargado como cliente:', currentUserData);
+            return;
         }
+
+        console.error('No se encontró perfil para el usuario:', userId);
         
     } catch (error) {
         console.error('Error cargando datos de usuario:', error);
@@ -300,12 +326,10 @@ async function loadUserData(userId) {
 }
 window.loadUserData = loadUserData;
 
-// Configuración de Cloudinary (asumiendo que cloudinaryConfig está en firebase-config.js)
-// Subida a Cloudinary - FUNCIÓN GLOBAL
+// Configuración de Cloudinary
 async function uploadToCloudinary(file) {
-    // Usamos el objeto global cloudinaryConfig definido en firebase-config.js
     if (typeof cloudinaryConfig === 'undefined') {
-        throw new Error('❌ Error: La configuración de Cloudinary no está cargada (firebase-config.js).');
+        throw new Error('❌ Error: La configuración de Cloudinary no está cargada.');
     }
     
     const formData = new FormData();
@@ -331,7 +355,7 @@ async function uploadToCloudinary(file) {
             return {
                 url: data.secure_url,
                 publicId: data.public_id,
-                duration: data.duration || 0, // Cloudinary devuelve la duración para audios
+                duration: data.duration || 0,
                 format: data.format,
                 resource_type: data.resource_type
             };
