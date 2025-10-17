@@ -1,23 +1,87 @@
-// Funciones de Autenticación
+// Este archivo contiene toda la lógica de autenticación (Registro, Login, Logout)
+// y la subida a Cloudinary.
 
-// Verificar estado de autenticación (CORREGIDO: Eliminamos la llamada a loadUserProfile aquí)
+// Funciones auxiliares (asegúrate de que estén definidas en app.js si no lo están aquí)
+function showMessage(element, message, type) {
+    const el = typeof element === 'string' ? document.getElementById(element) : element;
+    if (el) {
+        el.innerHTML = `<div class="${type}">${message}</div>`;
+    }
+}
+
+function closeAllModals() {
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.style.display = 'none';
+    });
+}
+
+function getSelectedLanguages() {
+    const languages = [];
+    for (let i = 1; i <= 10; i++) {
+        const checkbox = document.getElementById('lang' + i);
+        if (checkbox && checkbox.checked) {
+            // Asegurarse de que si es 'otros', toma el valor del campo de texto
+            languages.push(checkbox.value === 'otros' ? document.getElementById('otherLanguages').value : checkbox.value);
+        }
+    }
+    return languages.filter(lang => lang);
+}
+
+
+// Funciones para actualizar la interfaz de usuario
+function updateUIAfterLogin() {
+    // Estas funciones buscan los elementos por ID en index.html
+    const authButtons = document.getElementById('authButtons');
+    const userMenu = document.getElementById('userMenu');
+    const dashboardLink = document.getElementById('dashboardLink');
+    const userName = document.getElementById('userName');
+
+    if (authButtons) authButtons.style.display = 'none';
+    if (userMenu) userMenu.style.display = 'flex';
+    if (dashboardLink) dashboardLink.style.display = 'block';
+    if (userName && currentUser) userName.textContent = currentUser.email; 
+}
+
+function updateUIAfterLogout() {
+    const authButtons = document.getElementById('authButtons');
+    const userMenu = document.getElementById('userMenu');
+    const dashboardLink = document.getElementById('dashboardLink');
+    
+    if (authButtons) authButtons.style.display = 'flex';
+    if (userMenu) userMenu.style.display = 'none';
+    if (dashboardLink) dashboardLink.style.display = 'none';
+    
+    // Si el usuario cierra sesión estando en profile.html, lo redirigimos a index.html
+    if (window.location.pathname.includes('profile.html')) {
+        window.location.href = 'index.html';
+    }
+}
+
+
+// Verificar estado de autenticación (CORRECCIÓN CRÍTICA)
 function checkAuthState() {
     auth.onAuthStateChanged((user) => {
         if (user) {
             currentUser = user;
             updateUIAfterLogin();
-            // Eliminado: loadUserProfile(user.uid);
-            // Ahora loadUserProfile solo se llama en profile.html o al abrir el modal de edición.
+            
+            // CORRECCIÓN: Solo cargar perfil si la URL contiene 'profile.html'
+            // Esto evita el error que bloquea loadTalents() en index.html
+            if (window.location.pathname.includes('profile.html') && typeof loadUserProfile !== 'undefined') {
+                loadUserProfile(user.uid);
+            }
         } else {
             currentUser = null;
             updateUIAfterLogout();
         }
     });
 }
+window.checkAuthState = checkAuthState; // Hacer la función global
 
-// ========== CLOUDINARY PARA VOICEBOOK - VERSIÓN CORREGIDA ==========
 
-// Subir archivo de audio a Cloudinary - FUNCIÓN CORREGIDA
+// ========== CLOUDINARY PARA VOICEBOOK ==========
+
+// Subir archivo de audio a Cloudinary
 async function uploadToCloudinary(file) {
     const formData = new FormData();
     formData.append('file', file);
@@ -25,8 +89,6 @@ async function uploadToCloudinary(file) {
     formData.append('resource_type', 'auto');
 
     try {
-        console.log('📤 Iniciando subida a Cloudinary:', file.name);
-        
         const response = await fetch(
             `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/upload`,
             {
@@ -36,10 +98,8 @@ async function uploadToCloudinary(file) {
         );
         
         const data = await response.json();
-        console.log('📥 Respuesta de Cloudinary:', data);
         
         if (data.secure_url) {
-            console.log('✅ Archivo subido exitosamente:', data.secure_url);
             return {
                 url: data.secure_url,
                 publicId: data.public_id,
@@ -52,12 +112,11 @@ async function uploadToCloudinary(file) {
         }
         
     } catch (error) {
-        console.error('❌ Error al subir a Cloudinary:', error);
         throw new Error('Fallo la subida del demo de audio.');
     }
 }
 
-// Registrar talento (MODIFICADO para manejar 2 demos de 10MB)
+// Registrar talento
 async function registerTalent(e) {
     e.preventDefault();
     const messageDiv = document.getElementById('talentFormMessage');
@@ -72,7 +131,6 @@ async function registerTalent(e) {
             showMessage(messageDiv, `❌ Solo puedes subir un máximo de ${MAX_FILES} demos.`, 'error');
             return;
         }
-        
         for (const file of demoFiles) {
             if (file.size > MAX_SIZE_BYTES) {
                 showMessage(messageDiv, `❌ El archivo "${file.name}" supera el límite de ${MAX_SIZE_MB}MB.`, 'error');
@@ -117,7 +175,7 @@ async function registerTalent(e) {
             ageRange: document.getElementById('talentAgeRange').value,
             nationality: document.getElementById('talentNationality').value,
             realAge: document.getElementById('talentRealAge').value ? parseInt(document.getElementById('talentRealAge').value) : null,
-            demos: demos, // Guardar los demos subidos
+            demos: demos, 
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
@@ -128,7 +186,8 @@ async function registerTalent(e) {
         setTimeout(() => {
             closeAllModals();
             document.getElementById('talentForm').reset();
-            loadTalents();
+            // Si loadTalents es global, se actualizará el índice automáticamente
+            if (typeof loadTalents !== 'undefined') loadTalents();
         }, 3000);
         
     } catch (error) {
@@ -136,6 +195,7 @@ async function registerTalent(e) {
         showMessage(messageDiv, '❌ Error: ' + error.message, 'error');
     }
 }
+window.registerTalent = registerTalent;
 
 // Registrar cliente
 async function registerClient(e) {
@@ -173,8 +233,9 @@ async function registerClient(e) {
         showMessage(messageDiv, 'Error: ' + error.message, 'error');
     }
 }
+window.registerClient = registerClient;
 
-// Iniciar sesión
+// Iniciar sesión (CORREGIDO: Manejo de errores y redirección)
 async function loginUser(e) {
     e.preventDefault();
     const messageDiv = document.getElementById('loginFormMessage');
@@ -183,68 +244,48 @@ async function loginUser(e) {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
         
-        await auth.signInWithEmailAndPassword(email, password);
-        showMessage(messageDiv, '¡Inicio de sesión exitoso!', 'success');
+        showMessage(messageDiv, 'Iniciando sesión...', 'success');
         
-        // Redirección forzada a profile.html después del login (para el nuevo flujo)
+        await auth.signInWithEmailAndPassword(email, password);
+        
+        // Si el login tiene éxito, cerramos modales y redirigimos.
+        showMessage(messageDiv, '¡Inicio de sesión exitoso! Redirigiendo a tu perfil...', 'success');
+        
         setTimeout(() => {
             closeAllModals();
+            // Redirigir a profile.html después de un login exitoso
             window.location.href = 'profile.html';
         }, 1000);
         
     } catch (error) {
-        showMessage(messageDiv, 'Error: ' + error.message, 'error');
+        console.error('❌ Error de inicio de sesión:', error);
+        
+        let errorMessage = 'Error de inicio de sesión. Verifica tu email y contraseña.';
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            errorMessage = 'Email o contraseña incorrectos.';
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = 'Formato de email inválido.';
+        }
+        
+        showMessage(messageDiv, `❌ ${errorMessage}`, 'error');
     }
 }
+window.loginUser = loginUser;
 
 // Cerrar sesión
-async function logoutUser() {
+async function logoutUser(e) {
+    if (e) e.preventDefault();
     try {
         await auth.signOut();
-        // Redirección al index.html al cerrar sesión
-        window.location.href = 'index.html'; 
+        // Redirección manejada por updateUIAfterLogout
     } catch (error) {
         console.error('Error al cerrar sesión:', error);
     }
 }
-
-// Actualizar UI después del login
-function updateUIAfterLogin() {
-    document.getElementById('authButtons')?.style.display = 'none';
-    document.getElementById('userMenu')?.style.display = 'block';
-    document.getElementById('userName').textContent = currentUser.email;
-    document.getElementById('dashboardLink')?.style.display = 'block';
-}
-
-// Actualizar UI después del logout
-function updateUIAfterLogout() {
-    document.getElementById('authButtons')?.style.display = 'flex';
-    document.getElementById('userMenu')?.style.display = 'none';
-    document.getElementById('dashboardLink')?.style.display = 'none';
-}
-
-// Funciones auxiliares para compatibilidad y globalidad
-function showMessage(element, message, type) {
-    const el = typeof element === 'string' ? document.getElementById(element) : element;
-    if (el) {
-        el.innerHTML = `<div class="${type}">${message}</div>`;
-    }
-}
-function getSelectedLanguages() {
-    const languages = [];
-    for (let i = 1; i <= 10; i++) {
-        const checkbox = document.getElementById('lang' + i);
-        if (checkbox && checkbox.checked) {
-            languages.push(checkbox.value === 'otros' ? document.getElementById('otherLanguages').value : checkbox.value);
-        }
-    }
-    return languages.filter(lang => lang);
-}
-
-
-// Exportar funciones para uso global
-window.loginUser = loginUser;
-window.registerTalent = registerTalent;
-window.registerClient = registerClient;
 window.logoutUser = logoutUser;
-window.checkAuthState = checkAuthState;
+
+// Actualizar perfil de cliente (función auxiliar para la edición, si no está en profile.js)
+window.updateClientProfile = async function() {
+    // Esta función debe estar definida en profile.js, pero se mantiene para compatibilidad
+    console.warn('updateClientProfile: Función debe estar definida en profile.js');
+};
