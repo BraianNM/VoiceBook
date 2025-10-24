@@ -11,21 +11,21 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Meta tags para PWA -->
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="VoiceBook">
+    
+    <!-- Icons para PWA -->
+    <link rel="icon" type="image/png" href="img/icon-192.png">
+    <link rel="apple-touch-icon" href="img/icon-192.png">
+    
     <!-- Estilos personalizados -->
     <link rel="stylesheet" href="css/styles.css">
-
-    <!-- PWA Manifest -->
-<link rel="manifest" href="manifest.json">
-
-<!-- Meta tags para PWA -->
-<meta name="theme-color" content="#0d6efd">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="VoiceBook">
-
-<!-- Icons para PWA -->
-<link rel="icon" type="image/png" href="img/icon-192.png">
-<link rel="apple-touch-icon" href="img/icon-192.png">
 </head>
 <body>
     <!-- Header -->
@@ -63,138 +63,99 @@
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="hero-section bg-dark text-white py-5">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
-                    <h1 class="display-4 fw-bold mb-4">
-                        Conectamos Voces con Oportunidades
-                    </h1>
-                    <p class="lead mb-4">
-                        VoiceBook es la plataforma líder para talentos de voz y clientes que buscan voces excepcionales para sus proyectos.
-                    </p>
-                    <div class="hero-buttons">
-                        <button class="btn btn-primary btn-lg me-3" onclick="showAuthModal('register')">
-                            Comenzar Ahora
-                        </button>
-                        <button class="btn btn-outline-light btn-lg" onclick="showAuthModal('login')">
-                            Acceder
-                        </button>
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <img src="img/voice-hero.png" alt="Talento de Voz" class="img-fluid" 
-                         onerror="this.src='https://via.placeholder.com/600x400/0d6efd/ffffff?text=VoiceBook'">
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Características -->
-    <section class="features-section py-5">
-        <div class="container">
-            <div class="row text-center mb-5">
-                <div class="col">
-                    <h2 class="fw-bold">¿Por qué elegir VoiceBook?</h2>
-                    <p class="text-muted">La plataforma más completa para el mundo de la voz</p>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-4 mb-4">
-                    <div class="feature-card text-center p-4">
-                        <div class="feature-icon mb-3">
-                            <i class="fas fa-users fa-3x text-primary"></i>
-                        </div>
-                        <h4>Comunidad Activa</h4>
-                        <p class="text-muted">
-                            Conecta con talentos y clientes de todo el mundo hispanohablante.
-                        </p>
-                    </div>
-                </div>
+    <!-- Sección de Autenticación -->
+    <section id="authSection" class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <h1 class="display-4 fw-bold text-primary mb-4">
+                    <i class="fas fa-microphone-alt me-3"></i>VoiceBook
+                </h1>
+                <p class="lead mb-4">
+                    La plataforma líder para conectar talentos de voz con oportunidades únicas
+                </p>
                 
-                <div class="col-md-4 mb-4">
-                    <div class="feature-card text-center p-4">
-                        <div class="feature-icon mb-3">
-                            <i class="fas fa-briefcase fa-3x text-success"></i>
+                <div class="row mt-5">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body text-center p-4">
+                                <i class="fas fa-user-tie fa-3x text-primary mb-3"></i>
+                                <h4 class="card-title">Soy Talento</h4>
+                                <p class="card-text">
+                                    Encuentra trabajos de voz, muestra tu portfolio y conecta con clientes.
+                                </p>
+                                <button class="btn btn-primary" onclick="showAuthModal('register')">
+                                    Registrarme como Talento
+                                </button>
+                            </div>
                         </div>
-                        <h4>Oportunidades Reales</h4>
-                        <p class="text-muted">
-                            Accede a ofertas de trabajo genuinas de empresas y productoras.
-                        </p>
                     </div>
-                </div>
-                
-                <div class="col-md-4 mb-4">
-                    <div class="feature-card text-center p-4">
-                        <div class="feature-icon mb-3">
-                            <i class="fas fa-shield-alt fa-3x text-warning"></i>
+                    
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body text-center p-4">
+                                <i class="fas fa-briefcase fa-3x text-success mb-3"></i>
+                                <h4 class="card-title">Soy Cliente</h4>
+                                <p class="card-text">
+                                    Encuentra la voz perfecta para tu proyecto entre nuestros talentos.
+                                </p>
+                                <button class="btn btn-success" onclick="showAuthModal('register')">
+                                    Registrarme como Cliente
+                                </button>
+                            </div>
                         </div>
-                        <h4>Plataforma Segura</h4>
-                        <p class="text-muted">
-                            Trabaja con confianza en un entorno protegido y verificado.
-                        </p>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Cómo Funciona -->
-    <section class="how-it-works-section bg-light py-5">
-        <div class="container">
-            <div class="row text-center mb-5">
-                <div class="col">
-                    <h2 class="fw-bold">¿Cómo funciona VoiceBook?</h2>
+    <!-- Sección Principal de la Aplicación -->
+    <section id="mainAppSection" style="display: none;">
+        <div class="container-fluid">
+            <!-- Navegación -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+                <div class="container">
+                    <div class="navbar-nav me-auto">
+                        <a class="nav-link nav-item" href="#" onclick="showSection('jobsSection')">
+                            <i class="fas fa-briefcase me-1"></i> Ofertas de Trabajo
+                        </a>
+                        <a class="nav-link nav-item" href="#" onclick="showSection('talentsSection')">
+                            <i class="fas fa-users me-1"></i> Talentos
+                        </a>
+                        <a class="nav-link nav-item" href="profile.html">
+                            <i class="fas fa-user me-1"></i> Mi Perfil
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Sección de Ofertas de Trabajo -->
+            <div id="jobsSection" class="main-section container mt-4">
+                <div class="row">
+                    <div class="col-12">
+                        <h2 class="mb-4">
+                            <i class="fas fa-briefcase text-primary me-2"></i>Ofertas de Trabajo Disponibles
+                        </h2>
+                        <div id="jobsGrid" class="row">
+                            <div class="col-12 text-center">
+                                <p>Cargando ofertas de trabajo...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div class="row">
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-body text-center p-4">
-                            <div class="step-number mb-3">1</div>
-                            <h4 class="card-title">Regístrate</h4>
-                            <p class="card-text">
-                                Crea tu cuenta como talento de voz o como cliente según tus necesidades.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-body text-center p-4">
-                            <div class="step-number mb-3">2</div>
-                            <h4 class="card-title">Completa tu Perfil</h4>
-                            <p class="card-text">
-                                Agrega tu información, experiencia y demos de voz para destacar.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-body text-center p-4">
-                            <div class="step-number mb-3">3</div>
-                            <h4 class="card-title">Conecta</h4>
-                            <p class="card-text">
-                                Explora oportunidades o encuentra el talento perfecto para tu proyecto.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-body text-center p-4">
-                            <div class="step-number mb-3">4</div>
-                            <h4 class="card-title">Trabaja</h4>
-                            <p class="card-text">
-                                Realiza proyectos y construye tu carrera en la industria de la voz.
-                            </p>
+
+            <!-- Sección de Talentos -->
+            <div id="talentsSection" class="main-section container mt-4" style="display: none;">
+                <div class="row">
+                    <div class="col-12">
+                        <h2 class="mb-4">
+                            <i class="fas fa-users text-success me-2"></i>Talentos de Voz Disponibles
+                        </h2>
+                        <div id="talentsGrid" class="row">
+                            <div class="col-12 text-center">
+                                <p>Cargando talentos...</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -204,7 +165,7 @@
 
     <!-- Modal de Autenticación -->
     <div class="modal fade" id="authModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-md">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="authModalTitle">Iniciar Sesión</h5>
@@ -212,7 +173,7 @@
                 </div>
                 <div class="modal-body">
                     <!-- Formulario de Login -->
-                    <form id="loginForm" style="display: none;">
+                    <form id="loginForm">
                         <div class="mb-3">
                             <label for="loginEmail" class="form-label">Email</label>
                             <input type="email" class="form-control" id="loginEmail" required>
@@ -273,7 +234,7 @@
             <div class="row">
                 <div class="col-md-6">
                     <h5>VoiceBook</h5>
-                    <p>La plataforma líder para talentos de voz y clientes.</p>
+                    <p>Conectando voces con oportunidades desde 2024.</p>
                 </div>
                 <div class="col-md-6 text-md-end">
                     <p>&copy; 2024 VoiceBook. Todos los derechos reservados.</p>
@@ -318,30 +279,52 @@
                 authSwitchButton.onclick = () => showAuthModal('login');
             }
             
+            // Limpiar mensajes
+            document.getElementById('loginMessage').style.display = 'none';
+            document.getElementById('registerMessage').style.display = 'none';
+            
             modal.show();
         }
         
+        // Registrar Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registrado correctamente: ', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('Error registrando ServiceWorker: ', error);
+                    });
+            });
+        }
+
+        // Detectar si está en APK/WebView
+        if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
+            document.body.classList.add('pwa-mode');
+            console.log('Ejecutando en modo PWA/APK');
+        }
+
         // Inicialización específica de index.html
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Página principal inicializada');
             
-            // Verificar si hay usuario autenticado
-            checkAuthState().then(({ user, userData }) => {
-                if (user && userData) {
-                    // Usuario autenticado - actualizar header
-                    document.getElementById('authButtons').style.display = 'none';
-                    document.getElementById('userMenu').style.display = 'block';
-                    
-                    const userName = document.getElementById('userName');
-                    const userPicture = document.getElementById('userPicture');
-                    
-                    if (userName) userName.textContent = userData.name || 'Usuario';
-                    if (userPicture) {
-                        userPicture.src = userData.profilePictureUrl || 
-                            (userData.type === 'talent' ? './img/default-avatar.png' : './img/default-avatar-client.png');
-                    }
-                }
-            });
+            // Configurar event listeners para formularios
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            
+            if (loginForm) {
+                loginForm.addEventListener('submit', handleLogin);
+            }
+            
+            if (registerForm) {
+                registerForm.addEventListener('submit', handleRegister);
+            }
+            
+            // Verificar autenticación después de un breve delay
+            setTimeout(() => {
+                checkAuthState();
+            }, 500);
         });
     </script>
 </body>
