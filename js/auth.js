@@ -132,7 +132,10 @@ function updateUIAfterLogin() {
     }
     
     if (headerUserPicture && currentUserData) {
-        headerUserPicture.src = currentUserData.profilePictureUrl || 'img/default-avatar.png';
+        headerUserPicture.src = currentUserData.profilePictureUrl || './img/default-avatar.png';
+        headerUserPicture.onerror = function() {
+            this.src = './img/default-avatar.png';
+        };
     }
 }
 
@@ -173,7 +176,7 @@ async function registerTalent(e) {
     
     // Imagen de Perfil
     const profilePictureFile = document.getElementById('talentProfilePicture').files[0];
-    let profilePictureUrl = 'img/default-avatar.png';
+    let profilePictureUrl = './img/default-avatar.png';
 
     // Validaciones básicas de ubicación
     if (!country || !state || !city) {
@@ -262,7 +265,7 @@ async function registerClient(e) {
     
     // Imagen de Perfil
     const profilePictureFile = document.getElementById('clientProfilePicture').files[0];
-    let profilePictureUrl = 'img/default-avatar-client.png';
+    let profilePictureUrl = './img/default-avatar-client.png';
 
     // Validaciones básicas de ubicación
     if (!country || !state || !city) {
