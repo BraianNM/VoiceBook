@@ -1,4 +1,4 @@
-name: Build VoiceBook APK - STABLE
+name: Build VoiceBook APK - FIXED
 
 on: 
   push:
@@ -22,63 +22,39 @@ jobs:
         npm install -g @capacitor/cli
         npm install @capacitor/core @capacitor/android
         echo "✅ Capacitor instalado"
-
-            - name: 🎯 VERIFICAR que el CSS existe
+        
+    - name: 🎯 Verificar archivos CSS
       run: |
-        echo "🔍 Verificando archivos CSS..."
+        echo "🔍 Verificando archivos..."
         if [ -f "css/style.css" ]; then
           echo "✅ CSS encontrado"
           ls -la css/
-          head -10 css/style.css
         else
-          echo "❌ ERROR: css/style.css NO EXISTE"
-          find . -name "*.css" -o -name "style.css"
+          echo "❌ CSS no encontrado"
+          find . -name "*.css" | head -10
         fi
+        
     - name: 📁 Preparar archivos web
       run: |
         echo "📂 Creando estructura para la app..."
         mkdir -p www
-        # Copiar archivos esenciales
         cp index.html www/ 2>/dev/null || echo "⚠️ index.html no encontrado"
         cp profile.html www/ 2>/dev/null || echo "⚠️ profile.html no encontrado"
         [ -d "css" ] && cp -r css www/ || echo "⚠️ Sin css"
         [ -d "js" ] && cp -r js www/ || echo "⚠️ Sin js"
         [ -d "img" ] && cp -r img www/ || echo "⚠️ Sin img"
-        echo "📁 Estructura creada correctamente"
+        echo "📁 Estructura creada"
         
-    - name: 🔧 Corrección SEGURA de rutas
+    - name: 🔧 Corrección de rutas
       run: |
-        echo "🔄 Aplicando correcciones de rutas..."
-        
-        # Función segura para corregir archivos
-        correct_file() {
-          local file=$1
-          if [ -f "$file" ]; then
-            # Hacer backup primero
-            cp "$file" "$file.backup"
-            
-            # Aplicar correcciones de forma segura
-            sed -i.bak 's|href="css/|href="./css/|g' "$file" 2>/dev/null || true
-            sed -i.bak 's|src="js/|src="./js/|g' "$file" 2>/dev/null || true  
-            sed -i.bak 's|src="img/|src="./img/|g' "$file" 2>/dev/null || true
-            
-            # Verificar que el archivo no esté corrupto
-            if [ -s "$file" ]; then
-              echo "✅ $file corregido"
-              rm -f "$file.bak"
-            else
-              # Restaurar backup si algo salió mal
-              mv "$file.backup" "$file"
-              echo "⚠️ $file se mantiene original (error en corrección)"
-            fi
-          fi
-        }
-        
-        # Aplicar a archivos HTML
-        correct_file "www/index.html"
-        correct_file "www/profile.html"
-        
-        echo "🎯 Corrección de rutas completada"
+        echo "🔄 Corrigiendo rutas..."
+        # Solo corregir HTML por ahora
+        if [ -f "www/index.html" ]; then
+          sed -i 's|href="css/|href="./css/|g' www/index.html
+          sed -i 's|src="js/|src="./js/|g' www/index.html
+          sed -i 's|src="img/|src="./img/|g' www/index.html
+          echo "✅ index.html corregido"
+        fi
         
     - name: 🛠 Inicializar Capacitor
       run: |
@@ -111,6 +87,6 @@ jobs:
     - name: 📤 Subir APK
       uses: actions/upload-artifact@v4
       with:
-        name: VoiceBook-App-Stable
+        name: VoiceBook-App-Fixed
         path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 7
