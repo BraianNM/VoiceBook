@@ -34,6 +34,29 @@ jobs:
         [ -d "js" ] && cp -r js www/ || echo "⚠️ Sin js"
         [ -d "img" ] && cp -r img www/ || echo "⚠️ Sin img"
         echo "📁 Estructura creada correctamente"
+
+            - name: 🔧 Corregir TODAS las rutas para móvil
+      run: |
+        echo "🔄 Corrigiendo rutas absolutas para app móvil..."
+        # Corregir index.html
+        if [ -f "www/index.html" ]; then
+          sed -i 's|href="css/|href="./css/|g' www/index.html
+          sed -i 's|src="js/|src="./js/|g' www/index.html
+          sed -i 's|src="img/|src="./img/|g' www/index.html
+          echo "✅ index.html corregido"
+        fi
+        
+        # Corregir profile.html
+        if [ -f "www/profile.html" ]; then
+          sed -i 's|href="css/|href="./css/|g' www/profile.html
+          sed -i 's|src="js/|src="./js/|g' www/profile.html
+          sed -i 's|src="img/|src="./img/|g' www/profile.html
+          echo "✅ profile.html corregido"
+        fi
+        
+        # Verificar cambios
+        echo "📄 Rutas en index.html:"
+        grep -E 'href=|src=' www/index.html | head -3
         
     - name: 🛠 Inicializar Capacitor CORREGIDO
       run: |
