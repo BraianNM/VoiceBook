@@ -3,7 +3,12 @@
 // Variable global para controlar la inicialización
 let authInitialized = false;
 
-// Configuración de Firebase
+// 🔥 CONFIGURACIÓN DE FIREBASE - VERSION APP MÓVIL
+const isCapacitorApp = typeof window !== 'undefined' && 
+                      (window.Capacitor || window.location.protocol === 'file:');
+
+console.log('🔍 Entorno detectado:', isCapacitorApp ? 'APP MÓVIL' : 'NAVEGADOR WEB');
+
 const firebaseConfig = {
     apiKey: "AIzaSyC6G6NgMqrMDyd5PB6_HmLNHpPU-vNJdf0",
     authDomain: "voicebook-8ba6c.firebaseapp.com",
@@ -15,7 +20,20 @@ const firebaseConfig = {
 
 // Inicializar Firebase solo una vez
 if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+    try {
+        firebase.initializeApp(firebaseConfig);
+        console.log('✅ Firebase inicializado correctamente');
+        
+        // Configuración especial para app móvil
+        if (isCapacitorApp) {
+            console.log('📱 Configurando Firebase para app móvil...');
+            firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                .then(() => console.log('✅ Persistencia LOCAL activada'))
+                .catch(error => console.log('❌ Error persistencia:', error));
+        }
+    } catch (error) {
+        console.log('❌ Error inicializando Firebase:', error);
+    }
 }
 
 // Inicializar servicios
