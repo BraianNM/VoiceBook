@@ -1,7 +1,7 @@
-// auth.js - Manejo de autenticación (CORREGIDO)
+// auth.js - Manejo de autenticación (COMPLETO Y CORREGIDO)
 console.log('Auth.js cargado');
 
-// Referencias globales (asegurarse de que Firebase esté inicializado)
+// Referencias globales
 const auth = firebase.auth();
 const db = firebase.firestore();
 
