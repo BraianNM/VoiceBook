@@ -1,4 +1,4 @@
-name: Build VoiceBook APK
+name: Build VoiceBook APK - FIXED
 
 on: 
   push:
@@ -17,31 +17,33 @@ jobs:
       with:
         node-version: '18'
         
-    - name: 📦 Instalar Capacitor
+    - name: 📦 Instalar dependencias COMPLETAS
       run: |
         npm install -g @capacitor/cli
-        echo "✅ Capacitor instalado"
+        npm install @capacitor/core @capacitor/android
+        echo "✅ Todas las dependencias instaladas"
         
     - name: 📁 Preparar archivos web
       run: |
         echo "📂 Creando estructura para la app..."
         mkdir -p www
-        # Copiar solo lo esencial
+        # Copiar archivos esenciales
         cp index.html www/ 2>/dev/null || echo "⚠️ index.html no encontrado"
         cp profile.html www/ 2>/dev/null || echo "⚠️ profile.html no encontrado"
         [ -d "css" ] && cp -r css www/ || echo "⚠️ Sin css"
         [ -d "js" ] && cp -r js www/ || echo "⚠️ Sin js"
         [ -d "img" ] && cp -r img www/ || echo "⚠️ Sin img"
-        echo "📁 Contenido de www/:"
-        ls -la www/
+        echo "📁 Estructura creada correctamente"
         
-    - name: 🛠 Inicializar Capacitor
+    - name: 🛠 Inicializar Capacitor CORREGIDO
       run: |
+        echo "🚀 Inicializando Capacitor..."
         npx cap init VoiceBook com.tuvoz.voicebook --web-dir www
+        echo "📱 Agregando plataforma Android..."
         npx cap add android
-        echo "✅ Capacitor inicializado"
+        echo "✅ Capacitor configurado correctamente"
         
-    - name: 🔧 Configurar Firebase móvil
+    - name: 🔧 Configurar para móvil
       run: |
         cat > capacitor.config.json << EOF
         {
@@ -54,17 +56,20 @@ jobs:
           }
         }
         EOF
-        echo "📄 Configuración lista"
+        echo "📄 Configuración aplicada"
         
-    - name: 🏗 Construir APK
+    - name: 🏗 Sincronizar y construir
       run: |
+        echo "🔄 Sincronizando con Android..."
         npx cap sync android
+        echo "🏗 Construyendo APK..."
         cd android
         chmod +x ./gradlew
-        ./gradlew assembleDebug
+        ./gradlew assembleDebug --stacktrace
         
     - name: 📤 Subir APK
       uses: actions/upload-artifact@v4
       with:
-        name: VoiceBook-App
+        name: VoiceBook-App-Final
         path: android/app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 7
