@@ -141,12 +141,12 @@ async function loadTalents() {
                 const countryName = typeof getCountryName !== 'undefined' ? getCountryName(talent.country) : talent.country;
                 const languages = talent.languages ? talent.languages.join(', ') : 'N/A';
                 const homeStudio = talent.homeStudio === 'si' ? '<i class="fas fa-check-circle text-success"></i> Sí' : '<i class="fas fa-times-circle text-danger"></i> No';
-                const profilePicture = talent.profilePictureUrl || 'img/default-avatar.png';
+                const profilePicture = talent.profilePictureUrl || './img/default-avatar.png';
 
                 talentsHtml += `
                     <div class="talent-card">
                         <div class="talent-card-header">
-                            <img src="${profilePicture}" alt="${talent.name}" class="talent-profile-pic" onerror="this.src='img/default-avatar.png'">
+                            <img src="${profilePicture}" alt="${talent.name}" class="talent-profile-pic" onerror="this.src='./img/default-avatar.png'">
                             <h3>${talent.name || 'Talento Anónimo'}</h3>
                         </div>
                         <p><strong>País:</strong> ${countryName || 'N/A'}</p>
@@ -211,7 +211,7 @@ window.viewTalentProfile = async function(talentId) {
         const locationInfo = (countryName && stateName && talent.city) ? `${talent.city}, ${stateName}, ${countryName}` : 'N/A';
         const languages = talent.languages ? talent.languages.join(', ') : 'N/A';
         const homeStudio = talent.homeStudio === 'si' ? '<i class="fas fa-check-circle text-success"></i> Sí' : '<i class="fas fa-times-circle text-danger"></i> No';
-        const profilePicture = talent.profilePictureUrl || 'img/default-avatar.png';
+        const profilePicture = talent.profilePictureUrl || './img/default-avatar.png';
         
         // Demos
         let demosHtml = talent.demos && talent.demos.length > 0 ? 
@@ -247,7 +247,7 @@ window.viewTalentProfile = async function(talentId) {
 
         profileContent.innerHTML = `
             <div class="profile-view-header">
-                <img src="${profilePicture}" alt="${talent.name}" class="profile-view-pic" onerror="this.src='img/default-avatar.png'">
+                <img src="${profilePicture}" alt="${talent.name}" class="profile-view-pic" onerror="this.src='./img/default-avatar.png'">
                 <div class="profile-view-info">
                     <h2>${talent.name || 'Talento Anónimo'}</h2>
                     <p class="profile-location"><i class="fas fa-map-marker-alt"></i> ${locationInfo}</p>
@@ -385,7 +385,7 @@ window.applyToJob = async function(jobId) {
             clientId: job.clientId,
             talentName: currentUserData.name,
             talentEmail: currentUserData.email,
-            talentProfilePicture: currentUserData.profilePictureUrl || 'img/default-avatar.png',
+            talentProfilePicture: currentUserData.profilePictureUrl || './img/default-avatar.png',
             jobTitle: job.title,
             status: 'pending',
             appliedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -402,7 +402,7 @@ window.applyToJob = async function(jobId) {
             clientId: job.clientId,
             talentId: talentId,
             talentName: currentUserData.name,
-            talentProfilePicture: currentUserData.profilePictureUrl || 'img/default-avatar.png',
+            talentProfilePicture: currentUserData.profilePictureUrl || './img/default-avatar.png',
             jobId: jobId,
             jobTitle: job.title,
             message: `${currentUserData.name} se ha postulado a tu oferta "${job.title}"`,
