@@ -1,4 +1,4 @@
-name: Build VoiceBook APK - FIXED
+name: Build VoiceBook APK - WITH ICONS
 
 on: 
   push:
@@ -21,73 +21,91 @@ jobs:
     - name: 📦 Instalar dependencias
       run: |
         npm install
-        npm install -g @capacitor/cli
-
-            - name: 🎨 Generar íconos de la app
+        npm install -g @capacitor/cli canvas
+        
+    - name: 🎨 Generar íconos automáticamente
       run: |
-        # Instalar herramienta de íconos de Capacitor
-        npm install -g @capacitor/assets
-        
-        # Crear ícono temporal (si no tienes uno)
-        mkdir -p temp-icons
-        echo "🎤 Creando ícono temporal..."
-        
-        # Crear un ícono básico con texto (si no tienes imagen)
-        cat > create-icon.js << 'EOF'
+        # Crear íconos básicos para VoiceBook
+        node << 'EOF'
         const { createCanvas } = require('canvas');
         const fs = require('fs');
+        const path = require('path');
+        
+        // Crear carpeta resources
+        const resourcesDir = path.join(__dirname, 'resources');
+        if (!fs.existsSync(resourcesDir)) fs.mkdirSync(resourcesDir, { recursive: true });
+        
+        // Crear ícono 512x512
         const canvas = createCanvas(512, 512);
         const ctx = canvas.getContext('2d');
         
-        // Fondo
-        ctx.fillStyle = '#3498db';
+        // Fondo azul oscuro
+        ctx.fillStyle = '#2c3e50';
         ctx.fillRect(0, 0, 512, 512);
         
-        // Texto
+        // Círculo azul claro
+        ctx.fillStyle = '#3498db';
+        ctx.beginPath();
+        ctx.arc(256, 256, 200, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Micrófono blanco
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 80px Arial';
+        ctx.font = 'bold 180px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('🎤', 256, 200);
-        ctx.font = 'bold 40px Arial';
-        ctx.fillText('VoiceBook', 256, 300);
+        ctx.fillText('🎤', 256, 256);
         
         // Guardar
         const buffer = canvas.toBuffer('image/png');
-        fs.writeFileSync('temp-icons/icon.png', buffer);
-        console.log('Ícono temporal creado');
+        fs.writeFileSync(path.join(resourcesDir, 'icon.png'), buffer);
+        console.log('✅ Ícono principal creado');
         EOF
-        
-        node create-icon.js
-        
-        # Generar íconos para Android
-        npx capacitor-assets generate --android
         
     - name: 📁 Crear estructura de carpetas
       run: |
-        # Crear carpeta www y copiar todo ahí
         mkdir -p www
         cp -r *.html www/ || true
         cp -r css www/ || true
         cp -r js www/ || true
         cp -r img www/ || true
+        cp -r resources www/ || true
         
     - name: 🛠 Configurar Capacitor CORREGIDO
       run: |
         npx cap init VoiceBook com.tuvoz.voicebook --web-dir www
         npx cap add android
         
-        - name: 🛠 Configurar Capacitor CORREGIDO
-      run: |
-        npx cap init VoiceBook com.tuvoz.voicebook --web-dir www
-        npx cap add android
+        # Copiar ícono a Android
+        mkdir -p android/app/src/main/res/mipmap-hdpi
+        mkdir -p android/app/src/main/res/mipmap-mdpi
+        mkdir -p android/app/src/main/res/mipmap-xhdpi
+        mkdir -p android/app/src/main/res/mipmap-xxhdpi
+        mkdir -p android/app/src/main/res/mipmap-xxxhdpi
         
-        # Configurar ícono en Android
-        cat > android/app/src/main/res/values/strings.xml << EOF
-        <?xml version="1.0" encoding="utf-8"?>
-        <resources>
-            <string name="app_name">VoiceBook</string>
-        </resources>
+        cp resources/icon.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+        cp resources/icon.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+        cp resources/icon.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+        cp resources/icon.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+        cp resources/icon.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+        cp resources/icon.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+        cp resources/icon.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+        cp resources/icon.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+        cp resources/icon.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+        cp resources/icon.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+        
+    - name: 🔧 Configurar para app móvil
+      run: |
+        cat > capacitor.config.json << EOF
+        {
+          "appId": "com.tuvoz.voicebook",
+          "appName": "VoiceBook", 
+          "webDir": "www",
+          "server": {
+            "url": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}",
+            "cleartext": true
+          }
+        }
         EOF
         
     - name: 🏗 Construir APK
@@ -100,5 +118,5 @@ jobs:
     - name: 📤 Subir APK
       uses: actions/upload-artifact@v4
       with:
-        name: VoiceBook-App
+        name: VoiceBook-App-With-Icon
         path: android/app/build/outputs/apk/debug/app-debug.apk
