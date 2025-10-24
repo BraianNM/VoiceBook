@@ -1,4 +1,4 @@
-name: Build VoiceBook APK - FIXED
+name: Build VoiceBook APK - STABLE
 
 on: 
   push:
@@ -17,11 +17,11 @@ jobs:
       with:
         node-version: '18'
         
-    - name: 📦 Instalar dependencias COMPLETAS
+    - name: 📦 Instalar Capacitor
       run: |
         npm install -g @capacitor/cli
         npm install @capacitor/core @capacitor/android
-        echo "✅ Todas las dependencias instaladas"
+        echo "✅ Capacitor instalado"
         
     - name: 📁 Preparar archivos web
       run: |
@@ -34,82 +34,48 @@ jobs:
         [ -d "js" ] && cp -r js www/ || echo "⚠️ Sin js"
         [ -d "img" ] && cp -r img www/ || echo "⚠️ Sin img"
         echo "📁 Estructura creada correctamente"
-
-            - name: 🔧 Corregir TODAS las rutas para móvil
+        
+    - name: 🔧 Corrección SEGURA de rutas
       run: |
-        echo "🔄 Corrigiendo rutas absolutas para app móvil..."
-        # Corregir index.html
-        if [ -f "www/index.html" ]; then
-          sed -i 's|href="css/|href="./css/|g' www/index.html
-          sed -i 's|src="js/|src="./js/|g' www/index.html
-          sed -i 's|src="img/|src="./img/|g' www/index.html
-          echo "✅ index.html corregido"
-        fi
+        echo "🔄 Aplicando correcciones de rutas..."
         
-        # Corregir profile.html
-        if [ -f "www/profile.html" ]; then
-          sed -i 's|href="css/|href="./css/|g' www/profile.html
-          sed -i 's|src="js/|src="./js/|g' www/profile.html
-          sed -i 's|src="img/|src="./img/|g' www/profile.html
-          echo "✅ profile.html corregido"
-        fi
+        # Función segura para corregir archivos
+        correct_file() {
+          local file=$1
+          if [ -f "$file" ]; then
+            # Hacer backup primero
+            cp "$file" "$file.backup"
+            
+            # Aplicar correcciones de forma segura
+            sed -i.bak 's|href="css/|href="./css/|g' "$file" 2>/dev/null || true
+            sed -i.bak 's|src="js/|src="./js/|g' "$file" 2>/dev/null || true  
+            sed -i.bak 's|src="img/|src="./img/|g' "$file" 2>/dev/null || true
+            
+            # Verificar que el archivo no esté corrupto
+            if [ -s "$file" ]; then
+              echo "✅ $file corregido"
+              rm -f "$file.bak"
+            else
+              # Restaurar backup si algo salió mal
+              mv "$file.backup" "$file"
+              echo "⚠️ $file se mantiene original (error en corrección)"
+            fi
+          fi
+        }
         
-        # Verificar cambios
-        echo "📄 Rutas en index.html:"
-        grep -E 'href=|src=' www/index.html | head -3
-
-            - name: 🔧 Corregir TODAS las rutas para móvil
+        # Aplicar a archivos HTML
+        correct_file "www/index.html"
+        correct_file "www/profile.html"
+        
+        echo "🎯 Corrección de rutas completada"
+        
+    - name: 🛠 Inicializar Capacitor
       run: |
-        echo "🔄 Corrigiendo rutas absolutas para app móvil..."
-        
-        # Corregir index.html
-        if [ -f "www/index.html" ]; then
-          sed -i 's|href="css/|href="./css/|g' www/index.html
-          sed -i 's|src="js/|src="./js/|g' www/index.html
-          sed -i 's|src="img/|src="./img/|g' www/index.html
-          echo "✅ index.html corregido"
-        fi
-        
-        # Corregir profile.html
-        if [ -f "www/profile.html" ]; then
-          sed -i 's|href="css/|href="./css/|g' www/profile.html
-          sed -i 's|src="js/|src="./js/|g' www/profile.html
-          sed -i 's|src="img/|src="./img/|g' www/profile.html
-          echo "✅ profile.html corregido"
-        fi
-        
-        # Corregir archivos JavaScript
-        if [ -f "www/js/app.js" ]; then
-          sed -i "s|'img/|\"./img/|g" www/js/app.js
-          sed -i 's|"img/|"./img/|g' www/js/app.js
-          echo "✅ app.js corregido"
-        fi
-        
-        if [ -f "www/js/auth.js" ]; then
-          sed -i "s|'img/|\"./img/|g" www/js/auth.js
-          sed -i 's|"img/|"./img/|g' www/js/auth.js
-          echo "✅ auth.js corregido"
-        fi
-        
-        if [ -f "www/js/profile.js" ]; then
-          sed -i "s|'img/|\"./img/|g" www/js/profile.js
-          sed -i 's|"img/|"./img/|g' www/js/profile.js
-          echo "✅ profile.js corregido"
-        fi
-        
-        # Verificar cambios
-        echo "📄 Rutas corregidas:"
-        grep -n 'href=\|src=' www/index.html | head -3
-        
-    - name: 🛠 Inicializar Capacitor CORREGIDO
-      run: |
-        echo "🚀 Inicializando Capacitor..."
         npx cap init VoiceBook com.tuvoz.voicebook --web-dir www
-        echo "📱 Agregando plataforma Android..."
         npx cap add android
-        echo "✅ Capacitor configurado correctamente"
+        echo "✅ Capacitor inicializado"
         
-    - name: 🔧 Configurar para móvil
+    - name: ⚙️ Configurar para móvil
       run: |
         cat > capacitor.config.json << EOF
         {
@@ -124,11 +90,9 @@ jobs:
         EOF
         echo "📄 Configuración aplicada"
         
-    - name: 🏗 Sincronizar y construir
+    - name: 🏗 Construir APK
       run: |
-        echo "🔄 Sincronizando con Android..."
         npx cap sync android
-        echo "🏗 Construyendo APK..."
         cd android
         chmod +x ./gradlew
         ./gradlew assembleDebug --stacktrace
@@ -136,6 +100,6 @@ jobs:
     - name: 📤 Subir APK
       uses: actions/upload-artifact@v4
       with:
-        name: VoiceBook-App-Final
+        name: VoiceBook-App-Stable
         path: android/app/build/outputs/apk/debug/app-debug.apk
         retention-days: 7
