@@ -765,3 +765,24 @@ window.logout = logout;
 window.checkAuthState = checkAuthState;
 window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
+// Función temporal para evitar errores - AGREGAR AL FINAL DE app.js
+function setupJob() {
+    console.log('setupJob llamado - función temporal');
+    
+    if (!currentUser) {
+        alert('Debes iniciar sesión para crear ofertas de trabajo.');
+        showAuthModal('login');
+        return;
+    }
+    
+    if (currentUserData.type !== 'client') {
+        alert('Solo los clientes pueden crear ofertas de trabajo.');
+        return;
+    }
+    
+    // Redirigir al perfil donde debería estar el formulario
+    window.location.href = 'profile.html';
+}
+
+// Hacer global
+window.setupJob = setupJob;
