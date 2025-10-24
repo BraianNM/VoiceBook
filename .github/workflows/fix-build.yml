@@ -22,6 +22,46 @@ jobs:
       run: |
         npm install
         npm install -g @capacitor/cli
+
+            - name: 🎨 Generar íconos de la app
+      run: |
+        # Instalar herramienta de íconos de Capacitor
+        npm install -g @capacitor/assets
+        
+        # Crear ícono temporal (si no tienes uno)
+        mkdir -p temp-icons
+        echo "🎤 Creando ícono temporal..."
+        
+        # Crear un ícono básico con texto (si no tienes imagen)
+        cat > create-icon.js << 'EOF'
+        const { createCanvas } = require('canvas');
+        const fs = require('fs');
+        const canvas = createCanvas(512, 512);
+        const ctx = canvas.getContext('2d');
+        
+        // Fondo
+        ctx.fillStyle = '#3498db';
+        ctx.fillRect(0, 0, 512, 512);
+        
+        // Texto
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 80px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🎤', 256, 200);
+        ctx.font = 'bold 40px Arial';
+        ctx.fillText('VoiceBook', 256, 300);
+        
+        // Guardar
+        const buffer = canvas.toBuffer('image/png');
+        fs.writeFileSync('temp-icons/icon.png', buffer);
+        console.log('Ícono temporal creado');
+        EOF
+        
+        node create-icon.js
+        
+        # Generar íconos para Android
+        npx capacitor-assets generate --android
         
     - name: 📁 Crear estructura de carpetas
       run: |
@@ -37,19 +77,17 @@ jobs:
         npx cap init VoiceBook com.tuvoz.voicebook --web-dir www
         npx cap add android
         
-    - name: 🔧 Configurar para GitHub Pages
+        - name: 🛠 Configurar Capacitor CORREGIDO
       run: |
-        # Configuración corregida
-        cat > capacitor.config.json << EOF
-        {
-          "appId": "com.tuvoz.voicebook",
-          "appName": "VoiceBook", 
-          "webDir": "www",
-          "server": {
-            "url": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}",
-            "cleartext": true
-          }
-        }
+        npx cap init VoiceBook com.tuvoz.voicebook --web-dir www
+        npx cap add android
+        
+        # Configurar ícono en Android
+        cat > android/app/src/main/res/values/strings.xml << EOF
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+            <string name="app_name">VoiceBook</string>
+        </resources>
         EOF
         
     - name: 🏗 Construir APK
