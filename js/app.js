@@ -1,4 +1,4 @@
-// app.js - Aplicación principal VoiceBook (CORREGIDO)
+// app.js - VoiceBook Application (COMPLETO Y CORREGIDO)
 console.log('VoiceBook app.js cargado');
 
 // Configuración de Firebase
@@ -13,7 +13,9 @@ const firebaseConfig = {
 
 // Inicializar Firebase
 try {
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
     console.log('Firebase inicializado correctamente');
 } catch (error) {
     console.error('Error inicializando Firebase:', error);
@@ -25,7 +27,7 @@ const db = firebase.firestore();
 let currentUser = null;
 let currentUserData = null;
 
-// Verificar estado de autenticación (CORREGIDO)
+// Verificar estado de autenticación
 function checkAuthState() {
     console.log('Verificando estado de autenticación...');
     
@@ -34,17 +36,18 @@ function checkAuthState() {
             console.log('Usuario autenticado:', user.uid);
             currentUser = user;
             
-            // Cargar datos del usuario
-            await loadUserData(user.uid);
-            
-            // Mostrar contenido principal
-            showAuthenticatedUI();
-            
-            // Cargar datos según el tipo de usuario
-            if (currentUserData && currentUserData.type === 'talent') {
-                await loadTalents();
-            } else if (currentUserData && currentUserData.type === 'client') {
-                await loadJobs();
+            try {
+                await loadUserData(user.uid);
+                showAuthenticatedUI();
+                
+                // Cargar datos según el tipo de usuario
+                if (currentUserData && currentUserData.type === 'talent') {
+                    await loadJobs();
+                } else if (currentUserData && currentUserData.type === 'client') {
+                    await loadTalents();
+                }
+            } catch (error) {
+                console.error('Error en checkAuthState:', error);
             }
         } else {
             console.log('Usuario no autenticado');
@@ -53,7 +56,7 @@ function checkAuthState() {
     });
 }
 
-// Cargar datos del usuario (CORREGIDO)
+// Cargar datos del usuario
 async function loadUserData(userId) {
     console.log('Cargando datos del usuario:', userId);
     
@@ -64,7 +67,7 @@ async function loadUserData(userId) {
             currentUserData = talentDoc.data();
             currentUserData.type = 'talent';
             currentUserData.id = userId;
-            console.log('Usuario cargado como talento:', currentUserData);
+            console.log('Usuario cargado como talento');
             return;
         }
         
@@ -74,59 +77,31 @@ async function loadUserData(userId) {
             currentUserData = clientDoc.data();
             currentUserData.type = 'client';
             currentUserData.id = userId;
-            console.log('Usuario cargado como cliente:', currentUserData);
+            console.log('Usuario cargado como cliente');
             return;
         }
         
         console.log('Usuario no encontrado en ninguna colección');
         currentUserData = null;
-        
     } catch (error) {
         console.error('Error cargando datos del usuario:', error);
         currentUserData = null;
     }
 }
 
-// Mostrar UI autenticado (CORREGIDO)
+// Mostrar UI autenticado
 function showAuthenticatedUI() {
     console.log('Mostrando UI autenticado');
     
-    // Ocultar formularios de login/registro
-    document.getElementById('authSection').style.display = 'none';
-    document.getElementById('mainAppSection').style.display = 'block';
-    
-    // Actualizar header
-    updateHeaderForAuth();
-    
-    // Mostrar contenido según tipo de usuario
-    if (currentUserData) {
-        if (currentUserData.type === 'talent') {
-            showTalentUI();
-        } else if (currentUserData.type === 'client') {
-            showClientUI();
-        }
-    }
-}
-
-// Mostrar UI no autenticado (CORREGIDO)
-function showUnauthenticatedUI() {
-    console.log('Mostrando UI no autenticado');
-    
-    document.getElementById('authSection').style.display = 'block';
-    document.getElementById('mainAppSection').style.display = 'none';
-    
-    // Resetear formularios
-    document.getElementById('loginForm').reset();
-    document.getElementById('registerForm').reset();
-}
-
-// Actualizar header para usuario autenticado (CORREGIDO)
-function updateHeaderForAuth() {
+    const authSection = document.getElementById('authSection');
+    const mainAppSection = document.getElementById('mainAppSection');
     const authButtons = document.getElementById('authButtons');
     const userMenu = document.getElementById('userMenu');
     const userName = document.getElementById('userName');
     const userPicture = document.getElementById('userPicture');
     
+    if (authSection) authSection.style.display = 'none';
+    if (mainAppSection) mainAppSection.style.display = 'block';
     if (authButtons) authButtons.style.display = 'none';
     if (userMenu) userMenu.style.display = 'block';
     
@@ -141,65 +116,88 @@ function updateHeaderForAuth() {
             this.src = currentUserData.type === 'talent' ? './img/default-avatar.png' : './img/default-avatar-client.png';
         };
     }
+    
+    // Mostrar contenido según tipo de usuario
+    if (currentUserData) {
+        if (currentUserData.type === 'talent') {
+            showTalentUI();
+        } else if (currentUserData.type === 'client') {
+            showClientUI();
+        }
+    }
 }
 
-// Mostrar UI para talento (CORREGIDO)
+// Mostrar UI no autenticado
+function showUnauthenticatedUI() {
+    console.log('Mostrando UI no autenticado');
+    
+    const authSection = document.getElementById('authSection');
+    const mainAppSection = document.getElementById('mainAppSection');
+    const authButtons = document.getElementById('authButtons');
+    const userMenu = document.getElementById('userMenu');
+    
+    if (authSection) authSection.style.display = 'block';
+    if (mainAppSection) mainAppSection.style.display = 'none';
+    if (authButtons) authButtons.style.display = 'flex';
+    if (userMenu) userMenu.style.display = 'none';
+    
+    // Resetear formularios
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    if (loginForm) loginForm.reset();
+    if (registerForm) registerForm.reset();
+}
+
+// Mostrar UI para talento
 function showTalentUI() {
     console.log('Mostrando UI para talento');
     
-    // Mostrar secciones de talento
     const talentSections = document.querySelectorAll('.talent-section');
+    const clientSections = document.querySelectorAll('.client-section');
+    
     talentSections.forEach(section => {
         section.style.display = 'block';
     });
     
-    // Ocultar secciones de cliente
-    const clientSections = document.querySelectorAll('.client-section');
     clientSections.forEach(section => {
         section.style.display = 'none';
     });
     
-    // Activar pestaña de trabajos
     showSection('jobsSection');
 }
 
-// Mostrar UI para cliente (CORREGIDO)
+// Mostrar UI para cliente
 function showClientUI() {
     console.log('Mostrando UI para cliente');
     
-    // Mostrar secciones de cliente
-    const clientSections = document.querySelectorAll('.client-section');
-    clientSections.forEach(section => {
-        section.style.display = 'block';
-    });
-    
-    // Ocultar secciones de talento
     const talentSections = document.querySelectorAll('.talent-section');
+    const clientSections = document.querySelectorAll('.client-section');
+    
     talentSections.forEach(section => {
         section.style.display = 'none';
     });
     
-    // Activar pestaña de talentos
+    clientSections.forEach(section => {
+        section.style.display = 'block';
+    });
+    
     showSection('talentsSection');
 }
 
-// Mostrar sección específica (CORREGIDO)
+// Mostrar sección específica
 function showSection(sectionId) {
     console.log('Mostrando sección:', sectionId);
     
-    // Ocultar todas las secciones
     const sections = document.querySelectorAll('.main-section');
     sections.forEach(section => {
         section.style.display = 'none';
     });
     
-    // Mostrar sección seleccionada
     const targetSection = document.getElementById(sectionId);
     if (targetSection) {
         targetSection.style.display = 'block';
     }
     
-    // Actualizar navegación activa
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
         item.classList.remove('active');
@@ -211,7 +209,7 @@ function showSection(sectionId) {
     }
 }
 
-// Cargar talentos (CORREGIDO)
+// Cargar talentos
 async function loadTalents() {
     console.log('Cargando talentos...');
     
@@ -237,7 +235,6 @@ async function loadTalents() {
             return;
         }
         
-        // Mostrar talentos
         let talentsHtml = '';
         talents.forEach(talent => {
             const countryName = getCountryName(talent.country) || talent.country;
@@ -278,14 +275,13 @@ async function loadTalents() {
         });
         
         talentsGrid.innerHTML = talentsHtml;
-        
     } catch (error) {
         console.error('Error cargando talentos:', error);
-        talentsGrid.innerHTML = '<p class="text-danger">Error al cargar los talentos. Intenta recargar la página.</p>';
+        talentsGrid.innerHTML = '<p class="text-danger">Error al cargar los talentos.</p>';
     }
 }
 
-// Cargar trabajos (CORREGIDO)
+// Cargar trabajos
 async function loadJobs() {
     console.log('Cargando trabajos...');
     
@@ -311,7 +307,6 @@ async function loadJobs() {
             return;
         }
         
-        // Mostrar trabajos
         let jobsHtml = '';
         jobs.forEach(job => {
             const budget = job.budget ? `$${job.budget}` : 'A convenir';
@@ -346,14 +341,13 @@ async function loadJobs() {
         });
         
         jobsGrid.innerHTML = jobsHtml;
-        
     } catch (error) {
         console.error('Error cargando trabajos:', error);
-        jobsGrid.innerHTML = '<p class="text-danger">Error al cargar las ofertas de trabajo. Intenta recargar la página.</p>';
+        jobsGrid.innerHTML = '<p class="text-danger">Error al cargar las ofertas de trabajo.</p>';
     }
 }
 
-// Ver perfil de talento (CORREGIDO)
+// Ver perfil de talento
 async function viewTalentProfile(talentId) {
     console.log('Viendo perfil de talento:', talentId);
     
@@ -366,14 +360,13 @@ async function viewTalentProfile(talentId) {
         
         const talent = talentDoc.data();
         showTalentModal(talent);
-        
     } catch (error) {
         console.error('Error cargando perfil de talento:', error);
         alert('Error al cargar el perfil del talento');
     }
 }
 
-// Mostrar modal de talento (CORREGIDO)
+// Mostrar modal de talento
 function showTalentModal(talent) {
     const countryName = getCountryName(talent.country) || talent.country;
     const stateName = getStateName(talent.country, talent.state) || talent.state;
@@ -451,21 +444,18 @@ function showTalentModal(talent) {
         </div>
     `;
     
-    // Remover modal existente
     const existingModal = document.getElementById('talentModal');
     if (existingModal) {
         existingModal.remove();
     }
     
-    // Agregar nuevo modal
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // Mostrar modal
     const modal = new bootstrap.Modal(document.getElementById('talentModal'));
     modal.show();
 }
 
-// Ver detalles de trabajo (CORREGIDO)
+// Ver detalles de trabajo
 async function viewJobDetails(jobId) {
     console.log('Viendo detalles de trabajo:', jobId);
     
@@ -478,14 +468,13 @@ async function viewJobDetails(jobId) {
         
         const job = jobDoc.data();
         showJobModal(job);
-        
     } catch (error) {
         console.error('Error cargando detalles del trabajo:', error);
         alert('Error al cargar los detalles del trabajo');
     }
 }
 
-// Mostrar modal de trabajo (CORREGIDO)
+// Mostrar modal de trabajo
 function showJobModal(job) {
     const budget = job.budget ? `$${job.budget}` : 'A convenir';
     const deadline = job.deadline ? new Date(job.deadline).toLocaleDateString() : 'No especificada';
@@ -535,21 +524,18 @@ function showJobModal(job) {
         </div>
     `;
     
-    // Remover modal existente
     const existingModal = document.getElementById('jobModal');
     if (existingModal) {
         existingModal.remove();
     }
     
-    // Agregar nuevo modal
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // Mostrar modal
     const modal = new bootstrap.Modal(document.getElementById('jobModal'));
     modal.show();
 }
 
-// Aplicar a trabajo (FUNCIÓN SIMPLIFICADA)
+// Aplicar a trabajo
 function applyToJob(jobId) {
     if (!currentUser || currentUserData.type !== 'talent') {
         alert('Debes ser un talento registrado para postularte a trabajos.');
@@ -557,10 +543,9 @@ function applyToJob(jobId) {
     }
     
     alert(`Funcionalidad de postulación en desarrollo. Trabajo ID: ${jobId}`);
-    // Aquí iría la lógica completa de postulación
 }
 
-// Contactar talento (FUNCIÓN SIMPLIFICADA)
+// Contactar talento
 function contactTalent(talentId) {
     if (!currentUser || currentUserData.type !== 'client') {
         alert('Debes ser un cliente registrado para contactar talentos.');
@@ -568,10 +553,9 @@ function contactTalent(talentId) {
     }
     
     alert(`Funcionalidad de contacto en desarrollo. Talento ID: ${talentId}`);
-    // Aquí iría la lógica completa de contacto
 }
 
-// Cerrar sesión (CORREGIDO)
+// Cerrar sesión
 function logout() {
     console.log('Cerrando sesión...');
     
@@ -579,8 +563,6 @@ function logout() {
         console.log('Sesión cerrada correctamente');
         currentUser = null;
         currentUserData = null;
-        
-        // Redirigir a página principal
         window.location.href = 'index.html';
     }).catch((error) => {
         console.error('Error cerrando sesión:', error);
@@ -588,41 +570,7 @@ function logout() {
     });
 }
 
-// Inicialización cuando se carga la página
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('VoiceBook inicializando...');
-    
-    // Verificar autenticación
-    checkAuthState();
-    
-    // Configurar manejadores de eventos
-    setupEventListeners();
-    
-    console.log('VoiceBook inicializado correctamente');
-});
-
-// Configurar event listeners (CORREGIDO)
-function setupEventListeners() {
-    // Login form
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', handleLogin);
-    }
-    
-    // Register form
-    const registerForm = document.getElementById('registerForm');
-    if (registerForm) {
-        registerForm.addEventListener('submit', handleRegister);
-    }
-    
-    // Logout button
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', logout);
-    }
-}
-
-// Manejar login (CORREGIDO)
+// Manejar login
 async function handleLogin(e) {
     e.preventDefault();
     console.log('Manejando login...');
@@ -643,11 +591,9 @@ async function handleLogin(e) {
         console.log('Login exitoso:', userCredential.user.uid);
         showMessage(messageDiv, '✅ Sesión iniciada correctamente.', 'success');
         
-        // Redirigir después de un breve delay
         setTimeout(() => {
             window.location.href = 'profile.html';
         }, 1000);
-        
     } catch (error) {
         console.error('Error en login:', error);
         let errorMessage = 'Error al iniciar sesión. ';
@@ -670,7 +616,7 @@ async function handleLogin(e) {
     }
 }
 
-// Manejar registro (CORREGIDO)
+// Manejar registro
 async function handleRegister(e) {
     e.preventDefault();
     console.log('Manejando registro...');
@@ -694,13 +640,11 @@ async function handleRegister(e) {
     showMessage(messageDiv, '⌛ Creando cuenta...', 'info');
     
     try {
-        // Crear usuario en Firebase Auth
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
         
         console.log('Usuario creado en Auth:', user.uid);
         
-        // Crear perfil en Firestore según el tipo
         const userData = {
             name: name,
             email: email,
@@ -719,11 +663,9 @@ async function handleRegister(e) {
         
         showMessage(messageDiv, '✅ Cuenta creada correctamente. Redirigiendo...', 'success');
         
-        // Redirigir al perfil después de un breve delay
         setTimeout(() => {
             window.location.href = 'profile.html';
         }, 1500);
-        
     } catch (error) {
         console.error('Error en registro:', error);
         let errorMessage = 'Error al crear la cuenta. ';
@@ -755,7 +697,6 @@ function showMessage(element, message, type) {
                                   type === 'success' ? 'alert-success' : 'alert-info');
     element.style.display = 'block';
     
-    // Auto-ocultar mensajes de éxito/info después de 5 segundos
     if (type !== 'error') {
         setTimeout(() => {
             element.style.display = 'none';
@@ -763,7 +704,7 @@ function showMessage(element, message, type) {
     }
 }
 
-// Funciones auxiliares para ubicación (como fallback)
+// Funciones auxiliares para ubicación
 function getCountryName(countryCode) {
     const countries = {
         'AR': 'Argentina',
@@ -779,9 +720,40 @@ function getCountryName(countryCode) {
 }
 
 function getStateName(countryCode, stateCode) {
-    // Implementación básica - debería expandirse según necesidades
     return stateCode;
 }
+
+// Configurar event listeners
+function setupEventListeners() {
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+    
+    if (registerForm) {
+        registerForm.addEventListener('submit', handleRegister);
+    }
+    
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
+}
+
+// Inicialización cuando se carga la página
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('VoiceBook inicializando...');
+    
+    setupEventListeners();
+    
+    setTimeout(() => {
+        checkAuthState();
+    }, 100);
+    
+    console.log('VoiceBook inicializado correctamente');
+});
 
 // Hacer funciones globales
 window.showSection = showSection;
@@ -790,3 +762,6 @@ window.viewJobDetails = viewJobDetails;
 window.applyToJob = applyToJob;
 window.contactTalent = contactTalent;
 window.logout = logout;
+window.checkAuthState = checkAuthState;
+window.handleLogin = handleLogin;
+window.handleRegister = handleRegister;
