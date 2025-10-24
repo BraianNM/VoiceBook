@@ -22,7 +22,18 @@ jobs:
         npm install -g @capacitor/cli
         npm install @capacitor/core @capacitor/android
         echo "✅ Capacitor instalado"
-        
+
+            - name: 🎯 VERIFICAR que el CSS existe
+      run: |
+        echo "🔍 Verificando archivos CSS..."
+        if [ -f "css/style.css" ]; then
+          echo "✅ CSS encontrado"
+          ls -la css/
+          head -10 css/style.css
+        else
+          echo "❌ ERROR: css/style.css NO EXISTE"
+          find . -name "*.css" -o -name "style.css"
+        fi
     - name: 📁 Preparar archivos web
       run: |
         echo "📂 Creando estructura para la app..."
