@@ -28,3 +28,4 @@ Plataforma para conectar talentos de voz con empresas y particulares.
 3. Crea una base de datos Firestore
 4. Actualiza la configuración en `firebase-config.js`
 - Mobile app version
+- Fixed CSS paths for mobile
