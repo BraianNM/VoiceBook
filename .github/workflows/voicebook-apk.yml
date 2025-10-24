@@ -57,6 +57,49 @@ jobs:
         # Verificar cambios
         echo "📄 Rutas en index.html:"
         grep -E 'href=|src=' www/index.html | head -3
+
+            - name: 🔧 Corregir TODAS las rutas para móvil
+      run: |
+        echo "🔄 Corrigiendo rutas absolutas para app móvil..."
+        
+        # Corregir index.html
+        if [ -f "www/index.html" ]; then
+          sed -i 's|href="css/|href="./css/|g' www/index.html
+          sed -i 's|src="js/|src="./js/|g' www/index.html
+          sed -i 's|src="img/|src="./img/|g' www/index.html
+          echo "✅ index.html corregido"
+        fi
+        
+        # Corregir profile.html
+        if [ -f "www/profile.html" ]; then
+          sed -i 's|href="css/|href="./css/|g' www/profile.html
+          sed -i 's|src="js/|src="./js/|g' www/profile.html
+          sed -i 's|src="img/|src="./img/|g' www/profile.html
+          echo "✅ profile.html corregido"
+        fi
+        
+        # Corregir archivos JavaScript
+        if [ -f "www/js/app.js" ]; then
+          sed -i "s|'img/|\"./img/|g" www/js/app.js
+          sed -i 's|"img/|"./img/|g' www/js/app.js
+          echo "✅ app.js corregido"
+        fi
+        
+        if [ -f "www/js/auth.js" ]; then
+          sed -i "s|'img/|\"./img/|g" www/js/auth.js
+          sed -i 's|"img/|"./img/|g' www/js/auth.js
+          echo "✅ auth.js corregido"
+        fi
+        
+        if [ -f "www/js/profile.js" ]; then
+          sed -i "s|'img/|\"./img/|g" www/js/profile.js
+          sed -i 's|"img/|"./img/|g' www/js/profile.js
+          echo "✅ profile.js corregido"
+        fi
+        
+        # Verificar cambios
+        echo "📄 Rutas corregidas:"
+        grep -n 'href=\|src=' www/index.html | head -3
         
     - name: 🛠 Inicializar Capacitor CORREGIDO
       run: |
