@@ -4,7 +4,13 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('App.js inicializando...');
     setupEventListeners();
-    window.checkAuthState();
+    
+    // Inicializar autenticación
+    if (typeof initializeAuth !== 'undefined') {
+        initializeAuth();
+    } else if (typeof window.checkAuthState !== 'undefined') {
+        window.checkAuthState();
+    }
     
     // CORRECCIÓN: Asegurar que la carga de talentos solo corra en index.html
     if (!window.location.href.includes('profile.html')) {
@@ -436,46 +442,54 @@ window.viewJobDetails = async function(jobId) {
         const budget = job.budget ? `$${job.budget}` : 'A convenir';
         const deadline = job.deadline ? new Date(job.deadline).toLocaleDateString() : 'No especificada';
 
-        if (jobDetailsContent) {
-            jobDetailsContent.innerHTML = `
-                <div class="job-details-header">
-                    <h2>${job.title}</h2>
-                    <p class="job-client"><strong>Cliente:</strong> ${job.clientName}</p>
-                </div>
-                
-                <div class="job-details-section">
-                    <h3>Información del Proyecto</h3>
-                    <div class="info-grid">
-                        <div class="info-item"><label>Ubicación:</label><span>${countryName || 'Remoto'}</span></div>
-                        <div class="info-item"><label>Presupuesto:</label><span>${budget}</span></div>
-                        <div class="info-item"><label>Fecha límite:</label><span>${deadline}</span></div>
-                        <div class="info-item"><label>Género de voz:</label><span>${job.gender || 'No especificado'}</span></div>
-                        <div class="info-item"><label>Edad:</label><span>${job.ageRange || 'No especificado'}</span></div>
-                    </div>
-                </div>
-                
-                <div class="job-details-section">
-                    <h3>Descripción Detallada</h3>
-                    <p class="job-description">${job.description || 'No hay descripción disponible.'}</p>
-                </div>
-                
-                <div class="job-details-actions">
-                    ${currentUserData?.type === 'talent' ? 
-                        `<button class="btn btn-primary" onclick="window.applyToJob('${jobId}')">
-                            <i class="fas fa-paper-plane"></i> Postularse a este trabajo
-                        </button>` : 
-                        `<p class="text-warning">Inicia sesión como talento para postularte.</p>`
-                    }
-                </div>
-            `;
-        }
+        let jobDetailsHtml = `
+            <div class="job-details-header">
+                <h2>${job.title}</h2>
+                <span class="job-status ${job.status}">${job.status === 'active' ? 'Activa' : 'Inactiva'}</span>
+            </div>
+            
+            <div class="job-details-section">
+                <h3>Información del Cliente</h3>
+                <p><strong>Cliente:</strong> ${job.clientName}</p>
+                <p><strong>Email:</strong> ${job.clientEmail}</p>
+                <p><strong>Ubicación:</strong> ${countryName || 'Remoto'}</p>
+            </div>
+            
+            <div class="job-details-section">
+                <h3>Detalles del Trabajo</h3>
+                <p><strong>Presupuesto:</strong> ${budget}</p>
+                <p><strong>Fecha límite:</strong> ${deadline}</p>
+                <p><strong>Idiomas requeridos:</strong> ${job.requiredLanguages ? job.requiredLanguages.join(', ') : 'No especificados'}</p>
+                <p><strong>Género de voz:</strong> ${job.voiceGender || 'No especificado'}</p>
+                <p><strong>Edad de voz:</strong> ${job.voiceAge || 'No especificada'}</p>
+            </div>
+            
+            <div class="job-details-section">
+                <h3>Descripción Completa</h3>
+                <p>${job.description || 'No hay descripción disponible.'}</p>
+            </div>
+            
+            <div class="job-details-actions">
+                <button class="btn btn-primary" onclick="window.applyToJob('${jobId}')">
+                    <i class="fas fa-paper-plane"></i> Postularse
+                </button>
+                <button class="btn btn-outline" onclick="window.closeJobDetailsModal()">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
+            </div>
+        `;
 
+        if (jobDetailsContent) jobDetailsContent.innerHTML = jobDetailsHtml;
+        
     } catch (error) {
         console.error('Error cargando detalles del trabajo:', error);
-        if (jobDetailsContent) {
-            jobDetailsContent.innerHTML = '<p class="text-danger">Error al cargar los detalles del trabajo.</p>';
-        }
+        if (jobDetailsContent) jobDetailsContent.innerHTML = '<p class="text-danger">Error al cargar los detalles del trabajo.</p>';
     }
+};
+
+window.closeJobDetailsModal = function() {
+    const jobModal = document.getElementById('jobDetailsModal');
+    if (jobModal) jobModal.style.display = 'none';
 };
 
 // Función para agregar a favoritos
@@ -492,28 +506,39 @@ window.addToFavorites = async function(talentId) {
     }
 
     try {
-        await db.collection('clients').doc(currentUser.uid).update({
+        const clientRef = db.collection('clients').doc(currentUser.uid);
+        await clientRef.update({
             favorites: firebase.firestore.FieldValue.arrayUnion(talentId)
         });
 
         alert('Talento agregado a favoritos.');
-
+        
     } catch (error) {
         console.error('Error agregando a favoritos:', error);
         alert('Error al agregar a favoritos.');
     }
 };
 
-// Función auxiliar para mostrar mensajes
-window.showMessage = function(elementId, message, type) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-        setTimeout(() => {
-            element.innerHTML = '';
-        }, 5000);
+// Funciones auxiliares para los modales
+function toggleCompanyName() {
+    const companyNameField = document.getElementById('companyNameField');
+    const clientType = document.getElementById('clientType').value;
+    if (companyNameField) {
+        companyNameField.style.display = clientType === 'empresa' ? 'block' : 'none';
     }
-};
+}
+
+function toggleOtherLanguages() {
+    const otherLanguagesField = document.getElementById('otherLanguagesField');
+    const lang10 = document.getElementById('lang10');
+    if (otherLanguagesField) {
+        otherLanguagesField.style.display = lang10.checked ? 'block' : 'none';
+    }
+}
+
+// Inicializar funciones auxiliares
+window.toggleCompanyName = toggleCompanyName;
+window.toggleOtherLanguages = toggleOtherLanguages;
 
 // Función para cerrar todos los modales
 window.closeAllModals = function() {
@@ -522,20 +547,12 @@ window.closeAllModals = function() {
     });
 };
 
-// Toggle para mostrar/ocultar el campo de empresa
-function toggleCompanyName() {
-    const companyNameGroup = document.getElementById('companyNameGroup');
-    if (companyNameGroup) {
-        companyNameGroup.style.display = document.getElementById('clientType').value === 'empresa' ? 'block' : 'none';
+// Función para mostrar mensajes
+window.showMessage = function(element, message, type) {
+    const el = typeof element === 'string' ? document.getElementById(element) : element;
+    if (el) {
+        el.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
     }
-}
+};
 
-// Toggle para mostrar/ocultar el campo de otros idiomas
-function toggleOtherLanguages() {
-    const otherLanguagesInput = document.getElementById('otherLanguages');
-    if (otherLanguagesInput) {
-        otherLanguagesInput.style.display = document.getElementById('lang10').checked ? 'block' : 'none';
-    }
-}
-
-console.log('App.js cargado correctamente');
+console.log('✅ App.js cargado correctamente');
