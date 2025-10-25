@@ -1,6 +1,34 @@
 // auth.js - Manejo de autenticación (COMPLETO Y CORREGIDO)
 console.log('Auth.js cargado');
 
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyC6G6NgMqrMDyd5PB6_HmLNHpPU-vNJdf0",
+  authDomain: "voicebook-8ba6c.firebaseapp.com",
+  projectId: "voicebook-8ba6c",
+  storageBucket: "voicebook-8ba6c.firebasestorage.app",
+  messagingSenderId: "534166349589",
+  appId: "1:534166349589:web:e5e9c11b488fa52828ab1c"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+// Inicializar Firebase
+try {
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    console.log('Firebase inicializado en auth.js');
+} catch (error) {
+    console.error('Error inicializando Firebase en auth.js:', error);
+}
+
 // Referencias globales
 const auth = firebase.auth();
 const db = firebase.firestore();
