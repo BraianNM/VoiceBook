@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
     
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
@@ -38,6 +39,9 @@
     </header>
 
     <main class="container">
+        <!-- Mensaje de perfil -->
+        <div id="profileMessage" class="message-area"></div>
+
         <div class="profile-header">
             <div class="profile-avatar-section">
                 <img id="profileUserPicture" src="img/default-avatar.png" alt="Foto de perfil" class="profile-avatar">
@@ -48,26 +52,23 @@
             </div>
             
             <div class="profile-actions">
-                <button class="btn btn-primary profile-nav-btn active" onclick="toggleProfileSection('viewProfileSection')">
+                <button class="btn btn-primary profile-nav-btn active" data-tab="viewProfileSection">
                     <i class="fas fa-eye"></i> Ver Perfil
                 </button>
-                <button class="btn btn-outline profile-nav-btn" onclick="toggleProfileSection('editProfileSection')">
+                <button class="btn btn-outline profile-nav-btn" data-tab="editProfileSection">
                     <i class="fas fa-edit"></i> Editar Perfil
                 </button>
-                <button class="btn btn-outline profile-nav-btn talent-only" onclick="toggleProfileSection('applicationsSection')" style="display:none;">
+                <button class="btn btn-outline profile-nav-btn talent-only" data-tab="applicationsSection" style="display:none;">
                     <i class="fas fa-paper-plane"></i> Mis Postulaciones
                 </button>
-                <button class="btn btn-outline profile-nav-btn client-only" onclick="toggleProfileSection('jobsSection')" style="display:none;">
+                <button class="btn btn-outline profile-nav-btn client-only" data-tab="jobsSection" style="display:none;">
                     <i class="fas fa-briefcase"></i> Mis Trabajos
                 </button>
-                <button class="btn btn-outline profile-nav-btn client-only" onclick="toggleProfileSection('notificationsSection')" style="display:none;">
+                <button class="btn btn-outline profile-nav-btn client-only" data-tab="notificationsSection" style="display:none;">
                     <i class="fas fa-bell"></i> Notificaciones
                 </button>
             </div>
         </div>
-
-        <!-- Mensajes -->
-        <div id="profileMessage" class="message-area"></div>
 
         <!-- Sección: Ver Perfil -->
         <section id="viewProfileSection" class="profile-section active-section">
@@ -92,6 +93,7 @@
                         <div class="form-group">
                             <label for="editTalentProfilePicture">Foto de Perfil</label>
                             <input type="file" id="editTalentProfilePicture" accept="image/*" class="form-control">
+                            <small class="form-text">Formatos: JPG, PNG, GIF. Máx: 5MB</small>
                         </div>
                         
                         <div class="form-group">
@@ -110,7 +112,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Ubicación</label>
+                            <label>Ubicación *</label>
                             <select id="editCountrySelectTalent" class="form-control" required>
                                 <option value="">Selecciona tu país *</option>
                             </select>
@@ -135,7 +137,7 @@
                             
                             <div class="form-group">
                                 <label for="editTalentRealAge">Edad Real</label>
-                                <input type="number" id="editTalentRealAge" class="form-control">
+                                <input type="number" id="editTalentRealAge" class="form-control" min="1" max="100">
                             </div>
                             
                             <div class="form-group">
@@ -155,7 +157,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Idiomas de trabajo</label>
+                            <label>Idiomas de trabajo *</label>
                             <div class="checkbox-group">
                                 <label><input type="checkbox" id="editLang1" value="Español (Latam)"> Español (Latam)</label>
                                 <label><input type="checkbox" id="editLang2" value="Español (España)"> Español (España)</label>
@@ -172,15 +174,17 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="editHasHomeStudio"> ¿Tienes home studio?
-                            </label>
+                            <label>¿Tienes home studio? *</label>
+                            <div class="radio-group">
+                                <label><input type="radio" id="editHomeStudioYes" name="editHomeStudio" value="si"> Sí</label>
+                                <label><input type="radio" id="editHomeStudioNo" name="editHomeStudio" value="no"> No</label>
+                            </div>
                         </div>
 
                         <div class="form-group">
                             <label>Subir Demos</label>
                             <input type="file" id="editAudioFiles" class="form-control" accept="audio/*" multiple>
-                            <small class="form-text">Puedes subir hasta 2 archivos de audio (MP3, WAV, OGG)</small>
+                            <small class="form-text">Puedes subir hasta 2 archivos de audio (MP3, WAV, OGG). Máx: 10MB por archivo</small>
                         </div>
                     </div>
 
@@ -189,6 +193,7 @@
                         <div class="form-group">
                             <label for="editClientProfilePicture">Foto de Perfil</label>
                             <input type="file" id="editClientProfilePicture" accept="image/*" class="form-control">
+                            <small class="form-text">Formatos: JPG, PNG, GIF. Máx: 5MB</small>
                         </div>
                         
                         <div class="form-group">
@@ -207,7 +212,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Ubicación</label>
+                            <label>Ubicación *</label>
                             <select id="editCountrySelectClient" class="form-control" required>
                                 <option value="">Selecciona tu país *</option>
                             </select>
@@ -220,22 +225,26 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="editClientType">Tipo de Cliente</label>
-                            <select id="editClientType" class="form-control">
+                            <label for="editClientType">Tipo de Cliente *</label>
+                            <select id="editClientType" class="form-control" required>
                                 <option value="particular">Particular</option>
                                 <option value="empresa">Empresa / Agencia</option>
                             </select>
                         </div>
 
                         <div class="form-group" id="editCompanyNameGroup" style="display:none;">
-                            <label for="editCompanyName">Nombre de la Empresa</label>
+                            <label for="editCompanyName">Nombre de la Empresa *</label>
                             <input type="text" id="editCompanyName" class="form-control">
                         </div>
                     </div>
 
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-                        <button type="button" class="btn btn-outline" onclick="toggleProfileSection('viewProfileSection')">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Cambios
+                        </button>
+                        <button type="button" class="btn btn-outline" onclick="toggleProfileSection('viewProfileSection')">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
                     </div>
                 </form>
             </div>
@@ -257,7 +266,7 @@
             <div class="profile-content">
                 <div class="section-header">
                     <h2>Mis Ofertas de Trabajo</h2>
-                    <button class="btn btn-primary" onclick="showCreateJobModal()">
+                    <button class="btn btn-primary" id="createJobBtn">
                         <i class="fas fa-plus"></i> Crear Nueva Oferta
                     </button>
                 </div>
@@ -321,7 +330,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Idiomas Requeridos</label>
+                    <label>Idiomas Requeridos *</label>
                     <div class="checkbox-group">
                         <label><input type="checkbox" id="jobLang1" value="Español (Latam)"> Español (Latam)</label>
                         <label><input type="checkbox" id="jobLang2" value="Español (España)"> Español (España)</label>
@@ -334,7 +343,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="jobBudget">Presupuesto (USD)</label>
-                        <input type="number" id="jobBudget" class="form-control" placeholder="Ej: 500">
+                        <input type="number" id="jobBudget" class="form-control" placeholder="Ej: 500" min="0">
                     </div>
                     
                     <div class="form-group">
@@ -361,62 +370,120 @@
         </div>
     </div>
 
+    <!-- Scripts en ORDEN CORRECTO -->
     <script src="js/firebase-config.js"></script>
-    <script src="js/locations.js"></script>
+    <script src="js/location-data.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/profile.js"></script>
-    <script src="js/app.js"></script>
 
     <script>
         // Inicialización del perfil
         document.addEventListener('DOMContentLoaded', function() {
-            // Verificar autenticación
-            auth.onAuthStateChanged(user => {
-                if (user) {
-                    window.currentUser = user;
-                    loadUserProfile(user.uid);
-                } else {
-                    window.location.href = 'index.html';
-                }
+            console.log('Profile.html inicializando...');
+            
+            // Configurar event listeners de navegación
+            document.querySelectorAll('.profile-nav-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targetSection = this.getAttribute('data-tab');
+                    toggleProfileSection(targetSection);
+                });
             });
 
-            // Configurar event listeners
-            document.getElementById('logoutBtn').addEventListener('click', logoutUser);
-            
             // Configurar formulario de edición
             document.getElementById('editProfileForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 const userType = document.getElementById('editProfileUserType').value;
                 if (userType === 'talent') {
-                    window.updateTalentProfile(e);
+                    if (typeof window.updateTalentProfile === 'function') {
+                        window.updateTalentProfile(e);
+                    }
                 } else {
-                    window.updateClientProfile(e);
+                    if (typeof window.updateClientProfile === 'function') {
+                        window.updateClientProfile(e);
+                    }
                 }
             });
 
             // Configurar formulario de creación de trabajo
             document.getElementById('createJobForm').addEventListener('submit', function(e) {
                 e.preventDefault();
-                window.createJob(e);
+                if (typeof window.createJob === 'function') {
+                    window.createJob(e);
+                }
             });
 
-            // Configurar selectores de ubicación
-            if (typeof loadLocationData !== 'undefined') {
-                loadLocationData('editCountrySelectTalent', 'editStateSelectTalent', 'editCitySelectTalent');
-                loadLocationData('editCountrySelectClient', 'editStateSelectClient', 'editCitySelectClient');
-            }
+            // Configurar botón de crear trabajo
+            document.getElementById('createJobBtn').addEventListener('click', function() {
+                showCreateJobModal();
+            });
 
-            // Toggle para otros idiomas en edición
+            // Configurar logout
+            document.getElementById('logoutBtn').addEventListener('click', function() {
+                if (typeof logoutUser === 'function') {
+                    logoutUser();
+                }
+            });
+
+            // Configurar eventos de idiomas
             document.getElementById('editLang10')?.addEventListener('change', function() {
-                document.getElementById('editOtherLanguages').style.display = this.checked ? 'block' : 'none';
+                const otherLanguages = document.getElementById('editOtherLanguages');
+                if (otherLanguages) {
+                    otherLanguages.style.display = this.checked ? 'block' : 'none';
+                }
             });
 
-            // Toggle para tipo de cliente en edición
+            // Configurar evento de tipo de cliente
             document.getElementById('editClientType')?.addEventListener('change', function() {
-                document.getElementById('editCompanyNameGroup').style.display = 
-                    this.value === 'empresa' ? 'block' : 'none';
+                const companyGroup = document.getElementById('editCompanyNameGroup');
+                if (companyGroup) {
+                    companyGroup.style.display = this.value === 'empresa' ? 'block' : 'none';
+                }
             });
+
+            console.log('Profile.html configurado correctamente');
         });
+
+        // Función para cambiar entre secciones
+        function toggleProfileSection(sectionId) {
+            console.log('Cambiando a sección:', sectionId);
+            
+            // Ocultar todas las secciones
+            document.querySelectorAll('.profile-section').forEach(section => {
+                section.classList.remove('active-section');
+            });
+            
+            // Mostrar la sección seleccionada
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.classList.add('active-section');
+            }
+            
+            // Actualizar botones activos
+            document.querySelectorAll('.profile-nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Marcar el botón correspondiente como activo
+            const activeButton = document.querySelector(`[data-tab="${sectionId}"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+            
+            // Cargar datos específicos de la sección
+            if (sectionId === 'applicationsSection') {
+                if (typeof loadTalentApplications === 'function') {
+                    loadTalentApplications();
+                }
+            } else if (sectionId === 'jobsSection') {
+                if (typeof loadClientJobs === 'function') {
+                    loadClientJobs();
+                }
+            } else if (sectionId === 'notificationsSection') {
+                if (typeof loadUserNotifications === 'function') {
+                    loadUserNotifications();
+                }
+            }
+        }
 
         // Funciones auxiliares para modales
         function showCreateJobModal() {
@@ -431,31 +498,11 @@
             document.getElementById('jobApplicationsModal').style.display = 'none';
         }
 
-        // Función para cambiar entre secciones
-        function toggleProfileSection(sectionId) {
-            // Ocultar todas las secciones
-            document.querySelectorAll('.profile-section').forEach(section => {
-                section.classList.remove('active-section');
-            });
-            
-            // Mostrar la sección seleccionada
-            document.getElementById(sectionId).classList.add('active-section');
-            
-            // Actualizar botones activos
-            document.querySelectorAll('.profile-nav-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            // Cargar datos específicos de la sección
-            if (sectionId === 'applicationsSection') {
-                loadTalentApplications();
-            } else if (sectionId === 'jobsSection') {
-                loadClientJobs();
-            } else if (sectionId === 'notificationsSection') {
-                loadUserNotifications();
-            }
-        }
+        // Hacer funciones disponibles globalmente
+        window.toggleProfileSection = toggleProfileSection;
+        window.showCreateJobModal = showCreateJobModal;
+        window.closeCreateJobModal = closeCreateJobModal;
+        window.closeJobApplicationsModal = closeJobApplicationsModal;
     </script>
 </body>
 </html>
