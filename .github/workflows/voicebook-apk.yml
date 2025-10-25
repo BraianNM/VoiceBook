@@ -3,84 +3,28 @@ name: Build VoiceBook APK
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    name: Build VoiceBook APK
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-        
-    - name: Setup Java
-      uses: actions/setup-java@v3
-      with:
-        java-version: '11'
-        distribution: 'temurin'
-        cache: 'gradle'
-        
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v2
-      
-    - name: Make gradlew executable
-      run: chmod +x ./gradlew
-      
-    - name: Build Debug APK
-      run: |
-        echo "Iniciando construcción de APK para VoiceBook"
-        ./gradlew assembleDebug
-        echo "✅ APK construido exitosamente"
-        
-    - name: Build Release APK
-      run: |
-        echo "Iniciando construcción de APK Release"
-        ./gradlew assembleRelease
-        echo "✅ APK Release construido exitosamente"
-        
-    - name: List APK files
-      run: find . -name "*.apk" -type f | head -10
-      
-    - name: Upload Debug APK
-      uses: actions/upload-artifact@v3
-      with:
-        name: voicebook-debug-apk
-        path: app/build/outputs/apk/debug/*.apk
-        retention-days: 7
-        
-    - name: Upload Release APK
-      uses: actions/upload-artifact@v3
-      with:
-        name: voicebook-release-apk
-        path: app/build/outputs/apk/release/*.apk
-        retention-days: 7
-        
-    - name: Upload Mapping File
-      uses: actions/upload-artifact@v3
-      with:
-        name: voicebook-mapping
-        path: app/build/outputs/mapping/release/mapping.txt
-        retention-days: 7
-        if-no-files-found: warn
-
   deploy:
     runs-on: ubuntu-latest
     name: Deploy to GitHub Pages
-    needs: build
-    if: github.ref == 'refs/heads/main'
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./
         force_orphan: true
+        
+    - name: Success Message
+      run: echo "✅ VoiceBook desplegado exitosamente en GitHub Pages"
