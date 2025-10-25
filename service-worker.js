@@ -61,38 +61,30 @@ self.addEventListener('activate', event => {
 
 // Fetch events - Estrategia Cache First
 self.addEventListener('fetch', event => {
-  // Solo manejar solicitudes GET
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Devuelve la versión en cache si existe
         if (response) {
           return response;
         }
 
-        // Si no está en cache, haz la petición y guarda en cache
         return fetch(event.request).then(response => {
-          // Verifica si la respuesta es válida
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
 
-          // Clona la respuesta para guardar en cache
           const responseToCache = response.clone();
-
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
 
           return response;
         });
       })
       .catch(error => {
         console.error('Error en fetch:', error);
-        // Puedes devolver una página de error offline aquí
         return new Response('Error de conexión', {
           status: 408,
           statusText: 'Network Error'
@@ -100,23 +92,3 @@ self.addEventListener('fetch', event => {
       })
   );
 });
-
-// Manejar mensajes desde la aplicación
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
-// Manejar sync events para funcionalidad offline
-self.addEventListener('sync', event => {
-  if (event.tag === 'background-sync') {
-    console.log('Background sync ejecutado');
-    event.waitUntil(doBackgroundSync());
-  }
-});
-
-async function doBackgroundSync() {
-  // Aquí puedes agregar lógica para sincronizar datos cuando se recupere la conexión
-  console.log('Sincronizando datos en background...');
-}
