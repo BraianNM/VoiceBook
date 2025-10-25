@@ -1,4 +1,4 @@
-// profile.js - Gestión completa del perfil de usuario (VERSIÓN COMPLETA)
+// profile.js - Gestión completa del perfil de usuario (VERSIÓN COMPLETA Y CORREGIDA)
 
 console.log('✅ profile.js cargado - Inicializando gestión de perfiles...');
 
@@ -486,11 +486,15 @@ function setupTalentEditForm(talent) {
     setValue('editTalentNationality', talent.nationality);
     setValue('editTalentBio', talent.bio);
     
-    // Home Studio
-    if (talent.homeStudio === 'si') {
-        setChecked('editHomeStudioYes', true);
-    } else {
-        setChecked('editHomeStudioNo', true);
+    // Home Studio - CORREGIDO
+    const homeStudioYes = document.getElementById('editHomeStudioYes');
+    const homeStudioNo = document.getElementById('editHomeStudioNo');
+    if (homeStudioYes && homeStudioNo) {
+        if (talent.homeStudio === 'si') {
+            homeStudioYes.checked = true;
+        } else {
+            homeStudioNo.checked = true;
+        }
     }
     
     // Idiomas
@@ -581,7 +585,7 @@ function setupLanguagesEdit(languages) {
 }
 
 // =============================================
-// GESTIÓN DE ACTUALIZACIONES
+// GESTIÓN DE ACTUALIZACIONES (CORREGIDO)
 // =============================================
 
 async function handleProfileUpdate(e) {
@@ -592,9 +596,14 @@ async function handleProfileUpdate(e) {
     const userId = profileData.id;
     const userType = profileData.type;
     
-    showMessage(messageDiv, '<i class="fas fa-spinner fa-spin"></i> Guardando cambios...', 'info');
+    // Mostrar mensaje de carga
+    if (messageDiv) {
+        messageDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Guardando cambios...</div>';
+    }
 
     try {
+        console.log('📝 Tipo de usuario:', userType);
+        
         let result;
         if (userType === 'talent') {
             result = await updateTalentProfile(userId);
@@ -602,7 +611,12 @@ async function handleProfileUpdate(e) {
             result = await updateClientProfile(userId);
         }
         
-        showMessage(messageDiv, '<i class="fas fa-check-circle"></i> Perfil actualizado correctamente', 'success');
+        // Mostrar mensaje de éxito
+        if (messageDiv) {
+            messageDiv.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Perfil actualizado correctamente</div>';
+        }
+        
+        console.log('✅ Perfil actualizado exitosamente:', result);
         
         // Recargar perfil después de guardar
         setTimeout(() => {
@@ -612,28 +626,35 @@ async function handleProfileUpdate(e) {
         
     } catch (error) {
         console.error('❌ Error actualizando perfil:', error);
-        showMessage(messageDiv, `<i class="fas fa-exclamation-circle"></i> Error: ${error.message}`, 'error');
+        
+        // Mostrar mensaje de error
+        if (messageDiv) {
+            messageDiv.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Error: ${error.message}</div>`;
+        }
     }
 }
 
 async function updateTalentProfile(userId) {
     console.log('🔄 Actualizando perfil de talento...');
     
+    // Obtener valores del formulario
     const updateData = {
-        name: getValue('editTalentName'),
-        email: getValue('editTalentEmail'),
-        phone: getValue('editTalentPhone'),
-        gender: getValue('editTalentGender'),
-        realAge: getValue('editTalentRealAge'),
-        ageRange: getValue('editTalentAgeRange'),
-        nationality: getValue('editTalentNationality'),
-        bio: getValue('editTalentBio'),
-        homeStudio: getSelectedRadio('editHomeStudio') || 'no',
-        country: getValue('editCountrySelectTalent'),
-        state: getValue('editStateSelectTalent'),
-        city: getValue('editCitySelectTalent'),
+        name: document.getElementById('editTalentName').value,
+        email: document.getElementById('editTalentEmail').value,
+        phone: document.getElementById('editTalentPhone').value || '',
+        gender: document.getElementById('editTalentGender').value || '',
+        realAge: document.getElementById('editTalentRealAge').value || '',
+        ageRange: document.getElementById('editTalentAgeRange').value || '',
+        nationality: document.getElementById('editTalentNationality').value || '',
+        bio: document.getElementById('editTalentBio').value || '',
+        homeStudio: document.querySelector('input[name="editHomeStudio"]:checked')?.value || 'no',
+        country: document.getElementById('editCountrySelectTalent').value,
+        state: document.getElementById('editStateSelectTalent').value,
+        city: document.getElementById('editCitySelectTalent').value,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
+    
+    console.log('📋 Datos a actualizar:', updateData);
     
     // Validaciones básicas
     if (!updateData.name || !updateData.email) {
@@ -645,49 +666,70 @@ async function updateTalentProfile(userId) {
     }
     
     // Procesar idiomas
-    updateData.languages = getSelectedLanguages();
-    if (updateData.languages.length === 0) {
+    const languages = getSelectedLanguages();
+    if (languages.length === 0) {
         throw new Error('Debes seleccionar al menos un idioma');
     }
+    updateData.languages = languages;
     
     // Subir nueva imagen de perfil si existe
-    const profilePictureFile = getFile('editTalentProfilePicture');
+    const profilePictureFile = document.getElementById('editTalentProfilePicture').files[0];
     if (profilePictureFile) {
         console.log('🖼️ Subiendo nueva imagen de perfil...');
-        const uploadResult = await uploadToCloudinary(profilePictureFile);
-        updateData.profilePictureUrl = uploadResult.url;
+        try {
+            const uploadResult = await uploadToCloudinary(profilePictureFile);
+            updateData.profilePictureUrl = uploadResult.url;
+            console.log('✅ Imagen subida:', uploadResult.url);
+        } catch (uploadError) {
+            console.error('❌ Error subiendo imagen:', uploadError);
+            throw new Error('Error al subir la imagen de perfil');
+        }
     }
     
     // Manejar demos de audio
-    const demoFiles = getFiles('editAudioFiles');
+    const demoFiles = document.getElementById('editAudioFiles').files;
     if (demoFiles.length > 0) {
         console.log('🎵 Subiendo nuevos demos...');
-        const newDemos = await uploadDemos(demoFiles);
-        
-        // Combinar con demos existentes (mantener máximo 5)
-        const existingDemos = profileData.demos || [];
-        const allDemos = [...existingDemos, ...newDemos].slice(0, 5);
-        updateData.demos = allDemos;
+        try {
+            const newDemos = await uploadDemos(demoFiles);
+            
+            // Combinar con demos existentes (mantener máximo 5)
+            const existingDemos = profileData.demos || [];
+            const allDemos = [...existingDemos, ...newDemos].slice(0, 5);
+            updateData.demos = allDemos;
+            console.log('✅ Demos actualizados. Total:', allDemos.length);
+        } catch (demoError) {
+            console.error('❌ Error subiendo demos:', demoError);
+            throw new Error('Error al subir los demos de audio');
+        }
     }
     
-    console.log('📤 Enviando actualización a Firebase...', updateData);
-    await db.collection('talents').doc(userId).update(updateData);
+    console.log('📤 Enviando actualización a Firebase...');
     
-    return { success: true, message: 'Perfil de talento actualizado' };
+    try {
+        // Usar set con merge para asegurar que todos los campos se actualicen
+        await db.collection('talents').doc(userId).set(updateData, { merge: true });
+        console.log('✅ Perfil de talento actualizado en Firebase');
+        
+        return { success: true, message: 'Perfil de talento actualizado' };
+    } catch (firebaseError) {
+        console.error('❌ Error de Firebase:', firebaseError);
+        throw new Error('Error al guardar en la base de datos');
+    }
 }
 
 async function updateClientProfile(userId) {
     console.log('🔄 Actualizando perfil de cliente...');
     
-    const clientType = getValue('editClientType');
+    const clientType = document.getElementById('editClientType').value;
     const updateData = {
-        name: getValue('editClientName'),
-        email: getValue('editClientEmail'),
-        phone: getValue('editClientPhone'),
+        name: document.getElementById('editClientName').value,
+        email: document.getElementById('editClientEmail').value,
+        phone: document.getElementById('editClientPhone').value || '',
         clientType: clientType,
-        country: getValue('editCountrySelectClient'),
-        state: getValue('editStateSelectClient'),
-        city: getValue('editCitySelectClient'),
+        country: document.getElementById('editCountrySelectClient').value,
+        state: document.getElementById('editStateSelectClient').value,
+        city: document.getElementById('editCitySelectClient').value,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     
@@ -701,24 +743,36 @@ async function updateClientProfile(userId) {
     }
     
     if (clientType === 'empresa') {
-        updateData.companyName = getValue('editCompanyName');
+        updateData.companyName = document.getElementById('editCompanyName').value;
         if (!updateData.companyName) {
             throw new Error('El nombre de la empresa es obligatorio');
         }
     }
     
     // Subir nueva imagen de perfil si existe
-    const profilePictureFile = getFile('editClientProfilePicture');
+    const profilePictureFile = document.getElementById('editClientProfilePicture').files[0];
     if (profilePictureFile) {
         console.log('🖼️ Subiendo nueva imagen de perfil...');
-        const uploadResult = await uploadToCloudinary(profilePictureFile);
-        updateData.profilePictureUrl = uploadResult.url;
+        try {
+            const uploadResult = await uploadToCloudinary(profilePictureFile);
+            updateData.profilePictureUrl = uploadResult.url;
+        } catch (uploadError) {
+            console.error('❌ Error subiendo imagen:', uploadError);
+            throw new Error('Error al subir la imagen de perfil');
+        }
     }
     
     console.log('📤 Enviando actualización a Firebase...', updateData);
-    await db.collection('clients').doc(userId).update(updateData);
     
-    return { success: true, message: 'Perfil de cliente actualizado' };
+    try {
+        await db.collection('clients').doc(userId).set(updateData, { merge: true });
+        console.log('✅ Perfil de cliente actualizado en Firebase');
+        
+        return { success: true, message: 'Perfil de cliente actualizado' };
+    } catch (firebaseError) {
+        console.error('❌ Error de Firebase:', firebaseError);
+        throw new Error('Error al guardar en la base de datos');
+    }
 }
 
 // =============================================
@@ -886,7 +940,7 @@ async function createJobPost(e) {
 }
 
 // =============================================
-// FUNCIONES AUXILIARES
+// FUNCIONES AUXILIARES (COMPLETAS)
 // =============================================
 
 // Utilidades de DOM
@@ -1027,5 +1081,6 @@ window.closeCreateJobModal = closeCreateJobModal;
 window.closeJobApplicationsModal = closeJobApplicationsModal;
 window.updateTalentProfile = updateTalentProfile;
 window.updateClientProfile = updateClientProfile;
+window.handleProfileUpdate = handleProfileUpdate;
 
 console.log('✅ profile.js COMPLETAMENTE cargado y listo para usar');
