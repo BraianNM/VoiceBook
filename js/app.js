@@ -2,13 +2,19 @@
 console.log('VoiceBook app.js cargado');
 
 // Configuración de Firebase
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyC6dG8l1cLJc6c6X6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q",
-    authDomain: "voicebook-app.firebaseapp.com",
-    projectId: "voicebook-app",
-    storageBucket: "voicebook-app.firebasestorage.app",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef123456"
+  apiKey: "AIzaSyC6G6NgMqrMDyd5PB6_HmLNHpPU-vNJdf0",
+  authDomain: "voicebook-8ba6c.firebaseapp.com",
+  projectId: "voicebook-8ba6c",
+  storageBucket: "voicebook-8ba6c.firebasestorage.app",
+  messagingSenderId: "534166349589",
+  appId: "1:534166349589:web:e5e9c11b488fa52828ab1c"
 };
 
 // Inicializar Firebase
