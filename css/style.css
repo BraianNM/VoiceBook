@@ -1406,4 +1406,159 @@ footer .container {
         width: 24px;
         height: 24px;
     }
+
+    /* Estilos adicionales para el perfil */
+.profile-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.info-item label {
+    font-weight: bold;
+    color: #495057;
+    margin-right: 10px;
+}
+
+.info-item span {
+    color: #212529;
+    text-align: right;
+}
+
+.profile-bio-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+.profile-bio-section h3 {
+    color: #495057;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 8px;
+}
+
+.profile-bio {
+    line-height: 1.6;
+    color: #495057;
+}
+
+.profile-demos-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.demo-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #dee2e6;
+}
+
+.demo-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.demo-name {
+    font-weight: bold;
+    color: #495057;
+}
+
+.demo-duration {
+    font-size: 0.9em;
+    color: #6c757d;
+}
+
+.demo-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.demo-actions audio {
+    width: 200px;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.error-message {
+    text-align: center;
+    padding: 40px;
+    color: #dc3545;
+}
+
+.info-message {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+.btn-block {
+    width: 100%;
+    display: block;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .profile-info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .info-item span {
+        text-align: left;
+        margin-top: 5px;
+    }
+    
+    .demo-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .demo-actions {
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 10px;
+    }
+    
+    .demo-actions audio {
+        width: 100%;
+    }
 }
