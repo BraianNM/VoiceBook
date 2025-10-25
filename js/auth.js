@@ -1,36 +1,7 @@
-// auth.js - Gestión de autenticación (CORREGIDO)
+// auth.js - Gestión de autenticación (CORREGIDO COMPLETAMENTE)
 
 // Variable global para controlar la inicialización
 let authInitialized = false;
-
-// Configuración de Firebase
-const firebaseConfig = {
-    apiKey: "AIzaSyC6G6NgMqrMDyd5PB6_HmLNHpPU-vNJdf0",
-    authDomain: "voicebook-8ba6c.firebaseapp.com",
-    projectId: "voicebook-8ba6c",
-    storageBucket: "voicebook-8ba6c.firebasestorage.app",
-    messagingSenderId: "534166349589",
-    appId: "1:534166349589:web:e5e9c11b488fa52828ab1c"
-};
-
-// Inicializar Firebase solo una vez
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-
-// Inicializar servicios
-const db = firebase.firestore();
-const auth = firebase.auth();
-
-// Configuración de Cloudinary
-const cloudinaryConfig = {
-    cloudName: 'dkujz9gj8',
-    uploadPreset: 'voicebook_demos'
-};
-
-// Estado global de la aplicación
-let currentUser = null;
-let currentUserData = null;
 
 // Función para inicializar autenticación UNA SOLA VEZ
 function initializeAuth() {
@@ -74,7 +45,7 @@ function initializeAuth() {
 function showMessage(element, message, type) {
     const el = typeof element === 'string' ? document.getElementById(element) : element;
     if (el) {
-        el.innerHTML = `<div class="${type}">${message}</div>`;
+        el.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
     }
 }
 window.showMessage = showMessage;
@@ -114,7 +85,11 @@ function updateUIAfterLogin() {
     }
     
     if (headerUserPicture && currentUserData) {
-        headerUserPicture.src = currentUserData.profilePictureUrl || 'img/default-avatar.png';
+        headerUserPicture.src = currentUserData.profilePictureUrl || 
+            (currentUserData.type === 'talent' ? 'img/default-avatar.png' : 'img/default-avatar-client.png');
+        headerUserPicture.onerror = function() {
+            this.src = currentUserData.type === 'talent' ? 'img/default-avatar.png' : 'img/default-avatar-client.png';
+        };
     }
 }
 
@@ -137,7 +112,7 @@ function updateUIAfterLogout() {
     }
 }
 
-// NUEVA FUNCIÓN: Registro de Talento (CORREGIDA)
+// REGISTRO DE TALENTO (CORREGIDO)
 async function registerTalent(e) {
     e.preventDefault();
     const messageDiv = 'talentMessage';
@@ -224,7 +199,7 @@ async function registerTalent(e) {
 }
 window.registerTalent = registerTalent;
 
-// NUEVA FUNCIÓN: Registro de Cliente (CORREGIDA)
+// REGISTRO DE CLIENTE (CORREGIDO)
 async function registerClient(e) {
     e.preventDefault();
     const messageDiv = 'clientMessage';
@@ -305,7 +280,7 @@ async function registerClient(e) {
 }
 window.registerClient = registerClient;
 
-// Función de Login
+// FUNCIÓN DE LOGIN (CORREGIDA)
 async function loginUser(e) {
     e.preventDefault();
     const messageDiv = 'loginMessage';
@@ -319,7 +294,11 @@ async function loginUser(e) {
         
         window.showMessage(messageDiv, '✅ Sesión iniciada. Redirigiendo...', 'success');
         window.closeAllModals();
-        window.location.href = 'profile.html';
+        
+        // Redirigir después de un breve delay para que se carguen los datos
+        setTimeout(() => {
+            window.location.href = 'profile.html';
+        }, 1000);
 
     } catch (error) {
         console.error('❌ Error de login:', error);
@@ -328,7 +307,7 @@ async function loginUser(e) {
 }
 window.loginUser = loginUser;
 
-// Función de Logout
+// FUNCIÓN DE LOGOUT
 function logoutUser() {
     auth.signOut().then(() => {
         updateUIAfterLogout();
@@ -339,14 +318,14 @@ function logoutUser() {
 }
 window.logoutUser = logoutUser;
 
-// Chequear el estado de autenticación al cargar la página (para compatibilidad)
+// CHEQUEAR ESTADO DE AUTENTICACIÓN (para compatibilidad)
 function checkAuthState() {
     console.log('⚠️ Usando checkAuthState (legacy)');
     initializeAuth();
 }
 window.checkAuthState = checkAuthState;
 
-// Cargar datos del usuario (FUNCIÓN NUEVA Y CORREGIDA)
+// CARGAR DATOS DEL USUARIO (FUNCIÓN NUEVA Y CORREGIDA)
 async function loadUserData(userId) {
     try {
         console.log('Cargando datos del usuario:', userId);
@@ -383,7 +362,7 @@ async function loadUserData(userId) {
 }
 window.loadUserData = loadUserData;
 
-// Configuración de Cloudinary
+// CONFIGURACIÓN DE CLOUDINARY (CORREGIDA)
 async function uploadToCloudinary(file) {
     if (typeof cloudinaryConfig === 'undefined') {
         throw new Error('❌ Error: La configuración de Cloudinary no está cargada.');
@@ -426,3 +405,9 @@ async function uploadToCloudinary(file) {
     }
 }
 window.uploadToCloudinary = uploadToCloudinary;
+
+// Inicializar autenticación cuando se carga la página
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ Auth.js cargado - Inicializando autenticación...');
+    initializeAuth();
+});
