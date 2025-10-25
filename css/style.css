@@ -1,4 +1,4 @@
-/* style.css - Estilos COMPLETOS para VoiceBook */
+/* style.css - Estilos COMPLETOS para VoiceBook - VERSIÓN CORREGIDA */
 
 /* Reset y estilos base */
 * {
@@ -113,11 +113,11 @@ body {
     background: #f8f9fa;
 }
 
-/* Main Content */
+/* Main Content - CORRECCIÓN: Añadido padding superior adicional */
 .main-content {
     margin-top: 80px;
     min-height: calc(100vh - 160px);
-    padding: 20px 0;
+    padding: 30px 0;
 }
 
 /* Hero Section */
@@ -266,12 +266,13 @@ body {
     min-width: 200px;
 }
 
-/* Dashboard */
+/* Dashboard - CORRECCIÓN: Mejorado el layout */
 .dashboard {
     display: flex;
     gap: 2rem;
     margin: 2rem 0;
     min-height: 600px;
+    align-items: flex-start;
 }
 
 .dashboard-nav {
@@ -281,6 +282,8 @@ body {
     padding: 1.5rem;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     height: fit-content;
+    position: sticky;
+    top: 100px;
 }
 
 .dashboard-nav button {
@@ -314,13 +317,14 @@ body {
     border-radius: 12px;
     padding: 2rem;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    min-height: 500px;
 }
 
 .dashboard-section {
     display: none;
 }
 
-/* CORRECCIÓN: Estilos para imágenes de perfil */
+/* CORRECCIÓN: Estilos para imágenes de perfil - TAMAÑOS CORREGIDOS */
 .profile-picture-large {
     width: 150px;
     height: 150px;
@@ -363,17 +367,20 @@ body {
     margin-right: 1.5rem;
 }
 
-/* Profile Header */
+/* Profile Header - CORRECCIÓN: Mejorado el layout */
 .profile-header {
     display: flex;
     align-items: center;
     margin-bottom: 2rem;
     padding-bottom: 2rem;
     border-bottom: 1px solid #eee;
+    flex-wrap: wrap;
+    gap: 1.5rem;
 }
 
 .profile-info {
     flex: 1;
+    min-width: 300px;
 }
 
 .profile-info h1 {
@@ -528,7 +535,7 @@ body {
     flex-wrap: wrap;
 }
 
-/* Form Styles */
+/* Form Styles - CORRECCIÓN: Mejorados los estilos de formulario */
 .form {
     max-width: 100%;
 }
@@ -574,6 +581,7 @@ body {
     font-size: 1rem;
     transition: border-color 0.3s ease;
     font-family: inherit;
+    background: white;
 }
 
 .form-group input:focus,
@@ -1421,24 +1429,53 @@ audio::-webkit-media-controls-panel {
     text-decoration: underline;
 }
 
-/* Responsive Design */
+/* CORRECCIONES ESPECÍFICAS PARA EL PROBLEMA DE IMÁGENES GIGANTES */
+.edit-profile-content .form-group input[type="file"] {
+    padding: 0.5rem;
+    border: 2px dashed #007bff;
+    background: #f8f9fa;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.edit-profile-content .form-group input[type="file"]:hover {
+    background: #e9ecef;
+}
+
+/* Asegurar que las imágenes no se desborden */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Mejoras específicas para el dashboard */
+#userProfileContent {
+    min-height: 400px;
+}
+
+/* Responsive Design - MEJORADO */
 @media (max-width: 768px) {
     .dashboard {
         flex-direction: column;
+        gap: 1rem;
     }
     
     .dashboard-nav {
         flex: none;
         order: 2;
+        position: static;
+        width: 100%;
     }
     
     .dashboard-content {
         order: 1;
+        width: 100%;
     }
     
     .profile-header {
         flex-direction: column;
         text-align: center;
+        gap: 1rem;
     }
     
     .profile-picture-large {
@@ -1465,6 +1502,7 @@ audio::-webkit-media-controls-panel {
     .section-filters {
         flex-direction: column;
         align-items: stretch;
+        gap: 1rem;
     }
     
     .filter-group {
@@ -1474,13 +1512,21 @@ audio::-webkit-media-controls-panel {
     
     .modal-content {
         width: 95%;
-        margin: 20px;
+        margin: 10px;
     }
     
     .profile-actions,
     .client-actions,
     .form-actions {
         flex-direction: column;
+        width: 100%;
+    }
+    
+    .profile-actions .btn,
+    .client-actions .btn,
+    .form-actions .btn {
+        width: 100%;
+        justify-content: center;
     }
     
     .card-actions,
@@ -1488,22 +1534,26 @@ audio::-webkit-media-controls-panel {
     .job-actions,
     .talent-actions {
         flex-direction: column;
+        gap: 0.5rem;
     }
     
     .demo-item {
         flex-direction: column;
         align-items: stretch;
         gap: 1rem;
+        text-align: center;
     }
     
     .demo-actions {
         flex-direction: column;
+        gap: 0.5rem;
     }
     
     .notification-item {
         flex-direction: column;
         align-items: stretch;
         text-align: center;
+        gap: 1rem;
     }
     
     .notification-actions {
@@ -1518,6 +1568,13 @@ audio::-webkit-media-controls-panel {
     .cta-buttons {
         flex-direction: column;
         align-items: center;
+        width: 100%;
+    }
+    
+    .hero-buttons .btn,
+    .cta-buttons .btn {
+        width: 100%;
+        max-width: 300px;
     }
     
     .features-grid {
@@ -1526,6 +1583,7 @@ audio::-webkit-media-controls-panel {
     
     .profile-stats {
         grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
     }
     
     .job-details-header {
@@ -1536,16 +1594,24 @@ audio::-webkit-media-controls-panel {
     
     .job-details-actions {
         justify-content: center;
+        flex-wrap: wrap;
     }
     
     .profile-view-header {
         flex-direction: column;
         text-align: center;
+        gap: 1rem;
     }
     
     .profile-view-pic {
         margin-right: 0;
         margin-bottom: 1rem;
+    }
+    
+    /* Corrección específica para móviles */
+    .main-content {
+        margin-top: 70px;
+        padding: 15px 0;
     }
 }
 
@@ -1553,6 +1619,7 @@ audio::-webkit-media-controls-panel {
     .header .container {
         flex-direction: column;
         gap: 1rem;
+        padding: 0.5rem 20px;
     }
     
     .nav {
@@ -1563,6 +1630,8 @@ audio::-webkit-media-controls-panel {
     .auth-buttons {
         width: 100%;
         justify-content: center;
+        flex-direction: column;
+        gap: 0.5rem;
     }
     
     .profile-stats {
@@ -1578,6 +1647,14 @@ audio::-webkit-media-controls-panel {
     }
     
     .section-header h2 {
+        font-size: 2rem;
+    }
+    
+    .dashboard-content {
+        padding: 1rem;
+    }
+    
+    .profile-info h1 {
         font-size: 2rem;
     }
 }
@@ -1679,4 +1756,47 @@ textarea:focus-visible {
     .main-content {
         margin-top: 0;
     }
+}
+
+/* CORRECCIONES FINALES PARA GARANTIZAR FUNCIONALIDAD */
+.profile-picture-large,
+.profile-picture-medium,
+.profile-picture-small,
+.talent-profile-pic,
+.profile-view-pic {
+    display: block;
+    flex-shrink: 0;
+}
+
+/* Asegurar que los botones de guardar sean visibles */
+#saveProfileChanges {
+    margin-top: 1rem;
+}
+
+/* Mejorar la visualización de mensajes */
+#editProfileMessage {
+    min-height: 60px;
+}
+
+/* Asegurar que los formularios sean funcionales */
+.form-group input[type="file"] {
+    cursor: pointer;
+}
+
+/* Corrección para el dashboard en móviles */
+@media (max-width: 768px) {
+    .dashboard-nav button {
+        padding: 0.875rem;
+        font-size: 0.9rem;
+    }
+    
+    .dashboard-content {
+        min-height: 400px;
+    }
+}
+
+/* Garantizar que las imágenes no se desborden */
+.dashboard-content img {
+    max-width: 100%;
+    height: auto;
 }
