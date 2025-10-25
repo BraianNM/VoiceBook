@@ -742,6 +742,237 @@ function setupEventListeners() {
     }
 }
 
+// =============================================
+// FUNCIONES PARA CREAR TRABAJOS - NUEVAS
+// =============================================
+
+// Funciones para crear trabajos
+function showCreateJobModal() {
+    console.log('Mostrando modal de creación de trabajo');
+    
+    if (!currentUser || currentUserData.type !== 'client') {
+        alert('Solo los clientes pueden crear ofertas de trabajo.');
+        return;
+    }
+    
+    const modal = document.getElementById('createJobModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        
+        // Limpiar formulario
+        const form = document.getElementById('createJobForm');
+        if (form) form.reset();
+        
+        // Limpiar mensajes
+        const messageDiv = document.getElementById('createJobMessage');
+        if (messageDiv) {
+            messageDiv.style.display = 'none';
+            messageDiv.textContent = '';
+        }
+    }
+}
+
+function closeCreateJobModal() {
+    const modal = document.getElementById('createJobModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Función para crear trabajo (submit del formulario)
+async function createJob(e) {
+    if (e) e.preventDefault();
+    console.log('Creando nuevo trabajo...');
+    
+    const messageDiv = document.getElementById('createJobMessage');
+    
+    if (!currentUser || currentUserData.type !== 'client') {
+        showMessage(messageDiv, '❌ Solo los clientes pueden crear trabajos.', 'error');
+        return;
+    }
+    
+    // Obtener datos del formulario
+    const title = document.getElementById('jobTitle')?.value;
+    const description = document.getElementById('jobDescription')?.value;
+    const budget = document.getElementById('jobBudget')?.value;
+    const deadline = document.getElementById('jobDeadline')?.value;
+    const gender = document.getElementById('jobGender')?.value;
+    const ageRange = document.getElementById('jobAgeRange')?.value;
+    
+    // Obtener idiomas seleccionados
+    const languages = [];
+    for (let i = 1; i <= 5; i++) {
+        const checkbox = document.getElementById('jobLang' + i);
+        if (checkbox && checkbox.checked) {
+            languages.push(checkbox.value);
+        }
+    }
+    
+    // Validaciones básicas
+    if (!title || !description) {
+        showMessage(messageDiv, '❌ Título y descripción son obligatorios.', 'error');
+        return;
+    }
+    
+    if (languages.length === 0) {
+        showMessage(messageDiv, '❌ Selecciona al menos un idioma.', 'error');
+        return;
+    }
+    
+    showMessage(messageDiv, '⌛ Creando oferta de trabajo...', 'info');
+    
+    try {
+        const jobData = {
+            title: title,
+            description: description,
+            budget: budget ? parseFloat(budget) : 0,
+            deadline: deadline,
+            gender: gender || '',
+            ageRange: ageRange || '',
+            languages: languages,
+            clientId: currentUser.uid,
+            clientName: currentUserData.name || 'Cliente',
+            clientEmail: currentUserData.email,
+            status: 'active',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            applicants: []
+        };
+        
+        // Guardar en Firestore
+        await db.collection('jobs').add(jobData);
+        
+        showMessage(messageDiv, '✅ Oferta de trabajo creada exitosamente!', 'success');
+        
+        // Cerrar modal y recargar después de 2 segundos
+        setTimeout(() => {
+            closeCreateJobModal();
+            
+            // Recargar la lista de trabajos si estamos en esa sección
+            if (typeof loadClientJobs === 'function') {
+                loadClientJobs();
+            }
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Error creando trabajo:', error);
+        showMessage(messageDiv, '❌ Error al crear el trabajo: ' + error.message, 'error');
+    }
+}
+
+// Función para cargar trabajos del cliente
+async function loadClientJobs() {
+    console.log('Cargando trabajos del cliente...');
+    
+    const jobsList = document.getElementById('jobsList');
+    if (!jobsList) return;
+    
+    if (!currentUser || currentUserData.type !== 'client') {
+        jobsList.innerHTML = '<p>Solo los clientes pueden ver esta sección.</p>';
+        return;
+    }
+    
+    try {
+        jobsList.innerHTML = '<p>Cargando trabajos...</p>';
+        
+        const jobsSnapshot = await db.collection('jobs')
+            .where('clientId', '==', currentUser.uid)
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        const jobs = [];
+        jobsSnapshot.forEach(doc => {
+            const job = doc.data();
+            job.id = doc.id;
+            jobs.push(job);
+        });
+        
+        console.log('Trabajos del cliente cargados:', jobs.length);
+        
+        if (jobs.length === 0) {
+            jobsList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-briefcase fa-3x text-muted mb-3"></i>
+                    <h3>No hay ofertas de trabajo</h3>
+                    <p>Crea tu primera oferta para encontrar talentos</p>
+                    <button class="btn btn-primary" onclick="showCreateJobModal()">
+                        <i class="fas fa-plus"></i> Crear Primera Oferta
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        let jobsHtml = '';
+        jobs.forEach(job => {
+            const budget = job.budget ? `$${job.budget}` : 'A convenir';
+            const deadline = job.deadline ? new Date(job.deadline).toLocaleDateString() : 'Sin fecha límite';
+            const status = job.status === 'active' ? 'Activa' : 'Inactiva';
+            const statusClass = job.status === 'active' ? 'status-active' : 'status-inactive';
+            
+            jobsHtml += `
+                <div class="job-item">
+                    <div class="job-item-header">
+                        <h4>${job.title}</h4>
+                        <span class="job-budget">${budget}</span>
+                    </div>
+                    <div class="job-item-details">
+                        <p class="job-description">${job.description}</p>
+                        <div class="job-meta">
+                            <span class="job-deadline"><i class="fas fa-calendar"></i> ${deadline}</span>
+                            <span class="job-status ${statusClass}"><i class="fas fa-circle"></i> ${status}</span>
+                            <span class="job-applicants"><i class="fas fa-users"></i> ${job.applicants?.length || 0} postulantes</span>
+                        </div>
+                        <div class="job-tags">
+                            ${job.languages?.map(lang => `<span class="tag">${lang}</span>`).join('') || ''}
+                        </div>
+                    </div>
+                    <div class="job-item-actions">
+                        <button class="btn btn-outline btn-sm" onclick="viewJobApplications('${job.id}')">
+                            <i class="fas fa-eye"></i> Ver Postulantes
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="editJob('${job.id}')">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        jobsList.innerHTML = jobsHtml;
+        
+    } catch (error) {
+        console.error('Error cargando trabajos del cliente:', error);
+        jobsList.innerHTML = '<p class="text-danger">Error al cargar los trabajos.</p>';
+    }
+}
+
+// Funciones placeholder para otras funcionalidades
+function viewJobApplications(jobId) {
+    alert(`Funcionalidad en desarrollo - Ver postulantes del trabajo: ${jobId}`);
+}
+
+function editJob(jobId) {
+    alert(`Funcionalidad en desarrollo - Editar trabajo: ${jobId}`);
+}
+
+function loadTalentApplications() {
+    const applicationsList = document.getElementById('applicationsList');
+    if (applicationsList) {
+        applicationsList.innerHTML = '<p>Funcionalidad en desarrollo. Aquí se mostrarán tus postulaciones.</p>';
+    }
+}
+
+function loadUserNotifications() {
+    const notificationsList = document.getElementById('notificationsList');
+    if (notificationsList) {
+        notificationsList.innerHTML = '<p>Funcionalidad en desarrollo. Aquí se mostrarán tus notificaciones.</p>';
+    }
+}
+
+// =============================================
+// INICIALIZACIÓN
+// =============================================
+
 // Inicialización cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
     console.log('VoiceBook inicializando...');
@@ -765,24 +996,11 @@ window.logout = logout;
 window.checkAuthState = checkAuthState;
 window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
-// Función temporal para evitar errores - AGREGAR AL FINAL DE app.js
-function setupJob() {
-    console.log('setupJob llamado - función temporal');
-    
-    if (!currentUser) {
-        alert('Debes iniciar sesión para crear ofertas de trabajo.');
-        showAuthModal('login');
-        return;
-    }
-    
-    if (currentUserData.type !== 'client') {
-        alert('Solo los clientes pueden crear ofertas de trabajo.');
-        return;
-    }
-    
-    // Redirigir al perfil donde debería estar el formulario
-    window.location.href = 'profile.html';
-}
-
-// Hacer global
-window.setupJob = setupJob;
+window.showCreateJobModal = showCreateJobModal;
+window.closeCreateJobModal = closeCreateJobModal;
+window.createJob = createJob;
+window.loadClientJobs = loadClientJobs;
+window.loadTalentApplications = loadTalentApplications;
+window.loadUserNotifications = loadUserNotifications;
+window.viewJobApplications = viewJobApplications;
+window.editJob = editJob;
