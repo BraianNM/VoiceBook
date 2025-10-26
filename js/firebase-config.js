@@ -1,4 +1,4 @@
-// Configuración de Firebase
+// 🔥 CONFIGURACIÓN DE FIREBASE - REEMPLAZA CON TUS DATOS REALES
 const firebaseConfig = {
     apiKey: "AIzaSyC6G6NgMqrMDyd5PB6_HmLNHpPU-vNJdf0",
     authDomain: "voicebook-8ba6c.firebaseapp.com",
@@ -12,12 +12,14 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
 // Inicializar servicios
-const auth = firebase.auth();
 const db = firebase.firestore();
-const storage = firebase.storage();
+const auth = firebase.auth();
 
-// Variables globales
+// Configuración de Cloudinary para VoiceBook - CORREGIDO
+const cloudinaryConfig = {
+    cloudName: 'dkujz9gj8',
+    uploadPreset: 'voicebook_demos'
+};
+
+// Estado global de la aplicación
 let currentUser = null;
-let currentUserData = null;
-
-console.log('Firebase configurado correctamente');

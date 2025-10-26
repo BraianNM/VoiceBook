@@ -1,362 +1,266 @@
-// Autenticación y registro de usuarios
+// Este archivo contiene toda la lógica de autenticación (Registro, Login, Logout)
+// y la subida a Cloudinary.
+
+// Funciones auxiliares (asegúrate de que estén definidas en app.js si no lo están aquí)
+function showMessage(element, message, type) {
+    const el = typeof element === 'string' ? document.getElementById(element) : element;
+    if (el) {
+        el.innerHTML = `<div class="${type}">${message}</div>`;
+    }
+}
+window.showMessage = showMessage;
+
+function closeAllModals() {
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.style.display = 'none';
+    });
+}
+window.closeAllModals = closeAllModals;
+
+function getSelectedLanguages() {
+    const languages = [];
+    for (let i = 1; i <= 10; i++) {
+        const checkbox = document.getElementById('lang' + i);
+        if (checkbox && checkbox.checked) {
+            languages.push(checkbox.value === 'otros' ? document.getElementById('otherLanguages').value : checkbox.value);
+        }
+    }
+    return languages.filter(lang => lang);
+}
+
+
+// Funciones para actualizar la interfaz de usuario
+function updateUIAfterLogin() {
+    const authButtons = document.getElementById('authButtons');
+    const userMenu = document.getElementById('userMenu');
+    const dashboardLink = document.getElementById('dashboardLink');
+    const userName = document.getElementById('userName');
+
+    if (authButtons) authButtons.style.display = 'none';
+    if (userMenu) userMenu.style.display = 'flex';
+    if (dashboardLink) dashboardLink.style.display = 'block';
+    
+    if (userName && currentUser) {
+        // Se asume que el nombre está en el perfil de usuario o se cargará
+        userName.textContent = currentUser.email; 
+    }
+}
+
+function updateUIAfterLogout() {
+    const authButtons = document.getElementById('authButtons');
+    const userMenu = document.getElementById('userMenu');
+    const dashboardLink = document.getElementById('dashboardLink');
+
+    if (authButtons) authButtons.style.display = 'flex';
+    if (userMenu) userMenu.style.display = 'none';
+    if (dashboardLink) dashboardLink.style.display = 'none';
+    
+    // Redirigir al index si no está en index
+    if (window.location.pathname.includes('profile.html')) {
+        window.location.href = 'index.html';
+    }
+}
+
+
+// Funciones de Autenticación
 
 // Verificar estado de autenticación
-window.checkAuthState = function() {
-    auth.onAuthStateChanged(async (user) => {
-        currentUser = user;
-        const authButtons = document.getElementById('authButtons');
-        const userMenu = document.getElementById('userMenu');
-        const userNameSpan = document.getElementById('userName');
-
+function checkAuthState() {
+    auth.onAuthStateChanged((user) => {
         if (user) {
-            console.log('Usuario autenticado:', user.uid);
-            
-            try {
-                let userDoc;
-                
-                // Intentar obtener como talento primero
-                userDoc = await db.collection('talents').doc(user.uid).get();
-                if (userDoc.exists) {
-                    currentUserData = userDoc.data();
-                    currentUserData.type = 'talent';
-                } else {
-                    // Intentar obtener como cliente
-                    userDoc = await db.collection('clients').doc(user.uid).get();
-                    if (userDoc.exists) {
-                        currentUserData = userDoc.data();
-                        currentUserData.type = 'client';
-                    } else {
-                        console.log('Usuario no encontrado en ninguna colección');
-                        currentUserData = null;
-                    }
-                }
-
-                // Actualizar UI
-                if (authButtons && userMenu) {
-                    authButtons.style.display = 'none';
-                    userMenu.style.display = 'flex';
-                    
-                    if (userNameSpan && currentUserData) {
-                        userNameSpan.textContent = currentUserData.name || user.email;
-                    }
-                }
-
-                // Si estamos en profile.html, cargar el perfil
-                if (window.location.href.includes('profile.html')) {
-                    if (typeof window.loadUserProfile === 'function') {
-                        window.loadUserProfile();
-                    }
-                }
-
-            } catch (error) {
-                console.error('Error obteniendo datos del usuario:', error);
-            }
+            currentUser = user;
+            updateUIAfterLogin();
+            // loadUserProfile se llama en profile.html o app.js
         } else {
-            console.log('Usuario no autenticado');
             currentUser = null;
-            currentUserData = null;
-            
-            if (authButtons && userMenu) {
-                authButtons.style.display = 'flex';
-                userMenu.style.display = 'none';
-            }
-
-            // Redirigir a index.html si está en profile.html sin autenticación
-            if (window.location.href.includes('profile.html')) {
-                window.location.href = 'index.html';
-            }
+            updateUIAfterLogout();
         }
     });
-};
+}
+window.checkAuthState = checkAuthState;
 
-// Registrar talento
+// Registro de Talento (Lógica simplificada)
 async function registerTalent(e) {
     e.preventDefault();
-    console.log('Iniciando registro de talento...');
-
-    const formData = new FormData(e.target);
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
+    const form = e.target;
+    const messageDiv = document.getElementById('talentMessage');
 
     try {
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
-        submitBtn.disabled = true;
-
-        // Validar contraseña
-        const password = formData.get('password');
-        const confirmPassword = formData.get('confirmPassword');
+        const email = form.email.value;
+        const password = form.password.value;
         
-        if (password !== confirmPassword) {
-            throw new Error('Las contraseñas no coinciden');
-        }
-
-        if (password.length < 6) {
-            throw new Error('La contraseña debe tener al menos 6 caracteres');
-        }
-
-        // Crear usuario en Firebase Auth
-        const userCredential = await auth.createUserWithEmailAndPassword(
-            formData.get('email'), 
-            password
-        );
-        
+        // 1. Crear usuario en Firebase Auth
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
-        console.log('Usuario creado:', user.uid);
 
-        // Preparar datos para Firestore
+        // 2. Guardar perfil de talento en Firestore
         const talentData = {
-            name: formData.get('name'),
-            email: formData.get('email'),
-            phone: formData.get('phone'),
-            country: formData.get('country'),
-            state: formData.get('state'),
-            city: formData.get('city'),
-            gender: formData.get('gender'),
-            ageRange: formData.get('ageRange'),
-            realAge: formData.get('realAge'),
-            nationality: formData.get('nationality'),
-            bio: formData.get('bio'),
-            homeStudio: formData.get('homeStudio'),
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            name: form.name.value,
+            email: email,
+            phone: form.phone.value,
+            gender: form.gender.value,
+            nationality: form.nationality.value,
+            homeStudio: form.homeStudio.value,
+            city: form.city.value,
+            state: form.state.value,
+            country: form.country.value,
+            realAge: form.realAge.value,
+            ageRange: form.ageRange.value,
+            languages: getSelectedLanguages(),
+            description: '', // Se actualizará en la edición
+            demos: [], // Se actualizará en la edición
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
-
-        // Procesar idiomas
-        const languages = [];
-        for (let i = 1; i <= 10; i++) {
-            if (formData.get(`lang${i}`)) {
-                languages.push(formData.get(`lang${i}`));
-            }
-        }
-        if (formData.get('otherLanguages')) {
-            languages.push(formData.get('otherLanguages'));
-        }
-        talentData.languages = languages;
-
-        // Subir foto de perfil si existe
-        const profilePicture = formData.get('profilePicture');
-        if (profilePicture && profilePicture.size > 0) {
-            try {
-                const storageRef = storage.ref(`profile-pictures/${user.uid}`);
-                const snapshot = await storageRef.put(profilePicture);
-                const downloadURL = await snapshot.ref.getDownloadURL();
-                talentData.profilePictureUrl = downloadURL;
-            } catch (uploadError) {
-                console.error('Error subiendo foto de perfil:', uploadError);
-            }
-        }
-
-        // Guardar en Firestore
-        await db.collection('talents').doc(user.uid).set(talentData);
-        console.log('Talento guardado en Firestore');
-
-        // Cerrar modal y mostrar mensaje
-        window.closeAllModals();
-        alert('¡Registro exitoso! Bienvenido/a a VoiceBook.');
         
-        // Recargar la página para actualizar el estado
+        await db.collection('talents').doc(user.uid).set(talentData);
+        
+        showMessage(messageDiv, '✅ Registro de talento exitoso. Redirigiendo...', 'success');
+        
         setTimeout(() => {
-            window.location.reload();
-        }, 2000);
+            closeAllModals();
+            window.location.href = 'profile.html';
+        }, 1500);
 
     } catch (error) {
-        console.error('Error en registro de talento:', error);
-        let errorMessage = 'Error en el registro: ';
-        
-        switch (error.code) {
-            case 'auth/email-already-in-use':
-                errorMessage += 'El email ya está registrado.';
-                break;
-            case 'auth/invalid-email':
-                errorMessage += 'El email no es válido.';
-                break;
-            case 'auth/weak-password':
-                errorMessage += 'La contraseña es demasiado débil.';
-                break;
-            default:
-                errorMessage += error.message;
+        console.error('❌ Error de registro:', error);
+        let errorMessage = 'Error al registrar. Intenta con otro email.';
+        if (error.code === 'auth/email-already-in-use') {
+             errorMessage = 'El email ya está registrado.';
         }
-        
-        alert(errorMessage);
-    } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
+        showMessage(messageDiv, `❌ ${errorMessage}`, 'error');
     }
 }
+window.registerTalent = registerTalent;
 
-// Registrar cliente
+// Registro de Cliente
 async function registerClient(e) {
     e.preventDefault();
-    console.log('Iniciando registro de cliente...');
-
-    const formData = new FormData(e.target);
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
+    const form = e.target;
+    const messageDiv = document.getElementById('clientMessage');
 
     try {
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
-        submitBtn.disabled = true;
-
-        // Validar contraseña
-        const password = formData.get('password');
-        const confirmPassword = formData.get('confirmPassword');
+        const email = form.email.value;
+        const password = form.password.value;
         
-        if (password !== confirmPassword) {
-            throw new Error('Las contraseñas no coinciden');
-        }
-
-        if (password.length < 6) {
-            throw new Error('La contraseña debe tener al menos 6 caracteres');
-        }
-
-        // Crear usuario en Firebase Auth
-        const userCredential = await auth.createUserWithEmailAndPassword(
-            formData.get('email'), 
-            password
-        );
-        
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
-        console.log('Cliente creado:', user.uid);
 
-        // Preparar datos para Firestore
-        const clientData = {
-            name: formData.get('name'),
-            email: formData.get('email'),
-            phone: formData.get('phone'),
-            clientType: formData.get('clientType'),
-            country: formData.get('country'),
-            state: formData.get('state'),
-            city: formData.get('city'),
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        // Agregar nombre de empresa si es empresa
-        if (formData.get('clientType') === 'empresa') {
-            clientData.companyName = formData.get('companyName');
-        }
-
-        // Subir foto de perfil si existe
-        const profilePicture = formData.get('profilePicture');
-        if (profilePicture && profilePicture.size > 0) {
-            try {
-                const storageRef = storage.ref(`profile-pictures/${user.uid}`);
-                const snapshot = await storageRef.put(profilePicture);
-                const downloadURL = await snapshot.ref.getDownloadURL();
-                clientData.profilePictureUrl = downloadURL;
-            } catch (uploadError) {
-                console.error('Error subiendo foto de perfil:', uploadError);
-            }
-        }
-
-        // Guardar en Firestore
-        await db.collection('clients').doc(user.uid).set(clientData);
-        console.log('Cliente guardado en Firestore');
-
-        // Cerrar modal y mostrar mensaje
-        window.closeAllModals();
-        alert('¡Registro exitoso! Bienvenido/a a VoiceBook.');
+        const clientType = form.clientType.value;
         
-        // Recargar la página para actualizar el estado
+        const clientData = {
+            name: form.name.value,
+            email: email,
+            phone: form.phone.value,
+            type: clientType,
+            companyName: clientType === 'empresa' ? form.companyName.value : null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        await db.collection('clients').doc(user.uid).set(clientData);
+        
+        showMessage(messageDiv, '✅ Registro de cliente exitoso. Redirigiendo...', 'success');
+        
         setTimeout(() => {
-            window.location.reload();
-        }, 2000);
+            closeAllModals();
+            window.location.href = 'profile.html';
+        }, 1500);
 
     } catch (error) {
-        console.error('Error en registro de cliente:', error);
-        let errorMessage = 'Error en el registro: ';
-        
-        switch (error.code) {
-            case 'auth/email-already-in-use':
-                errorMessage += 'El email ya está registrado.';
-                break;
-            case 'auth/invalid-email':
-                errorMessage += 'El email no es válido.';
-                break;
-            case 'auth/weak-password':
-                errorMessage += 'La contraseña es demasiado débil.';
-                break;
-            default:
-                errorMessage += error.message;
+        console.error('❌ Error de registro:', error);
+        let errorMessage = 'Error al registrar. Intenta con otro email.';
+        if (error.code === 'auth/email-already-in-use') {
+             errorMessage = 'El email ya está registrado.';
         }
-        
-        alert(errorMessage);
-    } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
+        showMessage(messageDiv, `❌ ${errorMessage}`, 'error');
     }
 }
+window.registerClient = registerClient;
 
-// Iniciar sesión
+// Inicio de sesión
 async function loginUser(e) {
     e.preventDefault();
-    console.log('Iniciando sesión...');
-
-    const formData = new FormData(e.target);
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-
+    const form = e.target;
+    const messageDiv = document.getElementById('loginMessage');
+    
     try {
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Iniciando sesión...';
-        submitBtn.disabled = true;
-
-        const userCredential = await auth.signInWithEmailAndPassword(
-            formData.get('email'), 
-            formData.get('password')
-        );
+        const email = form.loginEmail.value;
+        const password = form.loginPassword.value;
         
-        console.log('Sesión iniciada:', userCredential.user.uid);
-        window.closeAllModals();
+        await auth.signInWithEmailAndPassword(email, password);
         
-        // Mostrar mensaje de bienvenida
-        alert('¡Bienvenido de nuevo!');
+        showMessage(messageDiv, '¡Inicio de sesión exitoso! Redirigiendo a tu perfil...', 'success');
         
-        // Si está en index.html, recargar para actualizar UI
-        if (!window.location.href.includes('profile.html')) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        }
-
+        setTimeout(() => {
+            closeAllModals();
+            window.location.href = 'profile.html';
+        }, 1000);
+        
     } catch (error) {
-        console.error('Error iniciando sesión:', error);
-        let errorMessage = 'Error al iniciar sesión: ';
+        console.error('❌ Error de inicio de sesión:', error);
         
-        switch (error.code) {
-            case 'auth/user-not-found':
-                errorMessage += 'Usuario no encontrado.';
-                break;
-            case 'auth/wrong-password':
-                errorMessage += 'Contraseña incorrecta.';
-                break;
-            case 'auth/invalid-email':
-                errorMessage += 'Email no válido.';
-                break;
-            default:
-                errorMessage += error.message;
+        let errorMessage = 'Error de inicio de sesión. Verifica tu email y contraseña.';
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            errorMessage = 'Email o contraseña incorrectos.';
+        } else if (error.code === 'auth/invalid-email') {
+            errorMessage = 'Formato de email inválido.';
         }
         
-        alert(errorMessage);
-    } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
+        showMessage(messageDiv, `❌ ${errorMessage}`, 'error');
     }
 }
+window.loginUser = loginUser;
 
 // Cerrar sesión
-async function logoutUser() {
+async function logoutUser(e) {
+    if (e) e.preventDefault();
     try {
         await auth.signOut();
-        console.log('Sesión cerrada');
-        currentUser = null;
-        currentUserData = null;
-        
-        // Redirigir a index.html
-        window.location.href = 'index.html';
+        // Redirección manejada por updateUIAfterLogout
     } catch (error) {
-        console.error('Error cerrando sesión:', error);
-        alert('Error al cerrar sesión: ' + error.message);
+        console.error('Error al cerrar sesión:', error);
     }
 }
+window.logoutUser = logoutUser;
 
-console.log('Auth.js cargado correctamente');
+
+// ========== CLOUDINARY PARA SUBIDA DE ARCHIVOS (CRÍTICO) ==========
+
+// Subir archivo de audio a Cloudinary - FUNCIÓN GLOBAL
+async function uploadToCloudinary(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+    formData.append('resource_type', 'auto');
+
+    try {
+        console.log('📤 Iniciando subida a Cloudinary:', file.name);
+        
+        const response = await fetch(
+            `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/upload`,
+            {
+                method: 'POST',
+                body: formData
+            }
+        );
+        
+        const data = await response.json();
+        
+        if (data.secure_url) {
+            console.log('✅ Archivo subido exitosamente:', data.secure_url);
+            return {
+                url: data.secure_url,
+                publicId: data.public_id,
+                duration: data.duration || 0, // Cloudinary devuelve la duración para audios
+                format: data.format,
+                resource_type: data.resource_type
+            };
+        } else {
+            console.error('❌ Falló la subida de Cloudinary:', data);
+            throw new Error(`Error en Cloudinary: ${data.error ? data.error.message : 'Respuesta inesperada'}`);
+        }
+    } catch (error) {
+        console.error('❌ Error general al subir a Cloudinary:', error);
+        throw new Error('Error al subir el archivo de audio. Revisa tu conexión y configuración de Cloudinary.');
+    }
+}
+window.uploadToCloudinary = uploadToCloudinary;
