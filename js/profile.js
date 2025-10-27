@@ -1,47 +1,29 @@
 // Gestión de perfiles de usuario (CORREGIDO Y MEJORADO)
 
 // Cargar perfil del usuario
-window.loadUserProfile = async function() {
+window.loadUserProfile = async function(userId = null) {
     console.log('Cargando perfil del usuario...');
     
-    const profileContent = document.getElementById('profileContent');
-    const profileSpinner = document.getElementById('profileSpinner');
-    
-    if (!currentUser) {
-        console.log('No hay usuario autenticado');
-        if (profileContent) {
-            profileContent.innerHTML = `
-                <div class="alert alert-warning text-center">
-                    <h4><i class="fas fa-exclamation-triangle"></i> No autenticado</h4>
-                    <p>Debes iniciar sesión para ver tu perfil.</p>
-                    <button class="btn btn-primary mt-3" onclick="window.location.href='index.html'">
-                        <i class="fas fa-home"></i> Ir a Inicio
-                    </button>
-                </div>
-            `;
-        }
-        if (profileSpinner) profileSpinner.style.display = 'none';
+    const userIdToLoad = userId || (currentUser ? currentUser.uid : null);
+    if (!userIdToLoad) {
+        console.error('No hay usuario para cargar perfil');
         return;
     }
 
     try {
-        console.log('Buscando datos del usuario:', currentUser.uid);
+        console.log('Buscando datos del usuario:', userIdToLoad);
         
-        // Mostrar spinner
-        if (profileSpinner) profileSpinner.style.display = 'block';
-        if (profileContent) profileContent.innerHTML = '';
-
         let userData = null;
         let userType = null;
 
         // Buscar en ambas colecciones
-        const talentDoc = await db.collection('talents').doc(currentUser.uid).get();
+        const talentDoc = await db.collection('talents').doc(userIdToLoad).get();
         if (talentDoc.exists) {
             userData = talentDoc.data();
             userType = 'talent';
             console.log('Usuario encontrado como talento:', userData);
         } else {
-            const clientDoc = await db.collection('clients').doc(currentUser.uid).get();
+            const clientDoc = await db.collection('clients').doc(userIdToLoad).get();
             if (clientDoc.exists) {
                 userData = clientDoc.data();
                 userType = 'client';
@@ -53,50 +35,33 @@ window.loadUserProfile = async function() {
             throw new Error('Perfil no encontrado en la base de datos');
         }
 
-        // Actualizar currentUserData global
-        currentUserData = userData;
-        currentUserData.type = userType;
-
-        // Renderizar el perfil según el tipo de usuario
-        if (profileContent) {
-            if (userType === 'talent') {
-                profileContent.innerHTML = renderTalentProfile(userData);
-                setupTalentEventListeners();
-            } else {
-                profileContent.innerHTML = renderClientProfile(userData);
-                setupClientEventListeners();
-            }
+        // Actualizar currentUserData global si es el usuario actual
+        if (!userId || userId === currentUser.uid) {
+            currentUserData = userData;
+            currentUserData.type = userType;
         }
 
-        console.log('Perfil cargado exitosamente');
+        // Renderizar el perfil según el tipo de usuario
+        if (userType === 'talent') {
+            return renderTalentProfile(userData, userIdToLoad);
+        } else {
+            return renderClientProfile(userData, userIdToLoad);
+        }
 
     } catch (error) {
         console.error('Error cargando perfil:', error);
-        
-        if (profileContent) {
-            profileContent.innerHTML = `
-                <div class="alert alert-danger text-center">
-                    <h4><i class="fas fa-exclamation-circle"></i> Error al cargar el perfil</h4>
-                    <p>${error.message}</p>
-                    <div class="mt-3">
-                        <button class="btn btn-primary" onclick="window.loadUserProfile()">
-                            <i class="fas fa-redo"></i> Reintentar
-                        </button>
-                        <button class="btn btn-outline ml-2" onclick="window.location.href='index.html'">
-                            <i class="fas fa-home"></i> Ir a Inicio
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-    } finally {
-        // Ocultar spinner
-        if (profileSpinner) profileSpinner.style.display = 'none';
+        return `
+            <div class="alert alert-danger text-center">
+                <h4><i class="fas fa-exclamation-circle"></i> Error al cargar el perfil</h4>
+                <p>${error.message}</p>
+            </div>
+        `;
     }
 };
 
 // Renderizar perfil de talento
-function renderTalentProfile(talent) {
+function renderTalentProfile(talent, talentId = null) {
+    const isOwnProfile = !talentId || talentId === currentUser?.uid;
     const countryName = typeof getCountryName !== 'undefined' && talent.country ? getCountryName(talent.country) : talent.country;
     const stateName = typeof getStateName !== 'undefined' && talent.country && talent.state ? getStateName(talent.country, talent.state) : talent.state;
     const languages = talent.languages && talent.languages.length > 0 ? talent.languages.join(', ') : 'No especificado';
@@ -109,9 +74,11 @@ function renderTalentProfile(talent) {
         <div class="profile-header">
             <div class="profile-picture-section">
                 <img src="${profilePicture}" alt="${talent.name}" class="profile-picture-large" onerror="this.src='https://via.placeholder.com/150/007bff/ffffff?text=VO'">
-                <button class="btn btn-outline btn-sm mt-2" onclick="changeProfilePicture()">
-                    <i class="fas fa-camera"></i> Cambiar foto
-                </button>
+                ${isOwnProfile ? `
+                    <button class="btn btn-outline btn-sm mt-2" onclick="changeProfilePicture()">
+                        <i class="fas fa-camera"></i> Cambiar foto
+                    </button>
+                ` : ''}
             </div>
             <div class="profile-info">
                 <h2>${talent.name || 'Nombre no especificado'}</h2>
@@ -126,14 +93,27 @@ function renderTalentProfile(talent) {
             </div>
         </div>
 
-        <div class="profile-actions">
-            <button class="btn btn-primary" onclick="editTalentProfile()">
-                <i class="fas fa-edit"></i> Editar Perfil
-            </button>
-            <button class="btn btn-outline" onclick="loadUserApplications()">
-                <i class="fas fa-briefcase"></i> Mis Postulaciones
-            </button>
-        </div>
+        ${isOwnProfile ? `
+            <div class="profile-actions">
+                <button class="btn btn-primary" onclick="editTalentProfile()">
+                    <i class="fas fa-edit"></i> Editar Perfil
+                </button>
+                <button class="btn btn-outline" onclick="loadUserApplications()">
+                    <i class="fas fa-briefcase"></i> Mis Postulaciones
+                </button>
+            </div>
+        ` : `
+            <div class="profile-actions">
+                ${currentUserData?.type === 'client' ? `
+                    <button class="btn btn-primary" onclick="addToFavorites('${talentId}')">
+                        <i class="fas fa-heart"></i> Agregar a Favoritos
+                    </button>
+                ` : ''}
+                <button class="btn btn-outline" onclick="contactTalent('${talentId}')">
+                    <i class="fas fa-envelope"></i> Contactar
+                </button>
+            </div>
+        `}
 
         <div class="profile-sections">
             <div class="profile-section">
@@ -141,7 +121,7 @@ function renderTalentProfile(talent) {
                 <div class="info-grid">
                     <div class="info-item">
                         <label>Teléfono:</label>
-                        <span>${talent.phone || 'No especificado'}</span>
+                        <span>${isOwnProfile || currentUser ? (talent.phone || 'No especificado') : '<em>Inicia sesión para ver</em>'}</span>
                     </div>
                     <div class="info-item">
                         <label>Género:</label>
@@ -174,58 +154,62 @@ function renderTalentProfile(talent) {
                 <div id="demosContainer" class="demos-container">
                     ${renderDemos(talent.demos)}
                 </div>
-                <button class="btn btn-outline btn-sm mt-2" onclick="showUploadDemoModal()">
-                    <i class="fas fa-plus"></i> Agregar Demo
-                </button>
+                ${isOwnProfile ? `
+                    <button class="btn btn-outline btn-sm mt-2" onclick="showUploadDemoModal()">
+                        <i class="fas fa-plus"></i> Agregar Demo
+                    </button>
+                ` : ''}
             </div>
         </div>
 
-        <!-- Modal para editar perfil -->
-        <div id="editTalentModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-edit"></i> Editar Perfil de Talento</h3>
-                    <span class="close-modal" onclick="closeEditModal()">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <form id="editTalentForm" onsubmit="updateTalentProfile(event)">
-                        <!-- El formulario se llenará dinámicamente -->
-                    </form>
+        ${isOwnProfile ? `
+            <!-- Modal para editar perfil -->
+            <div id="editTalentModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-edit"></i> Editar Perfil de Talento</h3>
+                        <span class="close-modal" onclick="closeEditModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editTalentForm" onsubmit="updateTalentProfile(event)">
+                            <!-- El formulario se llenará dinámicamente -->
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Modal para subir demos -->
-        <div id="uploadDemoModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-upload"></i> Subir Demo de Voz</h3>
-                    <span class="close-modal" onclick="closeUploadDemoModal()">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <form id="uploadDemoForm" onsubmit="uploadDemo(event)">
-                        <div class="form-group">
-                            <label for="demoName">Nombre del Demo:</label>
-                            <input type="text" id="demoName" name="demoName" class="form-control" required 
-                                   placeholder="Ej: Demo comercial, Narración documental, etc.">
-                        </div>
-                        <div class="form-group">
-                            <label for="demoFile">Archivo de Audio:</label>
-                            <input type="file" id="demoFile" name="demoFile" accept="audio/*" class="form-control" required>
-                            <small class="form-text text-muted">Formatos aceptados: MP3, WAV, OGG (Máximo 10MB)</small>
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-upload"></i> Subir Demo
-                            </button>
-                            <button type="button" class="btn btn-outline" onclick="closeUploadDemoModal()">
-                                <i class="fas fa-times"></i> Cancelar
-                            </button>
-                        </div>
-                    </form>
+            <!-- Modal para subir demos -->
+            <div id="uploadDemoModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-upload"></i> Subir Demo de Voz</h3>
+                        <span class="close-modal" onclick="closeUploadDemoModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="uploadDemoForm" onsubmit="uploadDemo(event)">
+                            <div class="form-group">
+                                <label for="demoName">Nombre del Demo:</label>
+                                <input type="text" id="demoName" name="demoName" class="form-control" required 
+                                       placeholder="Ej: Demo comercial, Narración documental, etc.">
+                            </div>
+                            <div class="form-group">
+                                <label for="demoFile">Archivo de Audio:</label>
+                                <input type="file" id="demoFile" name="demoFile" accept="audio/*" class="form-control" required>
+                                <small class="form-text text-muted">Formatos aceptados: MP3, WAV, OGG (Máximo 10MB)</small>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-upload"></i> Subir Demo
+                                </button>
+                                <button type="button" class="btn btn-outline" onclick="closeUploadDemoModal()">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
+        ` : ''}
     `;
 }
 
@@ -244,15 +228,18 @@ function renderDemos(demos) {
                     Tu navegador no soporta el elemento de audio.
                 </audio>
             </div>
-            <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.id || index}')" title="Eliminar demo">
-                <i class="fas fa-trash"></i>
-            </button>
+            ${currentUserData?.type === 'talent' ? `
+                <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.id || index}')" title="Eliminar demo">
+                    <i class="fas fa-trash"></i>
+                </button>
+            ` : ''}
         </div>
     `).join('');
 }
 
 // Renderizar perfil de cliente
-function renderClientProfile(client) {
+function renderClientProfile(client, clientId = null) {
+    const isOwnProfile = !clientId || clientId === currentUser?.uid;
     const countryName = typeof getCountryName !== 'undefined' && client.country ? getCountryName(client.country) : client.country;
     const stateName = typeof getStateName !== 'undefined' && client.country && client.state ? getStateName(client.country, client.state) : client.state;
     const profilePicture = client.profilePictureUrl || 'https://via.placeholder.com/150/007bff/ffffff?text=VO';
@@ -268,9 +255,11 @@ function renderClientProfile(client) {
         <div class="profile-header">
             <div class="profile-picture-section">
                 <img src="${profilePicture}" alt="${client.name}" class="profile-picture-large" onerror="this.src='https://via.placeholder.com/150/007bff/ffffff?text=VO'">
-                <button class="btn btn-outline btn-sm mt-2" onclick="changeProfilePicture()">
-                    <i class="fas fa-camera"></i> Cambiar foto
-                </button>
+                ${isOwnProfile ? `
+                    <button class="btn btn-outline btn-sm mt-2" onclick="changeProfilePicture()">
+                        <i class="fas fa-camera"></i> Cambiar foto
+                    </button>
+                ` : ''}
             </div>
             <div class="profile-info">
                 <h2>${client.name || 'Nombre no especificado'}</h2>
@@ -283,17 +272,19 @@ function renderClientProfile(client) {
             </div>
         </div>
 
-        <div class="profile-actions">
-            <button class="btn btn-primary" onclick="editClientProfile()">
-                <i class="fas fa-edit"></i> Editar Perfil
-            </button>
-            <button class="btn btn-outline" onclick="loadClientJobs()">
-                <i class="fas fa-list"></i> Mis Ofertas de Trabajo
-            </button>
-            <button class="btn btn-outline" onclick="loadFavorites()">
-                <i class="fas fa-heart"></i> Talentos Favoritos
-            </button>
-        </div>
+        ${isOwnProfile ? `
+            <div class="profile-actions">
+                <button class="btn btn-primary" onclick="editClientProfile()">
+                    <i class="fas fa-edit"></i> Editar Perfil
+                </button>
+                <button class="btn btn-outline" onclick="loadClientJobs()">
+                    <i class="fas fa-list"></i> Mis Ofertas de Trabajo
+                </button>
+                <button class="btn btn-outline" onclick="loadFavorites()">
+                    <i class="fas fa-heart"></i> Talentos Favoritos
+                </button>
+            </div>
+        ` : ''}
 
         <div class="profile-sections">
             <div class="profile-section">
@@ -301,7 +292,7 @@ function renderClientProfile(client) {
                 <div class="info-grid">
                     <div class="info-item">
                         <label>Teléfono:</label>
-                        <span>${client.phone || 'No especificado'}</span>
+                        <span>${isOwnProfile || currentUser ? (client.phone || 'No especificado') : '<em>Inicia sesión para ver</em>'}</span>
                     </div>
                     <div class="info-item">
                         <label>Tipo de Cliente:</label>
@@ -312,20 +303,22 @@ function renderClientProfile(client) {
             </div>
         </div>
 
-        <!-- Modal para editar perfil de cliente -->
-        <div id="editClientModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-edit"></i> Editar Perfil de Cliente</h3>
-                    <span class="close-modal" onclick="closeEditModal()">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <form id="editClientForm" onsubmit="updateClientProfile(event)">
-                        <!-- El formulario se llenará dinámicamente -->
-                    </form>
+        ${isOwnProfile ? `
+            <!-- Modal para editar perfil de cliente -->
+            <div id="editClientModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-edit"></i> Editar Perfil de Cliente</h3>
+                        <span class="close-modal" onclick="closeEditModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editClientForm" onsubmit="updateClientProfile(event)">
+                            <!-- El formulario se llenará dinámicamente -->
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
+        ` : ''}
     `;
 }
 
@@ -764,7 +757,7 @@ async function updateClientProfile(e) {
     const originalText = submitBtn.innerHTML;
 
     try {
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin'></i> Guardando...';
         submitBtn.disabled = true;
 
         const updateData = {
@@ -818,5 +811,67 @@ function loadClientJobs() {
 function loadFavorites() {
     alert('Funcionalidad en desarrollo - Talentos Favoritos');
 }
+
+// Función para agregar a favoritos
+async function addToFavorites(talentId) {
+    if (!currentUser) {
+        alert('Debes iniciar sesión para agregar a favoritos.');
+        document.getElementById('loginModal').style.display = 'flex';
+        return;
+    }
+
+    if (currentUserData?.type !== 'client') {
+        alert('Solo los clientes pueden agregar talentos a favoritos.');
+        return;
+    }
+
+    try {
+        await db.collection('clients').doc(currentUser.uid).update({
+            favorites: firebase.firestore.FieldValue.arrayUnion(talentId)
+        });
+
+        alert('Talento agregado a favoritos.');
+
+    } catch (error) {
+        console.error('Error agregando a favoritos:', error);
+        alert('Error al agregar a favoritos.');
+    }
+}
+
+// Función para contactar talento
+function contactTalent(talentId) {
+    if (!currentUser) {
+        alert('Debes iniciar sesión para contactar talentos.');
+        document.getElementById('loginModal').style.display = 'flex';
+        return;
+    }
+    
+    // Aquí iría la lógica para abrir un modal de contacto
+    alert('Funcionalidad de contacto en desarrollo');
+}
+
+// Inicialización del perfil
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Profile.js inicializado');
+    
+    // Verificar autenticación
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            currentUser = user;
+            // Si estamos en profile.html, cargar el perfil
+            if (window.location.pathname.includes('profile.html')) {
+                const profileContent = document.getElementById('userProfileContent');
+                if (profileContent) {
+                    profileContent.innerHTML = '<div class="loading">Cargando perfil...</div>';
+                    setTimeout(() => {
+                        window.loadUserProfile().then(html => {
+                            profileContent.innerHTML = html;
+                        });
+                    }, 1000);
+                }
+            }
+        }
+    });
+});
 
 console.log('Profile.js cargado correctamente');
