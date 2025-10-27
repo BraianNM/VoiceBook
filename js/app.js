@@ -1,25 +1,109 @@
-// Funciones principales de la aplicación
+// Funciones principales de la aplicación (COMPLETO Y CORREGIDO)
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('App.js inicializando...');
     setupEventListeners();
-    checkAuthState();
+    
+    // Verificar si checkAuthState existe antes de llamarlo
+    if (typeof window.checkAuthState === 'function') {
+        window.checkAuthState();
+    } else {
+        console.error('checkAuthState no está disponible');
+        // Inicializar autenticación básica
+        auth.onAuthStateChanged((user) => {
+            currentUser = user;
+            updateAuthUI();
+        });
+    }
     
     // CORRECCIÓN: Asegurar que la carga de talentos solo corra en index.html
     if (!window.location.href.includes('profile.html')) {
         loadTalents();
         loadJobOffers();
-        loadLocationData(); // Cargar la data de ubicación para el modal de registro
+        // Cargar datos de ubicación para los modales y filtros
+        if (typeof window.loadLocationData === 'function') { 
+            window.loadLocationData('countrySelectTalent', 'stateSelectTalent', 'citySelectTalent');
+            window.loadLocationData('countrySelectClient', 'stateSelectClient', 'citySelectClient');
+            loadCountriesFilter(); // Cargar países en el filtro
+        }
     }
 });
 
-// Configurar event listeners (CORRECCIÓN CLAVE AQUÍ)
+// Actualizar UI de autenticación
+function updateAuthUI() {
+    const authButtons = document.getElementById('authButtons');
+    const userMenu = document.getElementById('userMenu');
+    const userNameSpan = document.getElementById('userName');
+    
+    if (currentUser) {
+        if (authButtons) authButtons.style.display = 'none';
+        if (userMenu) userMenu.style.display = 'flex';
+        if (userNameSpan) userNameSpan.textContent = currentUser.email || 'Usuario';
+    } else {
+        if (authButtons) authButtons.style.display = 'flex';
+        if (userMenu) userMenu.style.display = 'none';
+    }
+}
+
+// Cargar países en el filtro
+function loadCountriesFilter() {
+    const filterCountry = document.getElementById('filterCountry');
+    if (!filterCountry) return;
+
+    // Limpiar opciones existentes
+    filterCountry.innerHTML = '<option value="">Cualquiera</option>';
+    
+    // Agregar países desde locationData
+    if (typeof locationData !== 'undefined') {
+        for (const countryCode in locationData) {
+            const option = document.createElement('option');
+            option.value = countryCode;
+            option.textContent = locationData[countryCode].name;
+            filterCountry.appendChild(option);
+        }
+    }
+}
+
+// Configurar event listeners 
 function setupEventListeners() {
+    console.log('Configurando event listeners...');
+    
     // Listeners de Modales y Navegación
-    document.getElementById('heroTalentBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
-    document.getElementById('heroClientBtn')?.addEventListener('click', () => document.getElementById('clientModal').style.display = 'flex');
-    document.getElementById('registerBtn')?.addEventListener('click', () => document.getElementById('talentModal').style.display = 'flex');
-    document.getElementById('loginBtn')?.addEventListener('click', () => document.getElementById('loginModal').style.display = 'flex');
+    document.getElementById('heroTalentBtn')?.addEventListener('click', () => {
+        document.getElementById('talentModal').style.display = 'flex';
+    });
+    
+    document.getElementById('heroClientBtn')?.addEventListener('click', () => {
+        document.getElementById('clientModal').style.display = 'flex';
+    });
+    
+    document.getElementById('ctaTalentBtn')?.addEventListener('click', () => {
+        document.getElementById('talentModal').style.display = 'flex';
+    });
+    
+    document.getElementById('ctaClientBtn')?.addEventListener('click', () => {
+        document.getElementById('clientModal').style.display = 'flex';
+    });
+    
+    document.getElementById('registerBtn')?.addEventListener('click', () => {
+        document.getElementById('talentModal').style.display = 'flex';
+    });
+    
+    document.getElementById('loginBtn')?.addEventListener('click', () => {
+        document.getElementById('loginModal').style.display = 'flex';
+    });
+    
+    document.getElementById('publishJobBtn')?.addEventListener('click', () => {
+        if (!currentUser) {
+            document.getElementById('loginModal').style.display = 'flex';
+        } else if (currentUserData?.type === 'client') {
+            // Aquí iría la lógica para publicar trabajo
+            alert('Funcionalidad de publicar trabajo en desarrollo');
+        } else {
+            alert('Solo los clientes pueden publicar ofertas de trabajo');
+        }
+    });
     
     // Redirección al Dashboard/Profile
     document.getElementById('dashboardLink')?.addEventListener('click', (e) => {
@@ -40,198 +124,523 @@ function setupEventListeners() {
 
     document.getElementById('clientType')?.addEventListener('change', toggleCompanyName);
     document.getElementById('lang10')?.addEventListener('change', toggleOtherLanguages);
-    
-    // Listener para el formulario de edición de perfil 
-    document.getElementById('editProfileForm')?.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const isTalent = document.getElementById('editTalentFields')?.style.display !== 'none';
-        
-        // CORRECCIÓN: Usamos `window.` y verificamos que la función exista 
-        if (isTalent) {
-            if (typeof window.updateTalentProfile === 'function') {
-                window.updateTalentProfile(e); // Llama a la función de profile.js
-            } else {
-                 console.error('❌ Error: La función updateTalentProfile no está definida o no es global.');
-                 window.showMessage('editProfileMessage', '❌ Funcionalidad de edición de talento no disponible.', 'error');
-            }
-        } else {
-            if (typeof window.updateClientProfile === 'function') {
-                window.updateClientProfile(e); // Llama a la función de profile.js
-            } else {
-                 console.error('❌ Error: La función updateClientProfile no está definida o no es global.');
-                 window.showMessage('editProfileMessage', '❌ Funcionalidad de edición de cliente no disponible.', 'error');
-            }
-        }
-    });
 
+    // Listener para filtros de búsqueda
+    document.getElementById('applyFiltersBtn')?.addEventListener('click', loadTalents);
+
+    // Listener para navegación móvil
+    const navToggle = document.getElementById('navToggle');
+    const navLinks = document.getElementById('navLinks');
+    if (navToggle && navLinks) {
+        navToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+        });
+    }
+
+    console.log('Event listeners configurados correctamente');
 }
 
-// Cargar talentos
+// Cargar talentos (función corregida con filtros mejorados)
 async function loadTalents() {
     try {
-        const snapshot = await db.collection('talents').get();
         const talentsContainer = document.getElementById('talentsContainer');
-        
-        if (!talentsContainer) return; 
-        
-        if (snapshot.empty) {
-            talentsContainer.innerHTML = '<p>No hay talentos registrados aún.</p>';
+        if (!talentsContainer) return;
+
+        talentsContainer.innerHTML = '<div class="loading">Cargando talentos...</div>';
+
+        const snapshot = await db.collection('talents').get();
+        let talentsHtml = '';
+        let count = 0;
+
+        snapshot.docs.forEach(doc => {
+            const talent = doc.data();
+            const talentId = doc.id;
+            
+            // Aplicar filtros
+            const filterGender = document.getElementById('filterGender')?.value;
+            const filterLanguage = document.getElementById('filterLanguage')?.value;
+            const filterCountry = document.getElementById('filterCountry')?.value;
+            const filterHomeStudio = document.getElementById('filterHomeStudio')?.value;
+            const filterSearch = document.getElementById('filterSearch')?.value.toLowerCase();
+
+            const matchesGender = !filterGender || talent.gender === filterGender;
+            const matchesLanguage = !filterLanguage || (talent.languages && talent.languages.includes(filterLanguage));
+            const matchesCountry = !filterCountry || talent.country === filterCountry;
+            const matchesHomeStudio = !filterHomeStudio || talent.homeStudio === filterHomeStudio;
+            const matchesSearch = !filterSearch || 
+                                  (talent.name && talent.name.toLowerCase().includes(filterSearch)) ||
+                                  (talent.bio && talent.bio.toLowerCase().includes(filterSearch));
+
+            if (matchesGender && matchesLanguage && matchesCountry && matchesHomeStudio && matchesSearch) {
+                const countryName = typeof getCountryName !== 'undefined' ? getCountryName(talent.country) : talent.country;
+                const languages = talent.languages ? talent.languages.join(', ') : 'N/A';
+                const homeStudio = talent.homeStudio === 'si' ? '<i class="fas fa-check-circle text-success"></i> Sí' : '<i class="fas fa-times-circle text-danger"></i> No';
+                const profilePicture = talent.profilePictureUrl || 'https://via.placeholder.com/150/007bff/ffffff?text=VO';
+
+                talentsHtml += `
+                    <div class="talent-card">
+                        <div class="talent-card-header">
+                            <img src="${profilePicture}" alt="${talent.name}" class="talent-profile-pic" onerror="this.src='https://via.placeholder.com/150/007bff/ffffff?text=VO'">
+                            <h3>${talent.name || 'Talento Anónimo'}</h3>
+                        </div>
+                        <p><strong>País:</strong> ${countryName || 'N/A'}</p>
+                        <p><strong>Idiomas:</strong> ${languages}</p>
+                        <p><strong>Home Studio:</strong> ${homeStudio}</p>
+                        <p><strong>Biografía:</strong> ${talent.bio ? (talent.bio.length > 100 ? talent.bio.substring(0, 100) + '...' : talent.bio) : 'Sin biografía'}</p>
+                        <div class="card-actions">
+                            <button class="btn btn-secondary btn-sm view-profile-btn" onclick="window.viewTalentProfile('${talentId}')">
+                                <i class="fas fa-user"></i> Ver perfil
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="window.addToFavorites('${talentId}')">
+                                <i class="fas fa-heart"></i> Favorito
+                            </button>
+                        </div>
+                    </div>
+                `;
+                count++;
+            }
+        });
+
+        if (count > 0) {
+            talentsContainer.innerHTML = talentsHtml;
+        } else {
+            talentsContainer.innerHTML = '<p>No se encontraron talentos que coincidan con los filtros.</p>';
+        }
+
+    } catch (error) {
+        console.error('Error cargando talentos:', error);
+        document.getElementById('talentsContainer').innerHTML = '<p class="text-danger">Error al cargar talentos. Inténtalo de nuevo más tarde.</p>';
+    }
+}
+window.loadTalents = loadTalents;
+
+// Función para ver perfil de talento (COMPLETAMENTE FUNCIONAL)
+window.viewTalentProfile = async function(talentId) {
+    console.log('Ver perfil del talento:', talentId);
+    
+    const profileModal = document.getElementById('viewTalentProfileModal');
+    const profileContent = document.getElementById('profileViewContent');
+    
+    if (!profileModal) {
+        console.error('Modal no encontrado');
+        // Crear modal dinámicamente si no existe
+        createViewProfileModal();
+        return;
+    }
+    
+    window.closeAllModals(); 
+    profileModal.style.display = 'flex';
+    profileContent.innerHTML = '<div class="loading" style="text-align:center;">Cargando perfil...</div>';
+
+    try {
+        const doc = await db.collection('talents').doc(talentId).get();
+        if (!doc.exists) {
+            profileContent.innerHTML = '<p class="text-danger" style="text-align:center;">Perfil no encontrado.</p>';
             return;
         }
         
-        talentsContainer.innerHTML = '';
-        snapshot.forEach(doc => {
-            const talent = doc.data();
-            displayTalentCard(talent, doc.id);
-        });
+        const talent = doc.data();
+        const isLoggedIn = !!currentUser;
+
+        // Información pública
+        const countryName = typeof getCountryName !== 'undefined' ? getCountryName(talent.country) : talent.country;
+        const stateName = typeof getStateName !== 'undefined' ? getStateName(talent.country, talent.state) : talent.state;
+        const locationInfo = (countryName && stateName && talent.city) ? `${talent.city}, ${stateName}, ${countryName}` : 'N/A';
+        const languages = talent.languages ? talent.languages.join(', ') : 'N/A';
+        const homeStudio = talent.homeStudio === 'si' ? '<i class="fas fa-check-circle text-success"></i> Sí' : '<i class="fas fa-times-circle text-danger"></i> No';
+        const profilePicture = talent.profilePictureUrl || 'https://via.placeholder.com/150/007bff/ffffff?text=VO';
+        
+        // Demos
+        let demosHtml = talent.demos && talent.demos.length > 0 ? 
+            talent.demos.map(demo => `
+                <div class="demo-item-view">
+                    <span>${demo.name || 'Demo'}</span>
+                    <audio controls src="${demo.url}"></audio>
+                </div>
+            `).join('') : '<p>No hay demos disponibles.</p>';
+
+        // Información de contacto: Se oculta si no está logeado
+        let contactInfoHtml = '';
+        if (isLoggedIn) {
+            contactInfoHtml = `
+                <div class="profile-view-section">
+                    <h3>Información de Contacto</h3>
+                    <div class="info-grid">
+                        <div class="info-item"><label>Email:</label><span>${talent.email || 'N/A'}</span></div>
+                        <div class="info-item"><label>Teléfono:</label><span>${talent.phone || 'N/A'}</span></div>
+                    </div>
+                </div>
+            `;
+        } else {
+            contactInfoHtml = `
+                <div class="profile-view-section">
+                    <h3>Información de Contacto</h3>
+                    <div class="auth-prompt">
+                        <p><i class="fas fa-lock"></i> Para ver la información de contacto, <a href="#" onclick="closeAllModals(); document.getElementById('loginModal').style.display='flex';">inicia sesión</a>.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        profileContent.innerHTML = `
+            <div class="profile-view-header">
+                <img src="${profilePicture}" alt="${talent.name}" class="profile-view-pic" onerror="this.src='https://via.placeholder.com/150/007bff/ffffff?text=VO'">
+                <div class="profile-view-info">
+                    <h2>${talent.name || 'Talento Anónimo'}</h2>
+                    <p class="profile-location"><i class="fas fa-map-marker-alt"></i> ${locationInfo}</p>
+                </div>
+            </div>
+            
+            <div class="profile-view-section">
+                <h3>Información Personal</h3>
+                <div class="info-grid">
+                    <div class="info-item"><label>Género:</label><span>${talent.gender || 'N/A'}</span></div>
+                    <div class="info-item"><label>Edad:</label><span>${talent.realAge || talent.ageRange || 'N/A'}</span></div>
+                    <div class="info-item"><label>Nacionalidad:</label><span>${talent.nationality || 'N/A'}</span></div>
+                    <div class="info-item"><label>Idiomas:</label><span>${languages}</span></div>
+                    <div class="info-item"><label>Home Studio:</label><span>${homeStudio}</span></div>
+                </div>
+            </div>
+            
+            <div class="profile-view-section">
+                <h3>Biografía</h3>
+                <p class="profile-bio">${talent.bio || 'No hay biografía disponible.'}</p>
+            </div>
+            
+            <div class="profile-view-section">
+                <h3>Demos</h3>
+                <div class="demos-container-view">
+                    ${demosHtml}
+                </div>
+            </div>
+            
+            ${contactInfoHtml}
+            
+            <div class="profile-view-actions">
+                <button class="btn btn-primary" onclick="window.closeViewProfileModal()">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
+            </div>
+        `;
         
     } catch (error) {
-        console.error('Error cargando talentos:', error);
-        const talentsContainer = document.getElementById('talentsContainer');
-        if (talentsContainer) {
-            talentsContainer.innerHTML = '<p>Error al cargar talentos.</p>';
-        }
+        console.error('Error cargando perfil:', error);
+        profileContent.innerHTML = '<p class="text-danger" style="text-align:center;">Error al cargar el perfil.</p>';
     }
-}
+};
 
-// Mostrar tarjeta de talento (CORREGIDA PARA OCULTAR CONTACTO)
-function displayTalentCard(talent, talentId) {
-    const talentsContainer = document.getElementById('talentsContainer');
-    const talentCard = document.createElement('div');
-    talentCard.className = 'talent-card';
-    
-    let audioPlayers = '';
-    if (talent.demos && talent.demos.length > 0) {
-        audioPlayers = `
-            <div class="audio-demos" style="margin-top: 15px;">
-                <p><strong>Demos de Audio (${talent.demos.length}):</strong></p>
-                ${talent.demos.map((demo, index) => `
-                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-                        <p style="font-size: 14px; margin-bottom: 8px; font-weight: 500;">
-                            ${demo.name || `Demo ${index + 1}`}
-                        </p>
-                        <audio controls style="width: 100%; height: 40px; border-radius: 20px;">
-                            <source src="${demo.url}" type="audio/mpeg">
-                            Tu navegador no soporta audio.
-                        </audio>
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">
-                            ${demo.duration ? Math.round(demo.duration) + ' segundos' : ''} • ${demo.size ? (demo.size / 1024 / 1024).toFixed(1) + ' MB' : 'Tamaño no disponible'}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    } else {
-        audioPlayers = '<p style="color: #666; font-size: 14px; margin-top: 10px;">No hay demos de audio disponibles</p>';
-    }
-    
-    const locationInfo = (talent.city && talent.state && talent.country && typeof getCountryName === 'function') ? 
-        `<p class="talent-details"><i class="fas fa-map-marker-alt"></i> ${getCityName(talent.country, talent.state, talent.city)}, ${getCountryName(talent.country)}</p>` :
-        '<p class="talent-details"><i class="fas fa-map-marker-alt"></i> Ubicación no especificada</p>';
-    
-    let contactInfo = '';
-    if (currentUser) {
-        contactInfo = `
-            <p class="talent-details"><strong>Email:</strong> ${talent.email || 'No disponible'}</p>
-            <p class="talent-details"><strong>Teléfono:</strong> ${talent.phone || 'No disponible'}</p>
-        `;
-    } else {
-        contactInfo = `
-            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; margin: 10px 0;">
-                <p style="margin: 0; color: #856404; font-size: 14px;">
-                    <i class="fas fa-lock"></i> **Debes iniciar sesión** para ver la información de contacto
-                </p>
-            </div>
-        `;
-    }
-    
-    talentCard.innerHTML = `
-        <div class="talent-img" style="background-color: #3498db; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px;">
-            <i class="fas fa-user"></i>
-        </div>
-        <div class="talent-info">
-            <h3 class="talent-name">${talent.name}</h3>
-            <p class="talent-details">${talent.gender === 'hombre' ? 'Hombre' : 'Mujer'} • ${talent.nationality || 'Nacionalidad no especificada'}</p>
-            ${locationInfo}
-            <p class="talent-details">${Array.isArray(talent.languages) ? talent.languages.join(', ') : talent.languages || 'Idiomas no especificados'}</p>
-            <p class="talent-details">Home Studio: ${talent.homeStudio === 'si' ? 'Sí' : 'No'}</p>
-            <p>${talent.description ? talent.description.substring(0, 100) + '...' : 'Sin descripción'}</p>
-            ${contactInfo}
-            ${audioPlayers}
-            <div style="margin-top: 15px;">
-                <button class="btn btn-primary" onclick="window.viewTalentProfile('${talentId}')">Ver Perfil Completo</button>
-                ${currentUser ? `<button class="btn btn-success" onclick="window.addToFavorites('${talentId}')"><i class="fas fa-heart"></i> Favorito</button>` : ''}
+// Crear modal de perfil dinámicamente si no existe
+function createViewProfileModal() {
+    const modalHTML = `
+        <div id="viewTalentProfileModal" class="modal">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>Perfil del Talento</h3>
+                    <span class="close-modal" onclick="window.closeViewProfileModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="profileViewContent"></div>
+                </div>
             </div>
         </div>
     `;
-    
-    talentsContainer.appendChild(talentCard);
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
+
+window.closeViewProfileModal = function() {
+    const modal = document.getElementById('viewTalentProfileModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+};
 
 // Cargar ofertas de trabajo
 async function loadJobOffers() {
     try {
-        const snapshot = await db.collection('jobs').get();
-        const jobOffersContainer = document.getElementById('jobOffersContainer');
-        
-        if (!jobOffersContainer) return;
+        const jobsContainer = document.getElementById('jobsContainer');
+        if (!jobsContainer) return;
 
-        if (snapshot.empty) {
-            jobOffersContainer.innerHTML = '<p>No hay ofertas de trabajo publicadas aún.</p>';
-            return;
-        }
-        
-        jobOffersContainer.innerHTML = '';
-        snapshot.forEach(doc => {
+        jobsContainer.innerHTML = '<div class="loading">Cargando ofertas de trabajo...</div>';
+
+        const snapshot = await db.collection('jobs').where('status', '==', 'active').get();
+        let jobsHtml = '';
+        let count = 0;
+
+        snapshot.docs.forEach(doc => {
             const job = doc.data();
-            displayJobCard(job, doc.id);
+            const jobId = doc.id;
+            const countryName = typeof getCountryName !== 'undefined' ? getCountryName(job.country) : job.country;
+            const budget = job.budget ? `$${job.budget}` : 'A convenir';
+
+            jobsHtml += `
+                <div class="job-card">
+                    <div class="job-card-header">
+                        <h3>${job.title}</h3>
+                        <span class="job-status active">Activa</span>
+                    </div>
+                    <p><strong>Cliente:</strong> ${job.clientName}</p>
+                    <p><strong>Ubicación:</strong> ${countryName || 'Remoto'}</p>
+                    <p><strong>Presupuesto:</strong> ${budget}</p>
+                    <p><strong>Descripción:</strong> ${job.description ? job.description.substring(0, 100) + '...' : 'Sin descripción'}</p>
+                    <div class="card-actions">
+                        <button class="btn btn-primary btn-sm" onclick="window.applyToJob('${jobId}')">
+                            <i class="fas fa-paper-plane"></i> Postularse
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="window.viewJobDetails('${jobId}')">
+                            <i class="fas fa-eye"></i> Ver detalles
+                        </button>
+                    </div>
+                </div>
+            `;
+            count++;
         });
-        
-    } catch (error) {
-        console.error('Error cargando ofertas:', error);
-        const jobOffersContainer = document.getElementById('jobOffersContainer');
-        if (jobOffersContainer) {
-            jobOffersContainer.innerHTML = '<p>Error al cargar ofertas.</p>';
+
+        if (count > 0) {
+            jobsContainer.innerHTML = jobsHtml;
+        } else {
+            jobsContainer.innerHTML = '<p>No hay ofertas de trabajo activas en este momento.</p>';
         }
+
+    } catch (error) {
+        console.error('Error cargando ofertas de trabajo:', error);
+        document.getElementById('jobsContainer').innerHTML = '<p class="text-danger">Error al cargar ofertas de trabajo. Inténtalo de nuevo más tarde.</p>';
     }
 }
+window.loadJobOffers = loadJobOffers;
 
-// Mostrar tarjeta de trabajo
-function displayJobCard(job, jobId) {
-    const jobOffersContainer = document.getElementById('jobOffersContainer');
-    const jobCard = document.createElement('div');
-    jobCard.className = 'job-card';
+// Función para aplicar a un trabajo
+window.applyToJob = async function(jobId) {
+    if (!currentUser) {
+        alert('Debes iniciar sesión para postularte a trabajos.');
+        document.getElementById('loginModal').style.display = 'flex';
+        return;
+    }
+
+    // Obtener datos del usuario actual si no están disponibles
+    if (!currentUserData) {
+        try {
+            const talentDoc = await db.collection('talents').doc(currentUser.uid).get();
+            if (talentDoc.exists) {
+                currentUserData = talentDoc.data();
+                currentUserData.type = 'talent';
+            } else {
+                alert('Solo los talentos pueden postularse a trabajos.');
+                return;
+            }
+        } catch (error) {
+            console.error('Error obteniendo datos del usuario:', error);
+            alert('Error al verificar tu perfil.');
+            return;
+        }
+    }
+
+    if (currentUserData?.type !== 'talent') {
+        alert('Solo los talentos pueden postularse a trabajos.');
+        return;
+    }
+
+    try {
+        const jobDoc = await db.collection('jobs').doc(jobId).get();
+        if (!jobDoc.exists) {
+            alert('La oferta de trabajo no existe.');
+            return;
+        }
+
+        const job = jobDoc.data();
+        const talentId = currentUser.uid;
+
+        // Verificar si ya se postuló
+        const existingApplication = await db.collection('jobApplications')
+            .where('jobId', '==', jobId)
+            .where('talentId', '==', talentId)
+            .get();
+
+        if (!existingApplication.empty) {
+            alert('Ya te has postulado a esta oferta.');
+            return;
+        }
+
+        // Crear la postulación
+        await db.collection('jobApplications').add({
+            jobId: jobId,
+            talentId: talentId,
+            clientId: job.clientId,
+            talentName: currentUserData.name,
+            talentEmail: currentUserData.email,
+            talentProfilePicture: currentUserData.profilePictureUrl || 'https://via.placeholder.com/150/007bff/ffffff?text=VO',
+            jobTitle: job.title,
+            status: 'pending',
+            appliedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert('¡Postulación enviada exitosamente!');
+        
+        // Recargar ofertas para actualizar la UI
+        setTimeout(() => {
+            loadJobOffers();
+        }, 2000);
+
+    } catch (error) {
+        console.error('Error aplicando al trabajo:', error);
+        alert('Error al postularse. Inténtalo de nuevo.');
+    }
+};
+
+// Función para ver detalles del trabajo
+window.viewJobDetails = async function(jobId) {
+    const jobModal = document.getElementById('jobDetailsModal');
+    const jobDetailsContent = document.getElementById('jobDetailsContent');
     
-    jobCard.innerHTML = `
-        <div class="job-header">
-            <h3 class="job-title">${job.title}</h3>
-        </div>
-        <div class="job-description">
-            <p>${job.description}</p>
-        </div>
-        <div>
-            <p><strong>Contacto:</strong> ${job.contact}</p>
-            <p><strong>Fecha de publicación:</strong> ${job.createdAt?.toDate?.().toLocaleDateString() || 'Fecha no disponible'}</p>
-        </div>
-        ${currentUser ? `
-            <div style="margin-top: 15px;">
-                <button class="btn btn-primary" onclick="window.applyToJob('${jobId}')">Postularme</button>
+    // Crear modal si no existe
+    if (!jobModal) {
+        createJobDetailsModal();
+    }
+    
+    window.closeAllModals();
+    document.getElementById('jobDetailsModal').style.display = 'flex';
+    document.getElementById('jobDetailsContent').innerHTML = '<div class="loading">Cargando detalles del trabajo...</div>';
+
+    try {
+        const doc = await db.collection('jobs').doc(jobId).get();
+        if (!doc.exists) {
+            document.getElementById('jobDetailsContent').innerHTML = '<p class="text-danger">La oferta de trabajo no existe.</p>';
+            return;
+        }
+
+        const job = doc.data();
+        const countryName = typeof getCountryName !== 'undefined' ? getCountryName(job.country) : job.country;
+        const budget = job.budget ? `$${job.budget}` : 'A convenir';
+        const deadline = job.deadline ? new Date(job.deadline).toLocaleDateString() : 'No especificada';
+
+        document.getElementById('jobDetailsContent').innerHTML = `
+            <div class="job-details-header">
+                <h2>${job.title}</h2>
+                <p class="job-client"><strong>Cliente:</strong> ${job.clientName}</p>
             </div>
-        ` : ''}
+            
+            <div class="job-details-section">
+                <h3>Información del Proyecto</h3>
+                <div class="info-grid">
+                    <div class="info-item"><label>Ubicación:</label><span>${countryName || 'Remoto'}</span></div>
+                    <div class="info-item"><label>Presupuesto:</label><span>${budget}</span></div>
+                    <div class="info-item"><label>Fecha límite:</label><span>${deadline}</span></div>
+                    <div class="info-item"><label>Género de voz:</label><span>${job.gender || 'No especificado'}</span></div>
+                    <div class="info-item"><label>Edad:</label><span>${job.ageRange || 'No especificado'}</span></div>
+                </div>
+            </div>
+            
+            <div class="job-details-section">
+                <h3>Descripción Detallada</h3>
+                <p class="job-description">${job.description || 'No hay descripción disponible.'}</p>
+            </div>
+            
+            <div class="job-details-actions">
+                ${currentUserData?.type === 'talent' ? 
+                    `<button class="btn btn-primary" onclick="window.applyToJob('${jobId}')">
+                        <i class="fas fa-paper-plane"></i> Postularse a este trabajo
+                    </button>` : 
+                    `<p class="text-warning">Inicia sesión como talento para postularte.</p>`
+                }
+                <button class="btn btn-outline" onclick="window.closeJobDetailsModal()">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
+            </div>
+        `;
+
+    } catch (error) {
+        console.error('Error cargando detalles del trabajo:', error);
+        document.getElementById('jobDetailsContent').innerHTML = '<p class="text-danger">Error al cargar los detalles del trabajo.</p>';
+    }
+};
+
+// Crear modal de detalles de trabajo dinámicamente
+function createJobDetailsModal() {
+    const modalHTML = `
+        <div id="jobDetailsModal" class="modal">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>Detalles del Trabajo</h3>
+                    <span class="close-modal" onclick="window.closeJobDetailsModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="jobDetailsContent"></div>
+                </div>
+            </div>
+        </div>
     `;
-    
-    jobOffersContainer.appendChild(jobCard);
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
-// Funciones auxiliares
-function closeAllModals() {
+window.closeJobDetailsModal = function() {
+    const modal = document.getElementById('jobDetailsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+};
+
+// Función para agregar a favoritos
+window.addToFavorites = async function(talentId) {
+    if (!currentUser) {
+        alert('Debes iniciar sesión para agregar a favoritos.');
+        document.getElementById('loginModal').style.display = 'flex';
+        return;
+    }
+
+    // Obtener datos del usuario actual si no están disponibles
+    if (!currentUserData) {
+        try {
+            const clientDoc = await db.collection('clients').doc(currentUser.uid).get();
+            if (clientDoc.exists) {
+                currentUserData = clientDoc.data();
+                currentUserData.type = 'client';
+            } else {
+                alert('Solo los clientes pueden agregar talentos a favoritos.');
+                return;
+            }
+        } catch (error) {
+            console.error('Error obteniendo datos del usuario:', error);
+            alert('Error al verificar tu perfil.');
+            return;
+        }
+    }
+
+    if (currentUserData?.type !== 'client') {
+        alert('Solo los clientes pueden agregar talentos a favoritos.');
+        return;
+    }
+
+    try {
+        await db.collection('clients').doc(currentUser.uid).update({
+            favorites: firebase.firestore.FieldValue.arrayUnion(talentId)
+        });
+
+        alert('Talento agregado a favoritos.');
+
+    } catch (error) {
+        console.error('Error agregando a favoritos:', error);
+        alert('Error al agregar a favoritos.');
+    }
+};
+
+// Función auxiliar para mostrar mensajes
+window.showMessage = function(elementId, message, type) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        setTimeout(() => {
+            element.innerHTML = '';
+        }, 5000);
+    }
+};
+
+// Función para cerrar todos los modales
+window.closeAllModals = function() {
     document.querySelectorAll('.modal').forEach(modal => {
         modal.style.display = 'none';
     });
-}
-window.closeAllModals = closeAllModals; // Hacer global
+};
 
+// Toggle para mostrar/ocultar el campo de empresa
 function toggleCompanyName() {
     const companyNameGroup = document.getElementById('companyNameGroup');
     if (companyNameGroup) {
@@ -239,6 +648,7 @@ function toggleCompanyName() {
     }
 }
 
+// Toggle para mostrar/ocultar el campo de otros idiomas
 function toggleOtherLanguages() {
     const otherLanguagesInput = document.getElementById('otherLanguages');
     if (otherLanguagesInput) {
@@ -246,23 +656,29 @@ function toggleOtherLanguages() {
     }
 }
 
-// Hacemos que estas funciones sean globales (en caso de que sean llamadas desde HTML)
-window.viewTalentProfile = function(talentId) {
-    alert(`Ver perfil completo del talento ${talentId}. Funcionalidad pendiente.`);
-};
-window.addToFavorites = function(talentId) {
-    alert(`Añadir talento ${talentId} a favoritos. Funcionalidad pendiente.`);
-};
-window.applyToJob = function(jobId) {
-    alert(`Postular al trabajo ${jobId}. Funcionalidad pendiente.`);
-};
-
-// Función auxiliar para mostrar mensajes (hecha global)
-function showMessage(element, message, type) {
-    const el = typeof element === 'string' ? document.getElementById(element) : element;
-    if (el) {
-        el.innerHTML = `<div class="${type}">${message}</div>`;
+// Función de logout mejorada
+async function logoutUser() {
+    try {
+        await auth.signOut();
+        console.log('Sesión cerrada');
+        currentUser = null;
+        currentUserData = null;
+        
+        // Actualizar UI inmediatamente
+        updateAuthUI();
+        
+        // Redirigir a index.html si está en profile.html
+        if (window.location.href.includes('profile.html')) {
+            window.location.href = 'index.html';
+        } else {
+            // Recargar talentos para actualizar la UI
+            loadTalents();
+        }
+        
+    } catch (error) {
+        console.error('Error cerrando sesión:', error);
+        alert('Error al cerrar sesión: ' + error.message);
     }
 }
-window.showMessage = showMessage; 
-// VoiceBook - Updated: Mon Oct 27 07:48:34     2025
+
+console.log('App.js cargado correctamente');
