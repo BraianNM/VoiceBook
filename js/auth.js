@@ -223,31 +223,14 @@ async function registerClient(e) {
             name: formData.get('name'),
             email: formData.get('email'),
             phone: formData.get('phone'),
-            clientType: formData.get('clientType'),
             country: formData.get('country'),
             state: formData.get('state'),
             city: formData.get('city'),
+            clientType: formData.get('clientType'),
+            companyName: formData.get('clientType') === 'empresa' ? formData.get('companyName') : '',
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
-
-        // Agregar nombre de empresa si es empresa
-        if (formData.get('clientType') === 'empresa') {
-            clientData.companyName = formData.get('companyName');
-        }
-
-        // Subir foto de perfil si existe
-        const profilePicture = formData.get('profilePicture');
-        if (profilePicture && profilePicture.size > 0) {
-            try {
-                const storageRef = storage.ref(`profile-pictures/${user.uid}`);
-                const snapshot = await storageRef.put(profilePicture);
-                const downloadURL = await snapshot.ref.getDownloadURL();
-                clientData.profilePictureUrl = downloadURL;
-            } catch (uploadError) {
-                console.error('Error subiendo foto de perfil:', uploadError);
-            }
-        }
 
         // Guardar en Firestore
         await db.collection('clients').doc(user.uid).set(clientData);
@@ -287,50 +270,62 @@ async function registerClient(e) {
     }
 }
 
-// Iniciar sesión
+// Iniciar sesión - CORREGIDO
 async function loginUser(e) {
     e.preventDefault();
-    console.log('Iniciando sesión...');
+    console.log('Iniciando proceso de login...');
 
     const formData = new FormData(e.target);
+    const email = formData.get('email');
+    const password = formData.get('password');
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
+
+    // CORRECCIÓN: Validar que el email no esté vacío
+    if (!email || email.trim() === '') {
+        alert('Por favor ingresa tu email');
+        return;
+    }
 
     try {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Iniciando sesión...';
         submitBtn.disabled = true;
 
-        const userCredential = await auth.signInWithEmailAndPassword(
-            formData.get('email'), 
-            formData.get('password')
-        );
+        console.log('Intentando login con:', email);
         
-        console.log('Sesión iniciada:', userCredential.user.uid);
+        // Iniciar sesión con Firebase Auth
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+        
+        console.log('Login exitoso:', user.uid);
+
+        // Cerrar modal
         window.closeAllModals();
         
-        // Mostrar mensaje de bienvenida
-        alert('¡Bienvenido de nuevo!');
+        // Mostrar mensaje de éxito
+        alert('¡Inicio de sesión exitoso!');
         
-        // Si está en index.html, recargar para actualizar UI
-        if (!window.location.href.includes('profile.html')) {
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        }
+        // Recargar para actualizar la UI
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
 
     } catch (error) {
-        console.error('Error iniciando sesión:', error);
+        console.error('Error en login:', error);
         let errorMessage = 'Error al iniciar sesión: ';
         
         switch (error.code) {
             case 'auth/user-not-found':
-                errorMessage += 'Usuario no encontrado.';
+                errorMessage += 'No existe una cuenta con este email.';
                 break;
             case 'auth/wrong-password':
                 errorMessage += 'Contraseña incorrecta.';
                 break;
             case 'auth/invalid-email':
-                errorMessage += 'Email no válido.';
+                errorMessage += 'El email no es válido.';
+                break;
+            case 'auth/user-disabled':
+                errorMessage += 'Esta cuenta ha sido deshabilitada.';
                 break;
             default:
                 errorMessage += error.message;
@@ -343,20 +338,28 @@ async function loginUser(e) {
     }
 }
 
-// Cerrar sesión
-async function logoutUser() {
+// Función para cerrar sesión
+window.logoutUser = async function() {
     try {
         await auth.signOut();
-        console.log('Sesión cerrada');
+        console.log('Sesión cerrada exitosamente');
+        
+        // Limpiar variables globales
         currentUser = null;
         currentUserData = null;
         
-        // Redirigir a index.html
-        window.location.href = 'index.html';
+        // Redirigir a index.html si está en profile.html
+        if (window.location.href.includes('profile.html')) {
+            window.location.href = 'index.html';
+        } else {
+            // Recargar para actualizar la UI
+            window.location.reload();
+        }
+        
     } catch (error) {
         console.error('Error cerrando sesión:', error);
         alert('Error al cerrar sesión: ' + error.message);
     }
-}
+};
 
 console.log('Auth.js cargado correctamente');
