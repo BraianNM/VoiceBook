@@ -1,31 +1,31 @@
-// Funciones principales de la aplicación (COMPLETO Y CORREGIDO)
+// Funciones principales de la aplicación - VOICEBOOK (COMPLETO)
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('App.js inicializando...');
+    console.log('App.js inicializando VoiceBook...');
     setupEventListeners();
     
-    // Verificar si checkAuthState existe antes de llamarlo
+    // Verificar autenticación
     if (typeof window.checkAuthState === 'function') {
         window.checkAuthState();
     } else {
         console.error('checkAuthState no está disponible');
-        // Inicializar autenticación básica
         auth.onAuthStateChanged((user) => {
             currentUser = user;
             updateAuthUI();
         });
     }
     
-    // CORRECCIÓN: Asegurar que la carga de talentos solo corra en index.html
+    // Cargar datos solo en index.html
     if (!window.location.href.includes('profile.html')) {
         loadTalents();
         loadJobOffers();
-        // Cargar datos de ubicación para los modales y filtros
+        
+        // Cargar datos de ubicación
         if (typeof window.loadLocationData === 'function') { 
-            window.loadLocationData('countrySelectTalent', 'stateSelectTalent', 'citySelectTalent');
-            window.loadLocationData('countrySelectClient', 'stateSelectClient', 'citySelectClient');
-            loadCountriesFilter(); // Cargar países en el filtro
+            window.loadLocationData('talentCountry', 'talentState', 'talentCity');
+            window.loadLocationData('clientCountry', 'clientState', 'clientCity');
+            loadCountriesFilter();
         }
     }
 });
@@ -35,14 +35,17 @@ function updateAuthUI() {
     const authButtons = document.getElementById('authButtons');
     const userMenu = document.getElementById('userMenu');
     const userNameSpan = document.getElementById('userName');
+    const dashboardLink = document.getElementById('dashboardLink');
     
     if (currentUser) {
         if (authButtons) authButtons.style.display = 'none';
         if (userMenu) userMenu.style.display = 'flex';
-        if (userNameSpan) userNameSpan.textContent = currentUser.email || 'Usuario';
+        if (userNameSpan) userNameSpan.textContent = currentUserData?.name || currentUser.email || 'Usuario';
+        if (dashboardLink) dashboardLink.style.display = 'block';
     } else {
         if (authButtons) authButtons.style.display = 'flex';
         if (userMenu) userMenu.style.display = 'none';
+        if (dashboardLink) dashboardLink.style.display = 'none';
     }
 }
 
@@ -51,10 +54,8 @@ function loadCountriesFilter() {
     const filterCountry = document.getElementById('filterCountry');
     if (!filterCountry) return;
 
-    // Limpiar opciones existentes
     filterCountry.innerHTML = '<option value="">Cualquiera</option>';
     
-    // Agregar países desde locationData
     if (typeof locationData !== 'undefined') {
         for (const countryCode in locationData) {
             const option = document.createElement('option');
@@ -98,7 +99,6 @@ function setupEventListeners() {
         if (!currentUser) {
             document.getElementById('loginModal').style.display = 'flex';
         } else if (currentUserData?.type === 'client') {
-            // Aquí iría la lógica para publicar trabajo
             alert('Funcionalidad de publicar trabajo en desarrollo');
         } else {
             alert('Solo los clientes pueden publicar ofertas de trabajo');
@@ -123,19 +123,10 @@ function setupEventListeners() {
     document.getElementById('loginForm')?.addEventListener('submit', loginUser);
 
     document.getElementById('clientType')?.addEventListener('change', toggleCompanyName);
-    document.getElementById('lang10')?.addEventListener('change', toggleOtherLanguages);
+    document.getElementById('lang9')?.addEventListener('change', toggleOtherLanguages);
 
     // Listener para filtros de búsqueda
     document.getElementById('applyFiltersBtn')?.addEventListener('click', loadTalents);
-
-    // Listener para navegación móvil
-    const navToggle = document.getElementById('navToggle');
-    const navLinks = document.getElementById('navLinks');
-    if (navToggle && navLinks) {
-        navToggle.addEventListener('click', () => {
-            navLinks.classList.toggle('active');
-        });
-    }
 
     console.log('Event listeners configurados correctamente');
 }
@@ -223,8 +214,6 @@ window.viewTalentProfile = async function(talentId) {
     
     if (!profileModal) {
         console.error('Modal no encontrado');
-        // Crear modal dinámicamente si no existe
-        createViewProfileModal();
         return;
     }
     
@@ -328,24 +317,6 @@ window.viewTalentProfile = async function(talentId) {
         profileContent.innerHTML = '<p class="text-danger" style="text-align:center;">Error al cargar el perfil.</p>';
     }
 };
-
-// Crear modal de perfil dinámicamente si no existe
-function createViewProfileModal() {
-    const modalHTML = `
-        <div id="viewTalentProfileModal" class="modal">
-            <div class="modal-content large-modal">
-                <div class="modal-header">
-                    <h3>Perfil del Talento</h3>
-                    <span class="close-modal" onclick="window.closeViewProfileModal()">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <div id="profileViewContent"></div>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-}
 
 window.closeViewProfileModal = function() {
     const modal = document.getElementById('viewTalentProfileModal');
@@ -578,7 +549,7 @@ window.closeJobDetailsModal = function() {
     }
 };
 
-// Función para agregar a favoritos
+// Función para agregar a favoritos - COMPLETA
 window.addToFavorites = async function(talentId) {
     if (!currentUser) {
         alert('Debes iniciar sesión para agregar a favoritos.');
@@ -610,15 +581,26 @@ window.addToFavorites = async function(talentId) {
     }
 
     try {
+        // Obtener favoritos actuales
+        const clientDoc = await db.collection('clients').doc(currentUser.uid).get();
+        const currentFavorites = clientDoc.data()?.favorites || [];
+
+        // Verificar si ya está en favoritos
+        if (currentFavorites.includes(talentId)) {
+            alert('Este talento ya está en tus favoritos.');
+            return;
+        }
+
+        // Agregar a favoritos
         await db.collection('clients').doc(currentUser.uid).update({
             favorites: firebase.firestore.FieldValue.arrayUnion(talentId)
         });
 
-        alert('Talento agregado a favoritos.');
+        alert('✅ Talento agregado a favoritos correctamente.');
 
     } catch (error) {
         console.error('Error agregando a favoritos:', error);
-        alert('Error al agregar a favoritos.');
+        alert('Error al agregar a favoritos: ' + error.message);
     }
 };
 
@@ -652,7 +634,7 @@ function toggleCompanyName() {
 function toggleOtherLanguages() {
     const otherLanguagesInput = document.getElementById('otherLanguages');
     if (otherLanguagesInput) {
-        otherLanguagesInput.style.display = document.getElementById('lang10').checked ? 'block' : 'none';
+        otherLanguagesInput.style.display = document.getElementById('lang9').checked ? 'block' : 'none';
     }
 }
 
@@ -681,4 +663,4 @@ async function logoutUser() {
     }
 }
 
-console.log('App.js cargado correctamente');
+console.log('App.js cargado correctamente - VoiceBook Main Application');
