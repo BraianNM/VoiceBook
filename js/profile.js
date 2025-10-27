@@ -1,69 +1,96 @@
-// Gestión de perfiles de usuario (CORREGIDO Y MEJORADO)
+// Gestión de perfiles de usuario - VOICEBOOK (CORREGIDO)
 
-// Cargar perfil del usuario
-window.loadUserProfile = async function(userId = null) {
-    console.log('Cargando perfil del usuario...');
+// Cargar perfil del usuario actual
+window.loadUserProfile = async function() {
+    console.log('=== INICIANDO CARGA DE PERFIL ===');
+    console.log('Usuario actual:', currentUser ? currentUser.uid : 'No autenticado');
     
-    const userIdToLoad = userId || (currentUser ? currentUser.uid : null);
-    if (!userIdToLoad) {
-        console.error('No hay usuario para cargar perfil');
+    const profileContent = document.getElementById('userProfileContent');
+    if (!profileContent) {
+        console.error('No se encontró el contenedor del perfil');
+        return;
+    }
+
+    if (!currentUser) {
+        profileContent.innerHTML = `
+            <div class="alert alert-danger text-center">
+                <h4><i class="fas fa-exclamation-triangle"></i> No autenticado</h4>
+                <p>Debes iniciar sesión para ver tu perfil.</p>
+                <button class="btn btn-primary mt-3" onclick="window.location.href='index.html'">
+                    <i class="fas fa-home"></i> Ir a Inicio
+                </button>
+            </div>
+        `;
         return;
     }
 
     try {
-        console.log('Buscando datos del usuario:', userIdToLoad);
+        profileContent.innerHTML = '<div class="loading">Cargando perfil...</div>';
+
+        console.log('Buscando datos del usuario en Firestore...');
         
         let userData = null;
         let userType = null;
 
         // Buscar en ambas colecciones
-        const talentDoc = await db.collection('talents').doc(userIdToLoad).get();
+        const talentDoc = await db.collection('talents').doc(currentUser.uid).get();
         if (talentDoc.exists) {
             userData = talentDoc.data();
             userType = 'talent';
-            console.log('Usuario encontrado como talento:', userData);
+            console.log('✅ Usuario encontrado como talento:', userData.name);
         } else {
-            const clientDoc = await db.collection('clients').doc(userIdToLoad).get();
+            const clientDoc = await db.collection('clients').doc(currentUser.uid).get();
             if (clientDoc.exists) {
                 userData = clientDoc.data();
                 userType = 'client';
-                console.log('Usuario encontrado como cliente:', userData);
+                console.log('✅ Usuario encontrado como cliente:', userData.name);
+            } else {
+                throw new Error('Perfil no encontrado en la base de datos');
             }
         }
 
-        if (!userData) {
-            throw new Error('Perfil no encontrado en la base de datos');
-        }
+        // Actualizar currentUserData global
+        currentUserData = userData;
+        currentUserData.type = userType;
 
-        // Actualizar currentUserData global si es el usuario actual
-        if (!userId || userId === currentUser.uid) {
-            currentUserData = userData;
-            currentUserData.type = userType;
-        }
-
+        console.log('Renderizando perfil...');
+        
         // Renderizar el perfil según el tipo de usuario
         if (userType === 'talent') {
-            return renderTalentProfile(userData, userIdToLoad);
+            profileContent.innerHTML = renderTalentProfile(userData);
+            setupTalentEventListeners();
         } else {
-            return renderClientProfile(userData, userIdToLoad);
+            profileContent.innerHTML = renderClientProfile(userData);
+            setupClientEventListeners();
         }
 
+        console.log('✅ Perfil cargado exitosamente');
+
     } catch (error) {
-        console.error('Error cargando perfil:', error);
-        return `
+        console.error('❌ Error cargando perfil:', error);
+        profileContent.innerHTML = `
             <div class="alert alert-danger text-center">
                 <h4><i class="fas fa-exclamation-circle"></i> Error al cargar el perfil</h4>
                 <p>${error.message}</p>
+                <div class="mt-3">
+                    <button class="btn btn-primary" onclick="window.loadUserProfile()">
+                        <i class="fas fa-redo"></i> Reintentar
+                    </button>
+                    <button class="btn btn-outline" onclick="window.location.href='index.html'">
+                        <i class="fas fa-home"></i> Ir a Inicio
+                    </button>
+                </div>
             </div>
         `;
     }
 };
 
 // Renderizar perfil de talento
-function renderTalentProfile(talent, talentId = null) {
-    const isOwnProfile = !talentId || talentId === currentUser?.uid;
-    const countryName = typeof getCountryName !== 'undefined' && talent.country ? getCountryName(talent.country) : talent.country;
-    const stateName = typeof getStateName !== 'undefined' && talent.country && talent.state ? getStateName(talent.country, talent.state) : talent.state;
+function renderTalentProfile(talent) {
+    console.log('Renderizando perfil de talento:', talent.name);
+    
+    const countryName = window.getCountryName ? window.getCountryName(talent.country) : talent.country;
+    const stateName = window.getStateName ? window.getStateName(talent.country, talent.state) : talent.state;
     const languages = talent.languages && talent.languages.length > 0 ? talent.languages.join(', ') : 'No especificado';
     const homeStudio = talent.homeStudio === 'si' ? 'Sí' : 'No';
     const profilePicture = talent.profilePictureUrl || 'https://via.placeholder.com/150/007bff/ffffff?text=VO';
@@ -74,11 +101,9 @@ function renderTalentProfile(talent, talentId = null) {
         <div class="profile-header">
             <div class="profile-picture-section">
                 <img src="${profilePicture}" alt="${talent.name}" class="profile-picture-large" onerror="this.src='https://via.placeholder.com/150/007bff/ffffff?text=VO'">
-                ${isOwnProfile ? `
-                    <button class="btn btn-outline btn-sm mt-2" onclick="changeProfilePicture()">
-                        <i class="fas fa-camera"></i> Cambiar foto
-                    </button>
-                ` : ''}
+                <button class="btn btn-outline btn-sm mt-2" onclick="changeProfilePicture()">
+                    <i class="fas fa-camera"></i> Cambiar foto
+                </button>
             </div>
             <div class="profile-info">
                 <h2>${talent.name || 'Nombre no especificado'}</h2>
@@ -93,27 +118,14 @@ function renderTalentProfile(talent, talentId = null) {
             </div>
         </div>
 
-        ${isOwnProfile ? `
-            <div class="profile-actions">
-                <button class="btn btn-primary" onclick="editTalentProfile()">
-                    <i class="fas fa-edit"></i> Editar Perfil
-                </button>
-                <button class="btn btn-outline" onclick="loadUserApplications()">
-                    <i class="fas fa-briefcase"></i> Mis Postulaciones
-                </button>
-            </div>
-        ` : `
-            <div class="profile-actions">
-                ${currentUserData?.type === 'client' ? `
-                    <button class="btn btn-primary" onclick="addToFavorites('${talentId}')">
-                        <i class="fas fa-heart"></i> Agregar a Favoritos
-                    </button>
-                ` : ''}
-                <button class="btn btn-outline" onclick="contactTalent('${talentId}')">
-                    <i class="fas fa-envelope"></i> Contactar
-                </button>
-            </div>
-        `}
+        <div class="profile-actions">
+            <button class="btn btn-primary" onclick="editTalentProfile()">
+                <i class="fas fa-edit"></i> Editar Perfil
+            </button>
+            <button class="btn btn-outline" onclick="loadUserApplications()">
+                <i class="fas fa-briefcase"></i> Mis Postulaciones
+            </button>
+        </div>
 
         <div class="profile-sections">
             <div class="profile-section">
@@ -121,7 +133,7 @@ function renderTalentProfile(talent, talentId = null) {
                 <div class="info-grid">
                     <div class="info-item">
                         <label>Teléfono:</label>
-                        <span>${isOwnProfile || currentUser ? (talent.phone || 'No especificado') : '<em>Inicia sesión para ver</em>'}</span>
+                        <span>${talent.phone || 'No especificado'}</span>
                     </div>
                     <div class="info-item">
                         <label>Género:</label>
@@ -154,62 +166,58 @@ function renderTalentProfile(talent, talentId = null) {
                 <div id="demosContainer" class="demos-container">
                     ${renderDemos(talent.demos)}
                 </div>
-                ${isOwnProfile ? `
-                    <button class="btn btn-outline btn-sm mt-2" onclick="showUploadDemoModal()">
-                        <i class="fas fa-plus"></i> Agregar Demo
-                    </button>
-                ` : ''}
+                <button class="btn btn-outline btn-sm mt-2" onclick="showUploadDemoModal()">
+                    <i class="fas fa-plus"></i> Agregar Demo
+                </button>
             </div>
         </div>
 
-        ${isOwnProfile ? `
-            <!-- Modal para editar perfil -->
-            <div id="editTalentModal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-edit"></i> Editar Perfil de Talento</h3>
-                        <span class="close-modal" onclick="closeEditModal()">&times;</span>
-                    </div>
-                    <div class="modal-body">
-                        <form id="editTalentForm" onsubmit="updateTalentProfile(event)">
-                            <!-- El formulario se llenará dinámicamente -->
-                        </form>
-                    </div>
+        <!-- Modal para editar perfil -->
+        <div id="editTalentModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-edit"></i> Editar Perfil de Talento</h3>
+                    <span class="close-modal" onclick="closeEditModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form id="editTalentForm" onsubmit="updateTalentProfile(event)">
+                        <!-- El formulario se llenará dinámicamente -->
+                    </form>
                 </div>
             </div>
+        </div>
 
-            <!-- Modal para subir demos -->
-            <div id="uploadDemoModal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-upload"></i> Subir Demo de Voz</h3>
-                        <span class="close-modal" onclick="closeUploadDemoModal()">&times;</span>
-                    </div>
-                    <div class="modal-body">
-                        <form id="uploadDemoForm" onsubmit="uploadDemo(event)">
-                            <div class="form-group">
-                                <label for="demoName">Nombre del Demo:</label>
-                                <input type="text" id="demoName" name="demoName" class="form-control" required 
-                                       placeholder="Ej: Demo comercial, Narración documental, etc.">
-                            </div>
-                            <div class="form-group">
-                                <label for="demoFile">Archivo de Audio:</label>
-                                <input type="file" id="demoFile" name="demoFile" accept="audio/*" class="form-control" required>
-                                <small class="form-text text-muted">Formatos aceptados: MP3, WAV, OGG (Máximo 10MB)</small>
-                            </div>
-                            <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-upload"></i> Subir Demo
-                                </button>
-                                <button type="button" class="btn btn-outline" onclick="closeUploadDemoModal()">
-                                    <i class="fas fa-times"></i> Cancelar
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+        <!-- Modal para subir demos -->
+        <div id="uploadDemoModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-upload"></i> Subir Demo de Voz</h3>
+                    <span class="close-modal" onclick="closeUploadDemoModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form id="uploadDemoForm" onsubmit="uploadDemo(event)">
+                        <div class="form-group">
+                            <label for="demoName">Nombre del Demo:</label>
+                            <input type="text" id="demoName" name="demoName" class="form-control" required 
+                                   placeholder="Ej: Demo comercial, Narración documental, etc.">
+                        </div>
+                        <div class="form-group">
+                            <label for="demoFile">Archivo de Audio:</label>
+                            <input type="file" id="demoFile" name="demoFile" accept="audio/*" class="form-control" required>
+                            <small class="form-text text-muted">Formatos aceptados: MP3, WAV, OGG (Máximo 10MB)</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Subir Demo
+                            </button>
+                            <button type="button" class="btn btn-outline" onclick="closeUploadDemoModal()">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
-        ` : ''}
+        </div>
     `;
 }
 
@@ -228,21 +236,20 @@ function renderDemos(demos) {
                     Tu navegador no soporta el elemento de audio.
                 </audio>
             </div>
-            ${currentUserData?.type === 'talent' ? `
-                <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.id || index}')" title="Eliminar demo">
-                    <i class="fas fa-trash"></i>
-                </button>
-            ` : ''}
+            <button class="btn btn-danger btn-sm" onclick="deleteDemo('${demo.id || index}')" title="Eliminar demo">
+                <i class="fas fa-trash"></i>
+            </button>
         </div>
     `).join('');
 }
 
 // Renderizar perfil de cliente
-function renderClientProfile(client, clientId = null) {
-    const isOwnProfile = !clientId || clientId === currentUser?.uid;
-    const countryName = typeof getCountryName !== 'undefined' && client.country ? getCountryName(client.country) : client.country;
-    const stateName = typeof getStateName !== 'undefined' && client.country && client.state ? getStateName(client.country, client.state) : client.state;
-    const profilePicture = client.profilePictureUrl || 'https://via.placeholder.com/150/007bff/ffffff?text=VO';
+function renderClientProfile(client) {
+    console.log('Renderizando perfil de cliente:', client.name);
+    
+    const countryName = window.getCountryName ? window.getCountryName(client.country) : client.country;
+    const stateName = window.getStateName ? window.getStateName(client.country, client.state) : client.state;
+    const profilePicture = client.profilePictureUrl || 'https://via.placeholder.com/150/6c757d/ffffff?text=CL';
     const companyInfo = client.clientType === 'empresa' ? 
         `<div class="info-item">
             <label>Empresa:</label>
@@ -254,12 +261,10 @@ function renderClientProfile(client, clientId = null) {
     return `
         <div class="profile-header">
             <div class="profile-picture-section">
-                <img src="${profilePicture}" alt="${client.name}" class="profile-picture-large" onerror="this.src='https://via.placeholder.com/150/007bff/ffffff?text=VO'">
-                ${isOwnProfile ? `
-                    <button class="btn btn-outline btn-sm mt-2" onclick="changeProfilePicture()">
-                        <i class="fas fa-camera"></i> Cambiar foto
-                    </button>
-                ` : ''}
+                <img src="${profilePicture}" alt="${client.name}" class="profile-picture-large" onerror="this.src='https://via.placeholder.com/150/6c757d/ffffff?text=CL'">
+                <button class="btn btn-outline btn-sm mt-2" onclick="changeProfilePicture()">
+                    <i class="fas fa-camera"></i> Cambiar foto
+                </button>
             </div>
             <div class="profile-info">
                 <h2>${client.name || 'Nombre no especificado'}</h2>
@@ -272,19 +277,17 @@ function renderClientProfile(client, clientId = null) {
             </div>
         </div>
 
-        ${isOwnProfile ? `
-            <div class="profile-actions">
-                <button class="btn btn-primary" onclick="editClientProfile()">
-                    <i class="fas fa-edit"></i> Editar Perfil
-                </button>
-                <button class="btn btn-outline" onclick="loadClientJobs()">
-                    <i class="fas fa-list"></i> Mis Ofertas de Trabajo
-                </button>
-                <button class="btn btn-outline" onclick="loadFavorites()">
-                    <i class="fas fa-heart"></i> Talentos Favoritos
-                </button>
-            </div>
-        ` : ''}
+        <div class="profile-actions">
+            <button class="btn btn-primary" onclick="editClientProfile()">
+                <i class="fas fa-edit"></i> Editar Perfil
+            </button>
+            <button class="btn btn-outline" onclick="loadClientJobs()">
+                <i class="fas fa-list"></i> Mis Ofertas de Trabajo
+            </button>
+            <button class="btn btn-outline" onclick="loadFavorites()">
+                <i class="fas fa-heart"></i> Talentos Favoritos
+            </button>
+        </div>
 
         <div class="profile-sections">
             <div class="profile-section">
@@ -292,7 +295,7 @@ function renderClientProfile(client, clientId = null) {
                 <div class="info-grid">
                     <div class="info-item">
                         <label>Teléfono:</label>
-                        <span>${isOwnProfile || currentUser ? (client.phone || 'No especificado') : '<em>Inicia sesión para ver</em>'}</span>
+                        <span>${client.phone || 'No especificado'}</span>
                     </div>
                     <div class="info-item">
                         <label>Tipo de Cliente:</label>
@@ -301,24 +304,36 @@ function renderClientProfile(client, clientId = null) {
                     ${companyInfo}
                 </div>
             </div>
-        </div>
 
-        ${isOwnProfile ? `
-            <!-- Modal para editar perfil de cliente -->
-            <div id="editClientModal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-edit"></i> Editar Perfil de Cliente</h3>
-                        <span class="close-modal" onclick="closeEditModal()">&times;</span>
-                    </div>
-                    <div class="modal-body">
-                        <form id="editClientForm" onsubmit="updateClientProfile(event)">
-                            <!-- El formulario se llenará dinámicamente -->
-                        </form>
-                    </div>
+            <div class="profile-section">
+                <h3><i class="fas fa-briefcase"></i> Mis Ofertas de Trabajo</h3>
+                <div id="clientJobsContainer">
+                    <div class="loading">Cargando ofertas de trabajo...</div>
                 </div>
             </div>
-        ` : ''}
+
+            <div class="profile-section">
+                <h3><i class="fas fa-heart"></i> Talentos Favoritos</h3>
+                <div id="favoritesContainer">
+                    <div class="loading">Cargando favoritos...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para editar perfil de cliente -->
+        <div id="editClientModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-edit"></i> Editar Perfil de Cliente</h3>
+                    <span class="close-modal" onclick="closeEditModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form id="editClientForm" onsubmit="updateClientProfile(event)">
+                        <!-- El formulario se llenará dinámicamente -->
+                    </form>
+                </div>
+            </div>
+        </div>
     `;
 }
 
@@ -330,6 +345,11 @@ function setupTalentEventListeners() {
 // Configurar event listeners para clientes
 function setupClientEventListeners() {
     console.log('Configurando listeners para cliente');
+    // Cargar datos del cliente después de renderizar
+    setTimeout(() => {
+        loadClientJobs();
+        loadFavorites();
+    }, 100);
 }
 
 // Editar perfil de talento
@@ -356,25 +376,10 @@ function editTalentProfile() {
                    value="${currentUserData.phone || ''}" placeholder="+1234567890">
         </div>
         
-        <div class="form-row">
-            <div class="form-group">
-                <label for="editCountry">País:</label>
-                <select id="editCountry" name="country" class="form-control" required>
-                    <option value="">Seleccionar país</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="editState">Estado/Provincia:</label>
-                <select id="editState" name="state" class="form-control" required>
-                    <option value="">Seleccionar estado</option>
-                </select>
-            </div>
-        </div>
-        
         <div class="form-group">
-            <label for="editCity">Ciudad:</label>
-            <input type="text" id="editCity" name="city" class="form-control" 
-                   value="${currentUserData.city || ''}" required>
+            <label for="editBio">Biografía:</label>
+            <textarea id="editBio" name="bio" class="form-control" rows="4" 
+                      placeholder="Describe tu experiencia, estilo vocal, etc.">${currentUserData.bio || ''}</textarea>
         </div>
         
         <div class="form-group">
@@ -400,12 +405,6 @@ function editTalentProfile() {
         </div>
         
         <div class="form-group">
-            <label for="editBio">Biografía:</label>
-            <textarea id="editBio" name="bio" class="form-control" rows="4" 
-                      placeholder="Describe tu experiencia, estilo vocal, etc.">${currentUserData.bio || ''}</textarea>
-        </div>
-        
-        <div class="form-group">
             <label for="editHomeStudio">Home Studio:</label>
             <select id="editHomeStudio" name="homeStudio" class="form-control" required>
                 <option value="si" ${currentUserData.homeStudio === 'si' ? 'selected' : ''}>Sí</option>
@@ -422,13 +421,6 @@ function editTalentProfile() {
             </button>
         </div>
     `;
-
-    // Cargar datos de ubicación
-    if (typeof window.loadLocationData === 'function') {
-        window.loadLocationData('editCountry', 'editState', 'editCity', currentUserData.country, currentUserData.state);
-    } else {
-        console.warn('loadLocationData no disponible');
-    }
 
     modal.style.display = 'flex';
 }
@@ -449,9 +441,6 @@ async function updateTalentProfile(e) {
         const updateData = {
             name: formData.get('name'),
             phone: formData.get('phone'),
-            country: formData.get('country'),
-            state: formData.get('state'),
-            city: formData.get('city'),
             gender: formData.get('gender'),
             realAge: formData.get('realAge') || null,
             nationality: formData.get('nationality'),
@@ -482,6 +471,181 @@ async function updateTalentProfile(e) {
     }
 }
 
+// Cargar trabajos del cliente
+async function loadClientJobs() {
+    try {
+        const container = document.getElementById('clientJobsContainer');
+        if (!container) return;
+
+        console.log('Cargando trabajos del cliente...');
+
+        const snapshot = await db.collection('jobs')
+            .where('clientId', '==', currentUser.uid)
+            .orderBy('createdAt', 'desc')
+            .get();
+
+        if (snapshot.empty) {
+            container.innerHTML = `
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-briefcase fa-3x text-muted mb-3"></i>
+                    <p>No has publicado ninguna oferta de trabajo.</p>
+                    <button class="btn btn-primary mt-2" onclick="createJobPost()">
+                        <i class="fas fa-plus"></i> Publicar tu primera oferta
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        let jobsHtml = '<div class="jobs-list">';
+        snapshot.forEach(doc => {
+            const job = doc.data();
+            jobsHtml += `
+                <div class="job-card" style="margin-bottom: 15px;">
+                    <div class="job-header">
+                        <h4>${job.title}</h4>
+                        <span class="badge ${job.status === 'active' ? 'badge-success' : 'badge-secondary'}">
+                            ${job.status === 'active' ? 'Activa' : 'Cerrada'}
+                        </span>
+                    </div>
+                    <p><strong>Descripción:</strong> ${job.description ? (job.description.substring(0, 100) + '...') : 'Sin descripción'}</p>
+                    <p><strong>Presupuesto:</strong> ${job.budget ? `$${job.budget}` : 'A convenir'}</p>
+                    <div class="card-actions">
+                        <button class="btn btn-outline btn-sm" onclick="viewJobApplications('${doc.id}')">
+                            <i class="fas fa-users"></i> Ver postulaciones
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        jobsHtml += '</div>';
+
+        container.innerHTML = jobsHtml;
+
+    } catch (error) {
+        console.error('Error cargando trabajos del cliente:', error);
+        const container = document.getElementById('clientJobsContainer');
+        if (container) {
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    Error al cargar las ofertas de trabajo: ${error.message}
+                </div>
+            `;
+        }
+    }
+}
+
+// Cargar favoritos del cliente - CORREGIDO
+async function loadFavorites() {
+    try {
+        const container = document.getElementById('favoritesContainer');
+        if (!container) {
+            console.error('Contenedor de favoritos no encontrado');
+            return;
+        }
+
+        console.log('Cargando favoritos del cliente...');
+
+        // Obtener el documento del cliente actual
+        const clientDoc = await db.collection('clients').doc(currentUser.uid).get();
+        if (!clientDoc.exists) {
+            container.innerHTML = '<div class="alert alert-warning">No se encontraron datos del cliente.</div>';
+            return;
+        }
+
+        const clientData = clientDoc.data();
+        const favorites = clientData.favorites || [];
+
+        console.log('Favoritos encontrados:', favorites);
+
+        if (favorites.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-heart fa-3x text-muted mb-3"></i>
+                    <p>No tienes talentos favoritos todavía.</p>
+                    <button class="btn btn-primary mt-2" onclick="window.location.href='index.html'">
+                        <i class="fas fa-search"></i> Explorar talentos
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        let favoritesHtml = '<div class="favorites-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">';
+        
+        // Cargar información de cada talento favorito
+        for (const talentId of favorites) {
+            try {
+                const talentDoc = await db.collection('talents').doc(talentId).get();
+                if (talentDoc.exists) {
+                    const talent = talentDoc.data();
+                    const profilePicture = talent.profilePictureUrl || 'https://via.placeholder.com/150/007bff/ffffff?text=VO';
+                    const languages = talent.languages ? talent.languages.slice(0, 2).join(', ') : 'No especificado';
+                    
+                    favoritesHtml += `
+                        <div class="talent-card" style="text-align: center; padding: 15px;">
+                            <img src="${profilePicture}" alt="${talent.name}" class="talent-profile-pic" 
+                                 onerror="this.src='https://via.placeholder.com/150/007bff/ffffff?text=VO'">
+                            <h4>${talent.name || 'Talento Anónimo'}</h4>
+                            <p><strong>Idiomas:</strong> ${languages}</p>
+                            <p><strong>Home Studio:</strong> ${talent.homeStudio === 'si' ? 'Sí' : 'No'}</p>
+                            <div class="card-actions">
+                                <button class="btn btn-primary btn-sm" onclick="viewTalentProfile('${talentId}')">
+                                    <i class="fas fa-eye"></i> Ver Perfil
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="removeFromFavorites('${talentId}')">
+                                    <i class="fas fa-trash"></i> Quitar
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error(`Error cargando talento favorito ${talentId}:`, error);
+            }
+        }
+        favoritesHtml += '</div>';
+
+        container.innerHTML = favoritesHtml;
+
+    } catch (error) {
+        console.error('Error cargando favoritos:', error);
+        const container = document.getElementById('favoritesContainer');
+        if (container) {
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    Error al cargar los favoritos: ${error.message}
+                </div>
+            `;
+        }
+    }
+}
+
+// Remover de favoritos
+async function removeFromFavorites(talentId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar este talento de tus favoritos?')) {
+        return;
+    }
+
+    try {
+        await db.collection('clients').doc(currentUser.uid).update({
+            favorites: firebase.firestore.FieldValue.arrayRemove(talentId)
+        });
+
+        alert('Talento eliminado de favoritos');
+        loadFavorites(); // Recargar la lista
+
+    } catch (error) {
+        console.error('Error eliminando de favoritos:', error);
+        alert('Error al eliminar de favoritos: ' + error.message);
+    }
+}
+
+// Ver perfil de talento
+function viewTalentProfile(talentId) {
+    window.viewTalentProfile(talentId);
+}
+
 // Cerrar modal de edición
 function closeEditModal() {
     const talentModal = document.getElementById('editTalentModal');
@@ -491,387 +655,76 @@ function closeEditModal() {
     if (clientModal) clientModal.style.display = 'none';
 }
 
-// Mostrar modal para subir demo
-function showUploadDemoModal() {
-    const modal = document.getElementById('uploadDemoModal');
-    if (modal) {
-        modal.style.display = 'flex';
-    }
+// Funciones placeholder para futuras implementaciones
+function editClientProfile() {
+    alert('Funcionalidad de edición de perfil de cliente en desarrollo');
 }
 
-// Cerrar modal de upload demo
-function closeUploadDemoModal() {
-    const modal = document.getElementById('uploadDemoModal');
-    const form = document.getElementById('uploadDemoForm');
-    
-    if (modal) modal.style.display = 'none';
-    if (form) form.reset();
-}
-
-// Subir demo
-async function uploadDemo(e) {
+function updateClientProfile(e) {
     e.preventDefault();
-    
-    const form = e.target;
-    const formData = new FormData(form);
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-
-    try {
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
-        submitBtn.disabled = true;
-
-        const demoFile = formData.get('demoFile');
-        const demoName = formData.get('demoName');
-
-        if (!demoFile || demoFile.size === 0) {
-            throw new Error('Selecciona un archivo de audio');
-        }
-
-        // Validar tamaño del archivo (10MB máximo)
-        if (demoFile.size > 10 * 1024 * 1024) {
-            throw new Error('El archivo es demasiado grande. Máximo 10MB.');
-        }
-
-        console.log('Subiendo demo:', demoName);
-
-        // Subir archivo a Firebase Storage
-        const fileName = `demo_${Date.now()}_${demoFile.name}`;
-        const storageRef = storage.ref(`demos/${currentUser.uid}/${fileName}`);
-        const snapshot = await storageRef.put(demoFile);
-        const downloadURL = await snapshot.ref.getDownloadURL();
-
-        console.log('Demo subido:', downloadURL);
-
-        // Crear objeto demo
-        const demo = {
-            id: Date.now().toString(),
-            name: demoName,
-            url: downloadURL,
-            fileName: fileName,
-            size: demoFile.size,
-            uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        // Agregar demo al array de demos del talento
-        await db.collection('talents').doc(currentUser.uid).update({
-            demos: firebase.firestore.FieldValue.arrayUnion(demo),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        // Actualizar datos locales
-        if (!currentUserData.demos) {
-            currentUserData.demos = [];
-        }
-        currentUserData.demos.push(demo);
-
-        // Cerrar modal y actualizar UI
-        closeUploadDemoModal();
-        alert('Demo subido correctamente');
-        window.loadUserProfile();
-
-    } catch (error) {
-        console.error('Error subiendo demo:', error);
-        alert('Error al subir el demo: ' + error.message);
-    } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    }
+    alert('Funcionalidad de actualización de perfil de cliente en desarrollo');
 }
 
-// Eliminar demo
-async function deleteDemo(demoId) {
-    if (!confirm('¿Estás seguro de que quieres eliminar este demo?')) {
-        return;
-    }
+function loadUserApplications() {
+    alert('Funcionalidad de postulaciones en desarrollo');
+}
 
-    try {
-        // Encontrar el demo a eliminar
-        const demoToDelete = currentUserData.demos.find(demo => demo.id === demoId);
-        if (!demoToDelete) {
-            throw new Error('Demo no encontrado');
-        }
+function createJobPost() {
+    alert('Funcionalidad de publicación de trabajos en desarrollo');
+}
 
-        // Eliminar de Firestore
-        await db.collection('talents').doc(currentUser.uid).update({
-            demos: firebase.firestore.FieldValue.arrayRemove(demoToDelete),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+function viewJobApplications(jobId) {
+    alert(`Funcionalidad de ver postulaciones para el trabajo ${jobId} en desarrollo`);
+}
 
-        // Actualizar datos locales
-        currentUserData.demos = currentUserData.demos.filter(demo => demo.id !== demoId);
+// Funciones para demos (placeholder)
+function showUploadDemoModal() {
+    alert('Funcionalidad de subida de demos en desarrollo');
+}
 
-        // Actualizar UI
-        alert('Demo eliminado correctamente');
-        window.loadUserProfile();
+function closeUploadDemoModal() {
+    // Placeholder
+}
 
-    } catch (error) {
-        console.error('Error eliminando demo:', error);
-        alert('Error al eliminar el demo: ' + error.message);
+function uploadDemo(e) {
+    e.preventDefault();
+    alert('Funcionalidad de upload de demo en desarrollo');
+}
+
+function deleteDemo(demoId) {
+    if (confirm('¿Estás seguro de que quieres eliminar este demo?')) {
+        alert(`Demo ${demoId} eliminado (funcionalidad en desarrollo)`);
     }
 }
 
 // Cambiar foto de perfil
 async function changeProfilePicture() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        // Validar que sea una imagen
-        if (!file.type.startsWith('image/')) {
-            alert('Por favor selecciona un archivo de imagen válido.');
-            return;
-        }
-
-        // Validar tamaño (5MB máximo)
-        if (file.size > 5 * 1024 * 1024) {
-            alert('La imagen es demasiado grande. Máximo 5MB.');
-            return;
-        }
-
-        try {
-            // Subir nueva foto
-            const storageRef = storage.ref(`profile-pictures/${currentUser.uid}`);
-            const snapshot = await storageRef.put(file);
-            const downloadURL = await snapshot.ref.getDownloadURL();
-
-            console.log('Nueva foto de perfil subida:', downloadURL);
-
-            // Actualizar en Firestore
-            const collectionName = currentUserData.type === 'talent' ? 'talents' : 'clients';
-            await db.collection(collectionName).doc(currentUser.uid).update({
-                profilePictureUrl: downloadURL,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            // Actualizar datos locales
-            currentUserData.profilePictureUrl = downloadURL;
-
-            // Actualizar UI
-            alert('Foto de perfil actualizada correctamente');
-            window.loadUserProfile();
-
-        } catch (error) {
-            console.error('Error cambiando foto de perfil:', error);
-            alert('Error al cambiar la foto de perfil: ' + error.message);
-        }
-    };
-
-    input.click();
-}
-
-// Funciones para cliente
-function editClientProfile() {
-    const modal = document.getElementById('editClientModal');
-    const form = document.getElementById('editClientForm');
-    
-    if (!modal || !form) {
-        console.error('Modal o form no encontrado');
-        return;
-    }
-
-    form.innerHTML = `
-        <div class="form-group">
-            <label for="editClientName">Nombre:</label>
-            <input type="text" id="editClientName" name="name" class="form-control" 
-                   value="${currentUserData.name || ''}" required>
-        </div>
-        
-        <div class="form-group">
-            <label for="editClientPhone">Teléfono:</label>
-            <input type="tel" id="editClientPhone" name="phone" class="form-control" 
-                   value="${currentUserData.phone || ''}" placeholder="+1234567890">
-        </div>
-        
-        <div class="form-group">
-            <label for="editClientType">Tipo de Cliente:</label>
-            <select id="editClientType" name="clientType" class="form-control" required>
-                <option value="individual" ${currentUserData.clientType === 'individual' ? 'selected' : ''}>Individual</option>
-                <option value="empresa" ${currentUserData.clientType === 'empresa' ? 'selected' : ''}>Empresa</option>
-            </select>
-        </div>
-        
-        <div id="companyNameField" class="form-group" style="${currentUserData.clientType === 'empresa' ? '' : 'display: none;'}">
-            <label for="editCompanyName">Nombre de la Empresa:</label>
-            <input type="text" id="editCompanyName" name="companyName" class="form-control" 
-                   value="${currentUserData.companyName || ''}" placeholder="Nombre de la empresa">
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label for="editClientCountry">País:</label>
-                <select id="editClientCountry" name="country" class="form-control" required>
-                    <option value="">Seleccionar país</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="editClientState">Estado/Provincia:</label>
-                <select id="editClientState" name="state" class="form-control" required>
-                    <option value="">Seleccionar estado</option>
-                </select>
-            </div>
-        </div>
-        
-        <div class="form-group">
-            <label for="editClientCity">Ciudad:</label>
-            <input type="text" id="editClientCity" name="city" class="form-control" 
-                   value="${currentUserData.city || ''}" required>
-        </div>
-        
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save"></i> Guardar Cambios
-            </button>
-            <button type="button" class="btn btn-outline" onclick="closeEditModal()">
-                <i class="fas fa-times"></i> Cancelar
-            </button>
-        </div>
-    `;
-
-    // Mostrar/ocultar campo de empresa según tipo de cliente
-    document.getElementById('editClientType').addEventListener('change', function() {
-        document.getElementById('companyNameField').style.display = 
-            this.value === 'empresa' ? 'block' : 'none';
-    });
-
-    // Cargar datos de ubicación
-    if (typeof window.loadLocationData === 'function') {
-        window.loadLocationData('editClientCountry', 'editClientState', 'editClientCity', currentUserData.country, currentUserData.state);
-    } else {
-        console.warn('loadLocationData no disponible');
-    }
-
-    modal.style.display = 'flex';
-}
-
-async function updateClientProfile(e) {
-    e.preventDefault();
-    
-    const form = e.target;
-    const formData = new FormData(form);
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-
-    try {
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin'></i> Guardando...';
-        submitBtn.disabled = true;
-
-        const updateData = {
-            name: formData.get('name'),
-            phone: formData.get('phone'),
-            clientType: formData.get('clientType'),
-            country: formData.get('country'),
-            state: formData.get('state'),
-            city: formData.get('city'),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        // Agregar nombre de empresa si es empresa
-        if (formData.get('clientType') === 'empresa') {
-            updateData.companyName = formData.get('companyName');
-        } else {
-            updateData.companyName = null;
-        }
-
-        console.log('Actualizando perfil de cliente:', updateData);
-
-        // Actualizar en Firestore
-        await db.collection('clients').doc(currentUser.uid).update(updateData);
-
-        // Actualizar datos locales
-        Object.assign(currentUserData, updateData);
-
-        // Cerrar modal y recargar perfil
-        closeEditModal();
-        alert('Perfil actualizado correctamente');
-        window.loadUserProfile();
-
-    } catch (error) {
-        console.error('Error actualizando perfil:', error);
-        alert('Error al actualizar el perfil: ' + error.message);
-    } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-    }
-}
-
-// Funciones placeholder para futuras implementaciones
-function loadUserApplications() {
-    alert('Funcionalidad en desarrollo - Mis Postulaciones');
-}
-
-function loadClientJobs() {
-    alert('Funcionalidad en desarrollo - Mis Ofertas de Trabajo');
-}
-
-function loadFavorites() {
-    alert('Funcionalidad en desarrollo - Talentos Favoritos');
-}
-
-// Función para agregar a favoritos
-async function addToFavorites(talentId) {
-    if (!currentUser) {
-        alert('Debes iniciar sesión para agregar a favoritos.');
-        document.getElementById('loginModal').style.display = 'flex';
-        return;
-    }
-
-    if (currentUserData?.type !== 'client') {
-        alert('Solo los clientes pueden agregar talentos a favoritos.');
-        return;
-    }
-
-    try {
-        await db.collection('clients').doc(currentUser.uid).update({
-            favorites: firebase.firestore.FieldValue.arrayUnion(talentId)
-        });
-
-        alert('Talento agregado a favoritos.');
-
-    } catch (error) {
-        console.error('Error agregando a favoritos:', error);
-        alert('Error al agregar a favoritos.');
-    }
-}
-
-// Función para contactar talento
-function contactTalent(talentId) {
-    if (!currentUser) {
-        alert('Debes iniciar sesión para contactar talentos.');
-        document.getElementById('loginModal').style.display = 'flex';
-        return;
-    }
-    
-    // Aquí iría la lógica para abrir un modal de contacto
-    alert('Funcionalidad de contacto en desarrollo');
+    alert('Funcionalidad de cambio de foto de perfil en desarrollo');
 }
 
 // Inicialización del perfil
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Profile.js inicializado');
+    console.log('=== PROFILE.JS INICIALIZADO ===');
     
-    // Verificar autenticación
+    // Verificar autenticación y cargar perfil
     auth.onAuthStateChanged((user) => {
         if (user) {
             currentUser = user;
-            // Si estamos en profile.html, cargar el perfil
-            if (window.location.pathname.includes('profile.html')) {
-                const profileContent = document.getElementById('userProfileContent');
-                if (profileContent) {
-                    profileContent.innerHTML = '<div class="loading">Cargando perfil...</div>';
-                    setTimeout(() => {
-                        window.loadUserProfile().then(html => {
-                            profileContent.innerHTML = html;
-                        });
-                    }, 1000);
+            console.log('Usuario autenticado, cargando perfil...');
+            
+            // Pequeño delay para asegurar que el DOM esté listo
+            setTimeout(() => {
+                if (window.location.pathname.includes('profile.html')) {
+                    window.loadUserProfile();
                 }
+            }, 500);
+        } else {
+            console.log('Usuario no autenticado, redirigiendo...');
+            if (window.location.pathname.includes('profile.html')) {
+                window.location.href = 'index.html';
             }
         }
     });
 });
 
-console.log('Profile.js cargado correctamente');
+console.log('✅ Profile.js cargado correctamente - VoiceBook Profile System');
