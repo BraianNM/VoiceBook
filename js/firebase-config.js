@@ -1,6 +1,6 @@
 // Configuración de Firebase
 const firebaseConfig = {
-    apiKey: "AIzaSyC6G6NgMqrMDyd5PB6_HmLNHpPU-vNJdf0",
+    apiKey: "AIzaSyAjDbjmBaCwyIUoEr8e8bZF20RXXzhl5IA",
     authDomain: "voicebook-8ba6c.firebaseapp.com",
     projectId: "voicebook-8ba6c",
     storageBucket: "voicebook-8ba6c.firebasestorage.app",
