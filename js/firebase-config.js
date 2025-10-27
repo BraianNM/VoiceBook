@@ -1,4 +1,4 @@
-// Configuración de Firebase
+// Configuración de Firebase - VOICEBOOK
 const firebaseConfig = {
     apiKey: "AIzaSyAjDbjmBaCwyIUoEr8e8bZF20RXXzhl5IA",
     authDomain: "voicebook-8ba6c.firebaseapp.com",
@@ -20,4 +20,4 @@ const storage = firebase.storage();
 let currentUser = null;
 let currentUserData = null;
 
-console.log('Firebase configurado correctamente');
+console.log('✅ Firebase configurado correctamente');
