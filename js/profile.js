@@ -1,4 +1,4 @@
-// Gestión de perfiles de usuario - VOICEBOOK (CORREGIDO)
+// Gestión de perfiles de usuario - VOICEBOOK (COMPLETO)
 
 // Cargar perfil del usuario actual
 window.loadUserProfile = async function() {
@@ -170,6 +170,13 @@ function renderTalentProfile(talent) {
                     <i class="fas fa-plus"></i> Agregar Demo
                 </button>
             </div>
+
+            <div class="profile-section">
+                <h3><i class="fas fa-briefcase"></i> Mis Postulaciones</h3>
+                <div id="applicationsContainer">
+                    <div class="loading">Cargando postulaciones...</div>
+                </div>
+            </div>
         </div>
 
         <!-- Modal para editar perfil -->
@@ -318,6 +325,13 @@ function renderClientProfile(client) {
                     <div class="loading">Cargando favoritos...</div>
                 </div>
             </div>
+
+            <div class="profile-section">
+                <h3><i class="fas fa-envelope"></i> Postulaciones Recibidas</h3>
+                <div id="receivedApplicationsContainer">
+                    <div class="loading">Cargando postulaciones...</div>
+                </div>
+            </div>
         </div>
 
         <!-- Modal para editar perfil de cliente -->
@@ -340,6 +354,10 @@ function renderClientProfile(client) {
 // Configurar event listeners para talentos
 function setupTalentEventListeners() {
     console.log('Configurando listeners para talento');
+    // Cargar aplicaciones después de renderizar
+    setTimeout(() => {
+        loadUserApplications();
+    }, 100);
 }
 
 // Configurar event listeners para clientes
@@ -349,8 +367,11 @@ function setupClientEventListeners() {
     setTimeout(() => {
         loadClientJobs();
         loadFavorites();
+        loadReceivedApplications();
     }, 100);
 }
+
+// ==================== FUNCIONES DE TALENTO ====================
 
 // Editar perfil de talento
 function editTalentProfile() {
@@ -471,6 +492,175 @@ async function updateTalentProfile(e) {
     }
 }
 
+// Cargar aplicaciones del talento
+async function loadUserApplications() {
+    try {
+        const container = document.getElementById('applicationsContainer');
+        if (!container) return;
+
+        console.log('Cargando aplicaciones del talento...');
+
+        const snapshot = await db.collection('jobApplications')
+            .where('talentId', '==', currentUser.uid)
+            .orderBy('appliedAt', 'desc')
+            .get();
+
+        if (snapshot.empty) {
+            container.innerHTML = `
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-briefcase fa-3x text-muted mb-3"></i>
+                    <p>No te has postulado a ningún trabajo todavía.</p>
+                    <button class="btn btn-primary mt-2" onclick="window.location.href='index.html'">
+                        <i class="fas fa-search"></i> Explorar trabajos
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        let applicationsHtml = '<div class="applications-list">';
+        snapshot.forEach(doc => {
+            const application = doc.data();
+            const statusClass = application.status === 'accepted' ? 'text-success' : 
+                              application.status === 'rejected' ? 'text-danger' : 'text-warning';
+            const statusText = application.status === 'accepted' ? 'Aceptada' :
+                             application.status === 'rejected' ? 'Rechazada' : 'Pendiente';
+
+            applicationsHtml += `
+                <div class="job-card" style="margin-bottom: 15px;">
+                    <div class="job-header">
+                        <h4>${application.jobTitle}</h4>
+                        <span class="badge ${statusClass}">${statusText}</span>
+                    </div>
+                    <p><strong>Estado:</strong> ${statusText}</p>
+                    <p><strong>Fecha de postulación:</strong> ${application.appliedAt ? new Date(application.appliedAt.toDate()).toLocaleDateString() : 'No disponible'}</p>
+                </div>
+            `;
+        });
+        applicationsHtml += '</div>';
+
+        container.innerHTML = applicationsHtml;
+
+    } catch (error) {
+        console.error('Error cargando aplicaciones:', error);
+        const container = document.getElementById('applicationsContainer');
+        if (container) {
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    Error al cargar las postulaciones: ${error.message}
+                </div>
+            `;
+        }
+    }
+}
+
+// ==================== FUNCIONES DE CLIENTE ====================
+
+// Editar perfil de cliente
+function editClientProfile() {
+    const modal = document.getElementById('editClientModal');
+    const form = document.getElementById('editClientForm');
+    
+    if (!modal || !form) {
+        console.error('Modal o form no encontrado');
+        return;
+    }
+
+    form.innerHTML = `
+        <div class="form-group">
+            <label for="editClientName">Nombre:</label>
+            <input type="text" id="editClientName" name="name" class="form-control" 
+                   value="${currentUserData.name || ''}" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="editClientPhone">Teléfono:</label>
+            <input type="tel" id="editClientPhone" name="phone" class="form-control" 
+                   value="${currentUserData.phone || ''}" placeholder="+1234567890">
+        </div>
+        
+        <div class="form-group">
+            <label for="editClientType">Tipo de Cliente:</label>
+            <select id="editClientType" name="clientType" class="form-control" required>
+                <option value="individual" ${currentUserData.clientType === 'individual' ? 'selected' : ''}>Individual</option>
+                <option value="empresa" ${currentUserData.clientType === 'empresa' ? 'selected' : ''}>Empresa</option>
+            </select>
+        </div>
+        
+        <div id="companyNameField" class="form-group" style="${currentUserData.clientType === 'empresa' ? '' : 'display: none;'}">
+            <label for="editCompanyName">Nombre de la Empresa:</label>
+            <input type="text" id="editCompanyName" name="companyName" class="form-control" 
+                   value="${currentUserData.companyName || ''}" placeholder="Nombre de la empresa">
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Guardar Cambios
+            </button>
+            <button type="button" class="btn btn-outline" onclick="closeEditModal()">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+        </div>
+    `;
+
+    // Mostrar/ocultar campo de empresa según tipo de cliente
+    document.getElementById('editClientType').addEventListener('change', function() {
+        document.getElementById('companyNameField').style.display = 
+            this.value === 'empresa' ? 'block' : 'none';
+    });
+
+    modal.style.display = 'flex';
+}
+
+// Actualizar perfil de cliente
+async function updateClientProfile(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
+    try {
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        submitBtn.disabled = true;
+
+        const updateData = {
+            name: formData.get('name'),
+            phone: formData.get('phone'),
+            clientType: formData.get('clientType'),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        // Agregar nombre de empresa si es empresa
+        if (formData.get('clientType') === 'empresa') {
+            updateData.companyName = formData.get('companyName');
+        } else {
+            updateData.companyName = null;
+        }
+
+        console.log('Actualizando perfil de cliente:', updateData);
+
+        // Actualizar en Firestore
+        await db.collection('clients').doc(currentUser.uid).update(updateData);
+
+        // Actualizar datos locales
+        Object.assign(currentUserData, updateData);
+
+        // Cerrar modal y recargar perfil
+        closeEditModal();
+        alert('Perfil actualizado correctamente');
+        window.loadUserProfile();
+
+    } catch (error) {
+        console.error('Error actualizando perfil:', error);
+        alert('Error al actualizar el perfil: ' + error.message);
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
 // Cargar trabajos del cliente
 async function loadClientJobs() {
     try {
@@ -535,7 +725,7 @@ async function loadClientJobs() {
     }
 }
 
-// Cargar favoritos del cliente - CORREGIDO
+// Cargar favoritos del cliente - COMPLETA
 async function loadFavorites() {
     try {
         const container = document.getElementById('favoritesContainer');
@@ -621,6 +811,73 @@ async function loadFavorites() {
     }
 }
 
+// Cargar postulaciones recibidas
+async function loadReceivedApplications() {
+    try {
+        const container = document.getElementById('receivedApplicationsContainer');
+        if (!container) return;
+
+        console.log('Cargando postulaciones recibidas...');
+
+        const snapshot = await db.collection('jobApplications')
+            .where('clientId', '==', currentUser.uid)
+            .orderBy('appliedAt', 'desc')
+            .get();
+
+        if (snapshot.empty) {
+            container.innerHTML = `
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-envelope fa-3x text-muted mb-3"></i>
+                    <p>No has recibido postulaciones todavía.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let applicationsHtml = '<div class="applications-list">';
+        snapshot.forEach(doc => {
+            const application = doc.data();
+            const statusClass = application.status === 'accepted' ? 'text-success' : 
+                              application.status === 'rejected' ? 'text-danger' : 'text-warning';
+            const statusText = application.status === 'accepted' ? 'Aceptada' :
+                             application.status === 'rejected' ? 'Rechazada' : 'Pendiente';
+
+            applicationsHtml += `
+                <div class="job-card" style="margin-bottom: 15px;">
+                    <div class="job-header">
+                        <h4>${application.jobTitle}</h4>
+                        <span class="badge ${statusClass}">${statusText}</span>
+                    </div>
+                    <p><strong>Talento:</strong> ${application.talentName}</p>
+                    <p><strong>Email:</strong> ${application.talentEmail}</p>
+                    <p><strong>Estado:</strong> ${statusText}</p>
+                    <div class="card-actions">
+                        <button class="btn btn-outline btn-sm" onclick="viewTalentProfile('${application.talentId}')">
+                            <i class="fas fa-eye"></i> Ver Talento
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        applicationsHtml += '</div>';
+
+        container.innerHTML = applicationsHtml;
+
+    } catch (error) {
+        console.error('Error cargando postulaciones recibidas:', error);
+        const container = document.getElementById('receivedApplicationsContainer');
+        if (container) {
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    Error al cargar las postulaciones recibidas: ${error.message}
+                </div>
+            `;
+        }
+    }
+}
+
+// ==================== FUNCIONES COMPARTIDAS ====================
+
 // Remover de favoritos
 async function removeFromFavorites(talentId) {
     if (!confirm('¿Estás seguro de que quieres eliminar este talento de tus favoritos?')) {
@@ -656,19 +913,6 @@ function closeEditModal() {
 }
 
 // Funciones placeholder para futuras implementaciones
-function editClientProfile() {
-    alert('Funcionalidad de edición de perfil de cliente en desarrollo');
-}
-
-function updateClientProfile(e) {
-    e.preventDefault();
-    alert('Funcionalidad de actualización de perfil de cliente en desarrollo');
-}
-
-function loadUserApplications() {
-    alert('Funcionalidad de postulaciones en desarrollo');
-}
-
 function createJobPost() {
     alert('Funcionalidad de publicación de trabajos en desarrollo');
 }
@@ -706,6 +950,31 @@ async function changeProfilePicture() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('=== PROFILE.JS INICIALIZADO ===');
     
+    // Configurar tabs del dashboard
+    const tabs = document.querySelectorAll('.dashboard-tabs .tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Remover clase active de todas las tabs
+            tabs.forEach(t => t.classList.remove('active'));
+            // Remover clase active de todos los contenidos
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Agregar clase active a la tab clickeada
+            this.classList.add('active');
+            
+            // Mostrar el contenido correspondiente
+            const tabId = this.getAttribute('data-tab');
+            let contentId = tabId + 'Tab';
+            if (tabId !== 'profile') {
+                contentId = tabId + 'TabContent';
+            }
+            const contentElement = document.getElementById(contentId);
+            if (contentElement) {
+                contentElement.classList.add('active');
+            }
+        });
+    });
+
     // Verificar autenticación y cargar perfil
     auth.onAuthStateChanged((user) => {
         if (user) {
