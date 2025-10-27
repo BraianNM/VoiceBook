@@ -340,3 +340,4 @@ window.closeEditProfileModal = function() {
     if (editModal) editModal.style.display = 'none';
     if (dashboardModal) dashboardModal.style.display = 'flex';
 };
+// VoiceBook - Updated: Mon Oct 27 07:51:19     2025

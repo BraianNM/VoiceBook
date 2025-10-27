@@ -265,3 +265,4 @@ function showMessage(element, message, type) {
     }
 }
 window.showMessage = showMessage; 
+// VoiceBook - Updated: Mon Oct 27 07:48:34     2025

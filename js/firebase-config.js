@@ -23,3 +23,4 @@ const cloudinaryConfig = {
 
 // Estado global de la aplicación
 let currentUser = null;
+// VoiceBook - Updated: Mon Oct 27 07:51:19     2025
